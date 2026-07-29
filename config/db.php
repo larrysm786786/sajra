@@ -1,12 +1,24 @@
 <?php
-$DB_HOST = 'localhost';
-$DB_NAME = 'sajra';
-$DB_USER = 'root';
-$DB_PASS = '';
+$localConfig = __DIR__ . '/db.local.php';
+
+if (file_exists($localConfig)) {
+    require $localConfig;
+} else {
+    $DB_DRIVER = getenv('DB_DRIVER') ?: 'mysql';
+    $DB_HOST = getenv('DB_HOST') ?: 'localhost';
+    $DB_PORT = getenv('DB_PORT') ?: ($DB_DRIVER === 'pgsql' ? '5432' : '3306');
+    $DB_NAME = getenv('DB_NAME') ?: 'sajra';
+    $DB_USER = getenv('DB_USER') ?: 'root';
+    $DB_PASS = getenv('DB_PASS') ?: '';
+}
+
+$dsn = $DB_DRIVER === 'pgsql'
+    ? "pgsql:host=$DB_HOST;port=$DB_PORT;dbname=$DB_NAME"
+    : "mysql:host=$DB_HOST;port=$DB_PORT;dbname=$DB_NAME;charset=utf8mb4";
 
 try {
     $pdo = new PDO(
-        "mysql:host=$DB_HOST;dbname=$DB_NAME;charset=utf8mb4",
+        $dsn,
         $DB_USER,
         $DB_PASS,
         [
@@ -15,5 +27,5 @@ try {
         ]
     );
 } catch (PDOException $e) {
-    die('Database connection failed. Make sure you imported install.sql and MySQL is running in XAMPP.');
+    die('Database connection failed. Check config/db.local.php (copy from db.example.php) or your DB_* environment variables.');
 }

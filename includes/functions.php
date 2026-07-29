@@ -82,29 +82,26 @@ function photoUrl(?string $photo): string
 }
 
 /**
- * Builds a nested tree node for D3 rendering.
- * A child is placed under its father; if it has no father on record,
- * it is placed under its mother instead (avoids duplicate branches).
+ * Builds a nested tree node for D3 rendering, using pre-fetched lookup tables
+ * instead of one query per node — required to stay fast against a remote
+ * database (e.g. Supabase) where each round-trip has real network latency.
  */
-function buildTreeNode(PDO $pdo, array $member, array &$visited): array
+function buildTreeNodeFast(array $member, array $childrenByParent, array $spousesById, array &$visited): array
 {
     if (isset($visited[$member['id']])) {
         return ['name' => displayName($member), 'id' => $member['id'], 'circular' => true, 'children' => []];
     }
     $visited[$member['id']] = true;
 
-    $stmt = $pdo->prepare(
-        'SELECT * FROM members WHERE father_id = ? OR (father_id IS NULL AND mother_id = ?) ORDER BY dob'
-    );
-    $stmt->execute([$member['id'], $member['id']]);
-    $childRows = $stmt->fetchAll();
-
     $children = [];
-    foreach ($childRows as $child) {
-        $children[] = buildTreeNode($pdo, $child, $visited);
+    foreach ($childrenByParent[$member['id']] ?? [] as $child) {
+        $children[] = buildTreeNodeFast($child, $childrenByParent, $spousesById, $visited);
     }
 
-    $spouses = array_map(fn($s) => ['id' => $s['id'], 'name' => displayName($s)], getSpouses($pdo, (int) $member['id']));
+    $spouses = array_map(
+        fn($s) => ['id' => $s['id'], 'name' => displayName($s)],
+        $spousesById[$member['id']] ?? []
+    );
 
     return [
         'id' => $member['id'],
@@ -116,6 +113,45 @@ function buildTreeNode(PDO $pdo, array $member, array &$visited): array
         'spouses' => $spouses,
         'children' => $children,
     ];
+}
+
+/**
+ * Fetches the whole family tree in just 2 queries and returns everything
+ * buildTreeNodeFast() needs: the root members plus lookup tables grouping
+ * children by parent id and spouses by member id.
+ */
+function loadTreeLookups(PDO $pdo): array
+{
+    $allMembers = $pdo->query('SELECT * FROM members ORDER BY dob')->fetchAll();
+    $membersById = [];
+    foreach ($allMembers as $m) {
+        $membersById[$m['id']] = $m;
+    }
+
+    $roots = [];
+    $childrenByParent = [];
+    foreach ($allMembers as $m) {
+        $parentId = $m['father_id'] ?: $m['mother_id'];
+        if ($parentId) {
+            $childrenByParent[$parentId][] = $m;
+        } else {
+            $roots[] = $m;
+        }
+    }
+
+    $spousesById = [];
+    foreach ($pdo->query('SELECT member_id, spouse_id FROM spouses')->fetchAll() as $pair) {
+        $a = (int) $pair['member_id'];
+        $b = (int) $pair['spouse_id'];
+        if (isset($membersById[$b])) {
+            $spousesById[$a][] = $membersById[$b];
+        }
+        if (isset($membersById[$a])) {
+            $spousesById[$b][] = $membersById[$a];
+        }
+    }
+
+    return [$roots, $childrenByParent, $spousesById];
 }
 
 function getRootMembers(PDO $pdo): array

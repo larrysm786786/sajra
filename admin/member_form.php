@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $pdo->prepare('DELETE FROM spouses WHERE member_id = ? OR spouse_id = ?')->execute([$id, $id]);
-        $insertSpouse = $pdo->prepare('INSERT IGNORE INTO spouses (member_id, spouse_id) VALUES (?, ?)');
+        $insertSpouse = $pdo->prepare('INSERT INTO spouses (member_id, spouse_id) VALUES (?, ?) ON CONFLICT DO NOTHING');
         foreach ($spouseIds as $sid) {
             if ($sid && $sid !== $id) {
                 $insertSpouse->execute([$id, $sid]);

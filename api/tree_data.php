@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../includes/functions.php';
 header('Content-Type: application/json; charset=utf-8');
 
-$roots = getRootMembers($pdo);
+[$roots, $childrenByParent, $spousesById] = loadTreeLookups($pdo);
 $visited = [];
 
 if (empty($roots)) {
@@ -11,13 +11,13 @@ if (empty($roots)) {
 }
 
 if (count($roots) === 1) {
-    echo json_encode(buildTreeNode($pdo, $roots[0], $visited), JSON_UNESCAPED_UNICODE);
+    echo json_encode(buildTreeNodeFast($roots[0], $childrenByParent, $spousesById, $visited), JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 $children = [];
 foreach ($roots as $root) {
-    $children[] = buildTreeNode($pdo, $root, $visited);
+    $children[] = buildTreeNodeFast($root, $childrenByParent, $spousesById, $visited);
 }
 
 echo json_encode(['name' => t('site_name'), 'children' => $children], JSON_UNESCAPED_UNICODE);
