@@ -70,10 +70,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$name, $nameUr ?: null, $gender, $dob, $dod, $birthplace, $bio, $photoName, $fatherId, $motherId, $id]);
         } else {
             $stmt = $pdo->prepare(
-                'INSERT INTO members (name, name_ur, gender, dob, dod, birthplace, bio, photo, father_id, mother_id) VALUES (?,?,?,?,?,?,?,?,?,?)'
+                'INSERT INTO members (name, name_ur, gender, dob, dod, birthplace, bio, photo, father_id, mother_id) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING id'
             );
             $stmt->execute([$name, $nameUr ?: null, $gender, $dob, $dod, $birthplace, $bio, $photoName, $fatherId, $motherId]);
-            $id = (int) $pdo->lastInsertId();
+            $id = (int) $stmt->fetchColumn();
         }
 
         $pdo->prepare('DELETE FROM spouses WHERE member_id = ? OR spouse_id = ?')->execute([$id, $id]);

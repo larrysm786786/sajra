@@ -2,3 +2,7 @@
 Thumbs.db
 .DS_Store
 config/db.local.php
+node_modules/
+dist/
+.env.local
+*.log
