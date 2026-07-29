@@ -1,0 +1,4 @@
+.git
+.claude
+config/db.local.php
+database_export.sql
