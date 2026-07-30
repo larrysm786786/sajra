@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import type { AppState, GalleryImage, Member, SessionUser, TreeNode, User } from "./types";
+import { SAJRA_SEED_STATE } from "./seedState";
 
 export const STORAGE_KEY = "sajra-react-state-v1";
 export const SESSION_KEY = "sajra-react-session-v1";
@@ -29,17 +30,17 @@ export function createEmptyState(): AppState {
 export function loadState(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return createEmptyState();
+    if (!raw) return cloneState(SAJRA_SEED_STATE);
     const parsed = JSON.parse(raw) as Partial<AppState>;
     return {
-      ...createEmptyState(),
+      ...cloneState(SAJRA_SEED_STATE),
       ...parsed,
       members: Array.isArray(parsed.members) ? parsed.members.map(normalizeMember) : [],
-      users: Array.isArray(parsed.users) ? parsed.users.map(normalizeUser) : createEmptyState().users,
+      users: Array.isArray(parsed.users) ? parsed.users.map(normalizeUser) : cloneState(SAJRA_SEED_STATE).users,
       gallery: Array.isArray(parsed.gallery) ? parsed.gallery.map(normalizeGalleryImage) : []
     };
   } catch {
-    return createEmptyState();
+    return cloneState(SAJRA_SEED_STATE);
   }
 }
 
@@ -204,4 +205,8 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 10);
+}
+
+function cloneState(state: AppState): AppState {
+  return JSON.parse(JSON.stringify(state)) as AppState;
 }
