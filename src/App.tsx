@@ -25,6 +25,7 @@ import {
   sortMembers,
   verifyPassword
 } from "./lib";
+import { getSupabaseConfig, loadSupabaseState, saveSupabaseState } from "./supabase";
 
 type RouteState = { page: ViewKey; memberId?: number };
 
@@ -57,6 +58,17 @@ type GalleryDraft = {
   src: string;
   caption: string;
 };
+
+function hasMeaningfulData(state: AppState): boolean {
+  return Boolean(
+    state.members.length ||
+    state.gallery.length ||
+    state.users.length > 1 ||
+    state.appName !== "Sajra" ||
+    state.language !== "en" ||
+    state.theme !== "light"
+  );
+}
 
 function parseRoute(): RouteState {
   const raw = window.location.hash.replace(/^#/, "");
@@ -284,20 +296,29 @@ function Modal({
 }
 
 export default function App() {
-  const [state, setState] = useState<AppState>(() => loadState());
+  const initialStateRef = useRef<AppState | null>(null);
+  const [state, setState] = useState<AppState>(() => {
+    const initial = loadState();
+    initialStateRef.current = initial;
+    return initial;
+  });
   const [session, setSession] = useState<SessionUser | null>(() => readSession());
   const [route, setRoute] = useState<RouteState>(() => parseRoute());
+  const supabaseConfig = useMemo(() => getSupabaseConfig(), []);
   const [treeQuery, setTreeQuery] = useState("");
   const [memberQuery, setMemberQuery] = useState("");
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [syncMessage, setSyncMessage] = useState("Checking local data...");
   const [memberDraft, setMemberDraft] = useState<MemberDraft | null>(null);
   const [userDraft, setUserDraft] = useState<UserDraft | null>(null);
   const [galleryDraft, setGalleryDraft] = useState<GalleryDraft | null>(null);
   const [importError, setImportError] = useState("");
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const hydrationDoneRef = useRef(false);
 
   const isLoggedIn = Boolean(session);
   const isAdmin = session?.role === "admin";
@@ -322,8 +343,78 @@ export default function App() {
   }, [state, language]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function hydrateSupabase() {
+      if (!supabaseConfig) {
+        setSyncStatus("ready");
+        setSyncMessage("Running in local-only mode.");
+        hydrationDoneRef.current = true;
+        return;
+      }
+
+      const localSnapshot = initialStateRef.current ?? loadState();
+      const localHasData = hasMeaningfulData(localSnapshot);
+
+      try {
+        const remoteState = await loadSupabaseState(supabaseConfig);
+        if (cancelled) return;
+
+        const remoteHasData = remoteState ? hasMeaningfulData(remoteState) : false;
+
+        if (remoteState && remoteHasData && !localHasData) {
+          setState(remoteState);
+          saveState(remoteState);
+          setSyncMessage("Loaded state from Supabase.");
+        } else if (localHasData) {
+          await saveSupabaseState(localSnapshot, supabaseConfig);
+          if (cancelled) return;
+          setSyncMessage("Local browser data synced to Supabase.");
+        } else if (remoteState && remoteHasData) {
+          setState(remoteState);
+          saveState(remoteState);
+          setSyncMessage("Loaded state from Supabase.");
+        } else {
+          setSyncMessage("Supabase is connected and waiting for your first save.");
+        }
+
+        setSyncStatus("ready");
+      } catch {
+        if (cancelled) return;
+        setSyncStatus("error");
+        setSyncMessage(supabaseConfig ? "Supabase sync is unavailable. Local data is still safe." : "Running in local-only mode.");
+      } finally {
+        if (!cancelled) hydrationDoneRef.current = true;
+      }
+    }
+
+    void hydrateSupabase();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabaseConfig]);
+
+  useEffect(() => {
     saveSession(session);
   }, [session]);
+
+  useEffect(() => {
+    if (!hydrationDoneRef.current || !supabaseConfig) return;
+
+    const handle = window.setTimeout(() => {
+      void saveSupabaseState(state, supabaseConfig)
+        .then(() => {
+          setSyncStatus("ready");
+          setSyncMessage("Changes synced to Supabase.");
+        })
+        .catch(() => {
+          setSyncStatus("error");
+          setSyncMessage("Could not save to Supabase. Local data is safe.");
+        });
+    }, 600);
+
+    return () => window.clearTimeout(handle);
+  }, [state, supabaseConfig]);
 
   useEffect(() => {
     if (route.page === "member" && route.memberId && !memberMap.has(route.memberId)) {
@@ -961,7 +1052,11 @@ export default function App() {
       {content}
 
       <p className="footer-note">
-        This version runs as a static React app. Data stays in your browser until you export the backup JSON. For GitHub Pages, this is the cleanest no-server setup.
+        {supabaseConfig
+          ? syncStatus === "error"
+            ? `Supabase sync issue: ${syncMessage} Local storage and browser backup still work.`
+            : `Supabase sync is on. ${syncMessage}`
+          : "This version runs locally in your browser. Add Supabase env vars to enable cloud sync."}
       </p>
 
       {memberDraft ? (
