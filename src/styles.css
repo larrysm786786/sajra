@@ -696,3 +696,76 @@ button {
     justify-content: flex-start;
   }
 }
+
+/* ===== Family Tree (D3) ===== */
+.view-toggle {
+  display: flex;
+  gap: 8px;
+  margin: 18px 0 12px;
+  flex-wrap: wrap;
+}
+.view-toggle-btn {
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.view-toggle-btn:hover { border-color: var(--accent); }
+.view-toggle-btn.active { background: var(--accent-strong); border-color: var(--accent-strong); color: var(--bg-soft); }
+
+.tree-search {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0 14px;
+  flex-wrap: wrap;
+}
+.tree-search input {
+  padding: 11px 16px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  flex: 1;
+  max-width: 320px;
+  font-size: 15px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font-family: inherit;
+}
+.tree-search input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+#tree-container {
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  margin-top: 4px;
+}
+
+.node circle { stroke-width: 2px; fill: var(--surface-strong); cursor: pointer; transition: r 0.15s ease; }
+.node circle.gender-male { stroke: #3b5a80; }
+.node circle.gender-female { stroke: #b0578d; }
+.node circle.gender-root { stroke: var(--accent); fill: var(--accent); }
+.node circle.highlighted { fill: #d9b876; stroke: #8a6a34; stroke-width: 3.5px; }
+.node:hover circle { r: 8; }
+.node text { font-size: 12.5px; font-family: inherit; fill: var(--text); }
+.link { fill: none; stroke: var(--border); stroke-width: 1.5px; }
+.link.highlighted-link { stroke: var(--accent); stroke-width: 2.5px; }
+
+.org-card {
+  cursor: pointer;
+  stroke: rgba(0, 0, 0, 0.15);
+  stroke-width: 1px;
+  filter: drop-shadow(0 2px 5px rgba(23, 19, 16, 0.18));
+  transition: stroke 0.15s ease;
+}
+.org-card:hover { stroke: #fff; }
+.org-card.highlighted { stroke: #ffffff; stroke-width: 3px; }
+.org-card-ring { pointer-events: none; }
+.org-card-photo { pointer-events: none; }
+.org-card-name { font-size: 12px; font-weight: 700; font-family: inherit; fill: #ffffff; pointer-events: none; }
+.org-card-detail { font-size: 10px; font-weight: 500; font-family: inherit; fill: rgba(255, 255, 255, 0.9); pointer-events: none; }

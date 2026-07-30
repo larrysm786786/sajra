@@ -26,6 +26,7 @@ import {
   verifyPassword
 } from "./lib";
 import { getSupabaseConfig, loadSupabaseState, saveSupabaseState } from "./supabase";
+import FamilyTreeD3 from "./FamilyTreeD3";
 
 type RouteState = { page: ViewKey; memberId?: number };
 
@@ -772,24 +773,16 @@ export default function App() {
             <div>
               <span className="eyebrow">Family tree</span>
               <h2 className="section-title" style={{ fontSize: "2.9rem", marginTop: 12 }}>Explore the lineage</h2>
-              <p className="section-subtitle">Open branches, search by name, and jump into detailed member profiles.</p>
-            </div>
-            <div style={{ minWidth: 280 }}>
-              <input
-                className="field"
-                placeholder="Search members or birthplace"
-                value={treeQuery}
-                onChange={(e) => setTreeQuery(e.target.value)}
-              />
+              <p className="section-subtitle">Switch views, search by name, and open detailed member profiles.</p>
             </div>
           </div>
 
-          {tree.length ? (
-            <div className="tree-root">
-              {tree.map((node) => (
-                <TreeBranch key={node.member.id} node={node} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} query={treeQuery} />
-              ))}
-            </div>
+          {state.members.length ? (
+            <FamilyTreeD3
+              members={state.members}
+              language={language}
+              onOpenMember={(id) => navigate({ page: "member", memberId: id })}
+            />
           ) : (
             <div className="empty">No members yet. Add the first root member from admin.</div>
           )}
