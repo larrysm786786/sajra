@@ -188,7 +188,11 @@ const STRINGS = {
     showPositionButton: "Show My Position",
     treeHint: "Click a node to expand/collapse. Double-click to open the profile. Scroll to zoom, drag to pan.",
     noMemberFoundPrefix: "No member found with the name",
-    treeSajraFallback: "Sajra"
+    treeSajraFallback: "Sajra",
+
+    zoomInLabel: "Zoom in",
+    zoomOutLabel: "Zoom out",
+    closeLabel: "Close"
   },
   ur: {
     signInEyebrow: "ایڈمن رسائی",
@@ -377,7 +381,11 @@ const STRINGS = {
     showPositionButton: "میری پوزیشن دکھائیں",
     treeHint: "نوڈ پر کلک کر کے کھولیں یا بند کریں۔ پروفائل کھولنے کے لیے ڈبل کلک کریں۔ زوم کے لیے سکرول کریں، منتقل کرنے کے لیے گھسیٹیں۔",
     noMemberFoundPrefix: "اس نام کا کوئی رکن نہیں ملا:",
-    treeSajraFallback: "شجرہ"
+    treeSajraFallback: "شجرہ",
+
+    zoomInLabel: "زوم ان",
+    zoomOutLabel: "زوم آؤٹ",
+    closeLabel: "بند کریں"
   }
 } as const;
 

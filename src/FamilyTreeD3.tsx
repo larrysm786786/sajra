@@ -35,9 +35,9 @@ const BRANCH_COLORS = [
 ];
 
 const LAYOUTS: Record<ViewMode, { dx: number; dy: number }> = {
-  horizontal: { dx: 40, dy: 180 },
-  vertical: { dx: 110, dy: 90 },
-  boxes: { dx: 220, dy: 190 }
+  horizontal: { dx: 70, dy: 240 },
+  vertical: { dx: 160, dy: 140 },
+  boxes: { dx: 270, dy: 240 }
 };
 
 interface Props {
@@ -52,8 +52,20 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
   const [viewMode, setViewMode] = useState<ViewMode>("horizontal");
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const onOpenRef = useRef(onOpenMember);
   onOpenRef.current = onOpenMember;
+
+  const suggestions = query.trim()
+    ? members.filter((member) => displayName(member, language).toLowerCase().includes(query.trim().toLowerCase())).slice(0, 8)
+    : [];
+
+  function selectSuggestion(member: Member) {
+    const name = displayName(member, language);
+    setQuery(name);
+    setSuggestionsOpen(false);
+    findRef.current(name);
+  }
 
   useEffect(() => {
     const container = containerRef.current;
@@ -404,13 +416,31 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
       </div>
 
       <form onSubmit={handleSearch} className="tree-search">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t(language, "searchPlaceholderTree")}
-          autoComplete="off"
-        />
+        <div className="tree-search-field">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); setSuggestionsOpen(true); }}
+            onFocus={() => setSuggestionsOpen(true)}
+            onBlur={() => setSuggestionsOpen(false)}
+            placeholder={t(language, "searchPlaceholderTree")}
+            autoComplete="off"
+          />
+          {suggestionsOpen && suggestions.length ? (
+            <div className="autocomplete-list">
+              {suggestions.map((member) => (
+                <button
+                  key={member.id}
+                  type="button"
+                  className="autocomplete-item"
+                  onMouseDown={(e) => { e.preventDefault(); selectSuggestion(member); }}
+                >
+                  {displayName(member, language)}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
         <button type="submit" className="btn-ghost">
           {t(language, "showPositionButton")}
         </button>

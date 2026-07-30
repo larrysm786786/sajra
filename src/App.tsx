@@ -320,6 +320,7 @@ export default function App() {
   const supabaseConfigured = useMemo(() => isSupabaseConfigured(), []);
   const [treeQuery, setTreeQuery] = useState("");
   const [memberQuery, setMemberQuery] = useState("");
+  const [spouseSearchQuery, setSpouseSearchQuery] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -329,6 +330,8 @@ export default function App() {
   const [memberDraft, setMemberDraft] = useState<MemberDraft | null>(null);
   const [userDraft, setUserDraft] = useState<UserDraft | null>(null);
   const [galleryDraft, setGalleryDraft] = useState<GalleryDraft | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<GalleryImage | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
   const [importError, setImportError] = useState("");
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const hydrationDoneRef = useRef(false);
@@ -497,6 +500,7 @@ export default function App() {
   function openMemberEditor(member?: Member) {
     if (!isLoggedIn) return;
     setMemberDraft(emptyMemberDraft(member));
+    setSpouseSearchQuery("");
   }
 
   function openUserEditor(user?: User) {
@@ -513,6 +517,25 @@ export default function App() {
     setMemberDraft(null);
     setUserDraft(null);
     setGalleryDraft(null);
+    setSpouseSearchQuery("");
+  }
+
+  function openLightbox(image: GalleryImage) {
+    setLightboxImage(image);
+    setZoomLevel(1);
+  }
+
+  function closeLightbox() {
+    setLightboxImage(null);
+    setZoomLevel(1);
+  }
+
+  function zoomInLightbox() {
+    setZoomLevel((z) => Math.min(4, Math.round((z + 0.25) * 100) / 100));
+  }
+
+  function zoomOutLightbox() {
+    setZoomLevel((z) => Math.max(0.5, Math.round((z - 0.25) * 100) / 100));
   }
 
   async function saveMember() {
@@ -835,7 +858,9 @@ export default function App() {
             <div className="gallery-grid">
               {state.gallery.map((image) => (
                 <article className="gallery-card" key={image.id}>
-                  <img className="member-photo" src={photoSrc(image.src)} alt={image.caption ?? t(language, "galleryImageAlt")} />
+                  <button type="button" className="gallery-thumb-btn" onClick={() => openLightbox(image)}>
+                    <img className="gallery-photo" src={photoSrc(image.src)} alt={image.caption ?? t(language, "galleryImageAlt")} />
+                  </button>
                   <div style={{ marginTop: 12 }}>
                     <div className="tree-name">{image.caption || t(language, "untitledPhoto")}</div>
                     <div className="tree-sub">{formatDate(image.uploadedAt, language)}</div>
@@ -1006,7 +1031,7 @@ export default function App() {
           </div>
           {roots.length ? (
             <div className="member-grid">
-              {roots.slice(0, 8).map((member) => (
+              {roots.slice(0, 4).map((member) => (
                 <MemberCard key={member.id} member={member} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
               ))}
             </div>
@@ -1194,23 +1219,56 @@ export default function App() {
             </label>
             <div className="span-12">
               <div className="muted" style={{ marginBottom: 10, fontWeight: 700 }}>{t(language, "spousesFieldLabel")}</div>
-              <div className="member-chip-list">
-                {state.members.filter((member) => member.id !== memberDraft.id).map((member) => {
-                  const selected = memberDraft.spouseIds.includes(member.id);
+              <div className="member-chip-list" style={{ marginBottom: memberDraft.spouseIds.length ? 10 : 0 }}>
+                {memberDraft.spouseIds.map((id) => {
+                  const member = state.members.find((candidate) => candidate.id === id);
+                  if (!member) return null;
                   return (
                     <button
-                      key={member.id}
+                      key={id}
                       type="button"
-                      className={`member-chip ${selected ? "active" : ""}`}
+                      className="member-chip active"
                       onClick={() => setMemberDraft((current) => current ? {
                         ...current,
-                        spouseIds: selected ? current.spouseIds.filter((id) => id !== member.id) : [...current.spouseIds, member.id]
+                        spouseIds: current.spouseIds.filter((sid) => sid !== id)
                       } : current)}
                     >
-                      {displayName(member, language)}
+                      {displayName(member, language)} ✕
                     </button>
                   );
                 })}
+              </div>
+              <div style={{ position: "relative" }}>
+                <input
+                  className="field"
+                  placeholder={t(language, "searchMembersPlaceholder")}
+                  value={spouseSearchQuery}
+                  onChange={(e) => setSpouseSearchQuery(e.target.value)}
+                />
+                {spouseSearchQuery.trim() ? (
+                  <div className="autocomplete-list">
+                    {state.members
+                      .filter((member) =>
+                        member.id !== memberDraft.id &&
+                        !memberDraft.spouseIds.includes(member.id) &&
+                        displayName(member, language).toLowerCase().includes(spouseSearchQuery.trim().toLowerCase())
+                      )
+                      .slice(0, 8)
+                      .map((member) => (
+                        <button
+                          key={member.id}
+                          type="button"
+                          className="autocomplete-item"
+                          onClick={() => {
+                            setMemberDraft((current) => current ? { ...current, spouseIds: [...current.spouseIds, member.id] } : current);
+                            setSpouseSearchQuery("");
+                          }}
+                        >
+                          {displayName(member, language)}
+                        </button>
+                      ))}
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
@@ -1282,6 +1340,34 @@ export default function App() {
             <button className="btn-ghost" type="button" onClick={closeEditors}>{t(language, "cancelButton")}</button>
           </div>
         </Modal>
+      ) : null}
+
+      {lightboxImage ? (
+        <div className="lightbox-backdrop" onClick={closeLightbox}>
+          <div className="lightbox-toolbar" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="icon-btn" aria-label={t(language, "zoomOutLabel")} onClick={zoomOutLightbox}>−</button>
+            <button type="button" className="icon-btn" onClick={() => setZoomLevel(1)}>{Math.round(zoomLevel * 100)}%</button>
+            <button type="button" className="icon-btn" aria-label={t(language, "zoomInLabel")} onClick={zoomInLightbox}>+</button>
+            <button type="button" className="close-btn" aria-label={t(language, "closeLabel")} onClick={closeLightbox}>✕</button>
+          </div>
+          <div
+            className="lightbox-viewport"
+            onClick={(e) => e.stopPropagation()}
+            onWheel={(e) => {
+              e.preventDefault();
+              setZoomLevel((z) => Math.min(4, Math.max(0.5, Math.round((z - e.deltaY * 0.001) * 100) / 100)));
+            }}
+          >
+            <img
+              src={photoSrc(lightboxImage.src)}
+              alt={lightboxImage.caption ?? t(language, "galleryImageAlt")}
+              style={{ transform: `scale(${zoomLevel})` }}
+            />
+          </div>
+          {lightboxImage.caption ? (
+            <div className="lightbox-caption" onClick={(e) => e.stopPropagation()}>{lightboxImage.caption}</div>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
