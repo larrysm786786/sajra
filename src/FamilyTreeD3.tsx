@@ -27,10 +27,10 @@ const PHOTO_CY = -CARD_H / 2 + 12 + PHOTO_R;
 const NAME_Y = PHOTO_CY + PHOTO_R + 16;
 const DOB_Y = NAME_Y + 15;
 const ADDS_Y = DOB_Y + 13;
-const ROOT_COLOR = "#dc2626";
+const ROOT_COLOR = "#000000";
 const BRANCH_COLORS = [
-  "#16a34a", "#2563eb", "#d97706", "#0f766e", "#7c3aed",
-  "#a16207", "#ec4899", "#0891b2", "#65a30d", "#9333ea"
+  "#2e5185", "#71d0f6", "#16233b", "#a8e3fb", "#3d6aa8",
+  "#4fb8e0", "#5c89c2", "#2e93bd", "#8aa9d4", "#c3ecfc"
 ];
 
 const LAYOUTS: Record<ViewMode, { dx: number; dy: number }> = {
@@ -198,7 +198,7 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
           .attr("width", (d) => cardWidthFor(d))
           .attr("height", CARD_H)
           .attr("rx", 14)
-          .attr("fill", (d) => d.data._branchColor || "#334155");
+          .attr("fill", (d) => d.data._branchColor || "#2e5185");
 
         nodeEnter
           .append("circle")
