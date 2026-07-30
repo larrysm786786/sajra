@@ -1,10 +1,7 @@
-import bcrypt from "bcryptjs";
-import type { AppState, GalleryImage, Member, SessionUser, TreeNode, User } from "./types";
+import type { AppState, GalleryImage, Member, TreeNode, User } from "./types";
 import { SAJRA_SEED_STATE } from "./seedState";
 
 export const STORAGE_KEY = "sajra-react-state-v1";
-export const SESSION_KEY = "sajra-react-session-v1";
-export const DEFAULT_ADMIN_HASH = "$2y$10$qABwmnQKaoRc5hYJxxebJ.RyyOQKq4CV6xEw4Pqws47Db0Rw8J6xq";
 
 export function createEmptyState(): AppState {
   return {
@@ -19,7 +16,6 @@ export function createEmptyState(): AppState {
         name: "Administrator",
         email: null,
         role: "admin",
-        passwordHash: DEFAULT_ADMIN_HASH,
         createdAt: new Date().toISOString()
       }
     ],
@@ -46,23 +42,6 @@ export function loadState(): AppState {
 
 export function saveState(state: AppState): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-
-export function readSession(): SessionUser | null {
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as SessionUser) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function saveSession(user: SessionUser | null): void {
-  if (!user) {
-    sessionStorage.removeItem(SESSION_KEY);
-    return;
-  }
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(user));
 }
 
 export function nextId<T extends { id: number }>(items: T[]): number {
@@ -199,12 +178,39 @@ export async function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash);
-}
+/**
+ * Resizes and re-encodes an image to keep the whole app-state JSON blob
+ * (stored as one Supabase row) from growing unbounded as photos are added.
+ */
+export async function readFileAsCompressedDataUrl(file: File, maxDimension = 800, quality = 0.82): Promise<string> {
+  const dataUrl = await readFileAsDataUrl(file);
+  if (!file.type.startsWith("image/") || file.type === "image/svg+xml" || file.type === "image/gif") {
+    return dataUrl;
+  }
 
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10);
+  return await new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxDimension || height > maxDimension) {
+        const scale = maxDimension / Math.max(width, height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(dataUrl);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
 }
 
 function cloneState(state: AppState): AppState {

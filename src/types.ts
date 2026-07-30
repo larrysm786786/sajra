@@ -1,4 +1,4 @@
-export type Language = "en";
+export type Language = "en" | "ur";
 export type Theme = "light" | "dark";
 export type Gender = "male" | "female";
 export type Role = "admin" | "editor";
@@ -20,13 +20,17 @@ export interface Member {
   createdAt: string;
 }
 
+/**
+ * A directory label only — it does NOT grant login access. Real
+ * authentication is handled entirely by Supabase Auth (see supabase.ts).
+ * This just records who is considered an admin/editor for display purposes.
+ */
 export interface User {
   id: number;
   username: string;
   name?: string | null;
   email?: string | null;
   role: Role;
-  passwordHash: string;
   createdAt: string;
 }
 
@@ -44,13 +48,6 @@ export interface AppState {
   members: Member[];
   users: User[];
   gallery: GalleryImage[];
-}
-
-export interface SessionUser {
-  id: number;
-  username: string;
-  name?: string | null;
-  role: Role;
 }
 
 export interface TreeNode {

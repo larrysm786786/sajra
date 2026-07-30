@@ -2668,7 +2668,6 @@ export const SAJRA_SEED_STATE: AppState = {
       "name": "Administrator",
       "email": null,
       "role": "admin",
-      "passwordHash": "$2y$10$fdhW4NiEooIRNML3DdP99uwYKzJAq/NWMxKvWqkhyLju7.V3G7NKu",
       "createdAt": "2026-07-24 06:27:14"
     }
   ],

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import * as d3 from "d3";
-import type { Member } from "./types";
+import type { Language, Member } from "./types";
 import { buildTree, calculateAge, displayName, photoSrc } from "./lib";
 
 type ViewMode = "horizontal" | "vertical" | "boxes";
@@ -41,7 +41,7 @@ const LAYOUTS: Record<ViewMode, { dx: number; dy: number }> = {
 
 interface Props {
   members: Member[];
-  language: "en";
+  language: Language;
   onOpenMember: (id: number) => void;
 }
 

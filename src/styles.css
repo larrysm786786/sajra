@@ -769,3 +769,16 @@ button {
 .org-card-photo { pointer-events: none; }
 .org-card-name { font-size: 12px; font-weight: 700; font-family: inherit; fill: #ffffff; pointer-events: none; }
 .org-card-detail { font-size: 10px; font-weight: 500; font-family: inherit; fill: rgba(255, 255, 255, 0.9); pointer-events: none; }
+
+/* ===== RTL (Urdu) support ===== */
+html[dir="rtl"] body { text-align: right; }
+html[dir="rtl"] .topnav,
+html[dir="rtl"] .header-actions,
+html[dir="rtl"] .form-stack label,
+html[dir="rtl"] .actions-row {
+  direction: rtl;
+}
+html[dir="rtl"] .field,
+html[dir="rtl"] .select {
+  text-align: right;
+}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
-import type { AppState, GalleryImage, Gender, Member, Role, SessionUser, TreeNode, User, ViewKey } from "./types";
+import type { Session } from "@supabase/supabase-js";
+import type { AppState, GalleryImage, Gender, Language, Member, Role, TreeNode, User, ViewKey } from "./types";
 import {
   assignUniqueName,
   buildTree,
@@ -12,21 +13,32 @@ import {
   getChildren,
   getParents,
   getSpouses,
-  hashPassword,
   importJson,
   isRoot,
   loadState,
   nextId,
   photoSrc,
-  readFileAsDataUrl,
-  readSession,
-  saveSession,
+  readFileAsCompressedDataUrl,
   saveState,
-  sortMembers,
-  verifyPassword
+  sortMembers
 } from "./lib";
-import { getSupabaseConfig, loadSupabaseState, saveSupabaseState } from "./supabase";
+import {
+  getSupabaseSession,
+  isSupabaseConfigured,
+  loadSupabaseState,
+  onSupabaseAuthChange,
+  publishInitialState,
+  saveSupabaseState,
+  signInWithPassword,
+  signOutSupabase,
+  StaleWriteError
+} from "./supabase";
 import FamilyTreeD3 from "./FamilyTreeD3";
+
+const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string; admin: string; about: string }> = {
+  en: { home: "Home", tree: "Tree", gallery: "Gallery", admin: "Admin", about: "About" },
+  ur: { home: "ہوم", tree: "شجرہ", gallery: "گیلری", admin: "ایڈمن", about: "تعارف" }
+};
 
 type RouteState = { page: ViewKey; memberId?: number };
 
@@ -51,7 +63,6 @@ type UserDraft = {
   name: string;
   email: string;
   role: Role;
-  password: string;
 };
 
 type GalleryDraft = {
@@ -125,15 +136,13 @@ function emptyUserDraft(user?: User): UserDraft {
         username: user.username,
         name: user.name ?? "",
         email: user.email ?? "",
-        role: user.role,
-        password: ""
+        role: user.role
       }
     : {
         username: "",
         name: "",
         email: "",
-        role: "editor",
-        password: ""
+        role: "editor"
       };
 }
 
@@ -303,16 +312,16 @@ export default function App() {
     initialStateRef.current = initial;
     return initial;
   });
-  const [session, setSession] = useState<SessionUser | null>(() => readSession());
+  const [supabaseSession, setSupabaseSession] = useState<Session | null>(null);
   const [route, setRoute] = useState<RouteState>(() => parseRoute());
-  const supabaseConfig = useMemo(() => getSupabaseConfig(), []);
+  const supabaseConfigured = useMemo(() => isSupabaseConfigured(), []);
   const [treeQuery, setTreeQuery] = useState("");
   const [memberQuery, setMemberQuery] = useState("");
-  const [loginUsername, setLoginUsername] = useState("");
+  const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [syncStatus, setSyncStatus] = useState<"loading" | "ready" | "error" | "conflict">("loading");
   const [syncMessage, setSyncMessage] = useState("Checking local data...");
   const [memberDraft, setMemberDraft] = useState<MemberDraft | null>(null);
   const [userDraft, setUserDraft] = useState<UserDraft | null>(null);
@@ -320,9 +329,10 @@ export default function App() {
   const [importError, setImportError] = useState("");
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const hydrationDoneRef = useRef(false);
+  const remoteUpdatedAtRef = useRef<string | null>(null);
 
-  const isLoggedIn = Boolean(session);
-  const isAdmin = session?.role === "admin";
+  const isLoggedIn = Boolean(supabaseSession);
+  const isAdmin = isLoggedIn;
   const language = state.language;
   const members = useMemo(() => [...state.members].sort(sortMembers), [state.members]);
   const memberMap = useMemo(() => new Map(state.members.map((member) => [member.id, member])), [state.members]);
@@ -341,13 +351,19 @@ export default function App() {
     saveState(state);
     document.documentElement.dataset.theme = state.theme;
     document.documentElement.lang = language;
+    document.documentElement.dir = language === "ur" ? "rtl" : "ltr";
   }, [state, language]);
+
+  useEffect(() => {
+    void getSupabaseSession().then(setSupabaseSession);
+    return onSupabaseAuthChange(setSupabaseSession);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
 
     async function hydrateSupabase() {
-      if (!supabaseConfig) {
+      if (!supabaseConfigured) {
         setSyncStatus("ready");
         setSyncMessage("Running in local-only mode.");
         hydrationDoneRef.current = true;
@@ -358,32 +374,27 @@ export default function App() {
       const localHasData = hasMeaningfulData(localSnapshot);
 
       try {
-        const remoteState = await loadSupabaseState(supabaseConfig);
+        const remote = await loadSupabaseState();
         if (cancelled) return;
 
-        const remoteHasData = remoteState ? hasMeaningfulData(remoteState) : false;
+        const remoteHasData = remote ? hasMeaningfulData(remote.state) : false;
 
-        if (remoteState && remoteHasData && !localHasData) {
-          setState(remoteState);
-          saveState(remoteState);
-          setSyncMessage("Loaded state from Supabase.");
+        if (remote && remoteHasData) {
+          setState(remote.state);
+          saveState(remote.state);
+          remoteUpdatedAtRef.current = remote.updatedAt;
+          setSyncMessage("Loaded the shared family tree from Supabase.");
         } else if (localHasData) {
-          await saveSupabaseState(localSnapshot, supabaseConfig);
-          if (cancelled) return;
-          setSyncMessage("Local browser data synced to Supabase.");
-        } else if (remoteState && remoteHasData) {
-          setState(remoteState);
-          saveState(remoteState);
-          setSyncMessage("Loaded state from Supabase.");
+          setSyncMessage("Supabase has no data yet. Log in as admin to publish this browser's data.");
         } else {
-          setSyncMessage("Supabase is connected and waiting for your first save.");
+          setSyncMessage("Supabase is connected and waiting for the first save.");
         }
 
         setSyncStatus("ready");
       } catch {
         if (cancelled) return;
         setSyncStatus("error");
-        setSyncMessage(supabaseConfig ? "Supabase sync is unavailable. Local data is still safe." : "Running in local-only mode.");
+        setSyncMessage(supabaseConfigured ? "Supabase sync is unavailable. Showing local data." : "Running in local-only mode.");
       } finally {
         if (!cancelled) hydrationDoneRef.current = true;
       }
@@ -393,29 +404,43 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [supabaseConfig]);
+  }, [supabaseConfigured]);
 
   useEffect(() => {
-    saveSession(session);
-  }, [session]);
-
-  useEffect(() => {
-    if (!hydrationDoneRef.current || !supabaseConfig) return;
+    if (!hydrationDoneRef.current || !supabaseConfigured || !isLoggedIn) return;
 
     const handle = window.setTimeout(() => {
-      void saveSupabaseState(state, supabaseConfig)
-        .then(() => {
+      const save =
+        remoteUpdatedAtRef.current === null
+          ? publishInitialState(state)
+          : saveSupabaseState(state, remoteUpdatedAtRef.current);
+
+      void save
+        .then((nextUpdatedAt) => {
+          remoteUpdatedAtRef.current = nextUpdatedAt;
           setSyncStatus("ready");
           setSyncMessage("Changes synced to Supabase.");
         })
-        .catch(() => {
+        .catch(async (error) => {
+          if (error instanceof StaleWriteError) {
+            setSyncStatus("conflict");
+            setSyncMessage("Someone else saved changes first. Reloading the latest version...");
+            const remote = await loadSupabaseState();
+            if (remote) {
+              setState(remote.state);
+              saveState(remote.state);
+              remoteUpdatedAtRef.current = remote.updatedAt;
+              setSyncMessage("Reloaded the latest version from Supabase. Please redo your last change.");
+            }
+            return;
+          }
           setSyncStatus("error");
           setSyncMessage("Could not save to Supabase. Local data is safe.");
         });
     }, 600);
 
     return () => window.clearTimeout(handle);
-  }, [state, supabaseConfig]);
+  }, [state, supabaseConfigured, isLoggedIn]);
 
   useEffect(() => {
     if (route.page === "member" && route.memberId && !memberMap.has(route.memberId)) {
@@ -429,25 +454,26 @@ export default function App() {
 
   async function handleLoginSubmit(event: FormEvent) {
     event.preventDefault();
+    if (!supabaseConfigured) {
+      setLoginError("Admin login requires Supabase to be configured.");
+      return;
+    }
     setLoginBusy(true);
     setLoginError("");
     try {
-      const user = state.users.find((entry) => entry.username.toLowerCase() === loginUsername.trim().toLowerCase());
-      if (!user || !(await verifyPassword(loginPassword, user.passwordHash))) {
-        setLoginError("Invalid username or password.");
-        return;
-      }
-      setSession({ id: user.id, username: user.username, name: user.name, role: user.role });
+      await signInWithPassword(loginEmail.trim(), loginPassword);
       navigate({ page: "admin" });
-      setLoginUsername("");
+      setLoginEmail("");
       setLoginPassword("");
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : "Invalid email or password.");
     } finally {
       setLoginBusy(false);
     }
   }
 
   function logout() {
-    setSession(null);
+    void signOutSupabase();
     navigate({ page: "home" });
   }
 
@@ -539,23 +565,18 @@ export default function App() {
     }));
   }
 
-  async function saveUser() {
+  function saveUser() {
     if (!userDraft || !userDraft.username.trim()) return;
     if (!isAdmin) return;
     const id = userDraft.id ?? nextId(state.users);
     const existing = state.users.find((user) => user.id === id);
-    const passwordHash = userDraft.password
-      ? await hashPassword(userDraft.password)
-      : existing?.passwordHash || "";
-    if (!passwordHash) return;
 
-    const updated = {
+    const updated: User = {
       id,
       username: userDraft.username.trim(),
       name: userDraft.name.trim() || null,
       email: userDraft.email.trim() || null,
       role: userDraft.role,
-      passwordHash,
       createdAt: existing?.createdAt || new Date().toISOString()
     };
 
@@ -571,22 +592,18 @@ export default function App() {
   function deleteUser(id: number) {
     if (!isAdmin) return;
     if (!window.confirm("Delete this user?")) return;
-    if (session?.id === id) {
-      window.alert("You cannot delete your own active account.");
-      return;
-    }
     updateState((current) => ({ ...current, users: current.users.filter((user) => user.id !== id) }));
   }
 
   async function handleMemberPhoto(file?: File) {
     if (!file || !memberDraft) return;
-    const src = await readFileAsDataUrl(file);
+    const src = await readFileAsCompressedDataUrl(file);
     setMemberDraft((current) => current ? { ...current, photo: src } : current);
   }
 
   async function handleGalleryFile(file?: File) {
     if (!file || !galleryDraft) return;
-    const src = await readFileAsDataUrl(file);
+    const src = await readFileAsCompressedDataUrl(file, 1400, 0.85);
     setGalleryDraft((current) => current ? { ...current, src } : current);
   }
 
@@ -675,15 +692,15 @@ export default function App() {
             </div>
           </div>
           <div className="profile-layout" style={{ gridTemplateColumns: "1fr 1fr" }}>
-            <Card title="Login" subtitle="Default admin credential is seeded in the backup." >
+            <Card title="Login" subtitle="Managed by Supabase Authentication.">
               <form className="form-stack" onSubmit={handleLoginSubmit}>
                 <label>
-                  Username
-                  <input className="field" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} />
+                  Email
+                  <input type="email" className="field" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} autoComplete="username" />
                 </label>
                 <label>
                   Password
-                  <input type="password" className="field" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
+                  <input type="password" className="field" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} autoComplete="current-password" />
                 </label>
                 {loginError ? <div className="notice danger">{loginError}</div> : null}
                 <button className="btn" type="submit" disabled={loginBusy}>{loginBusy ? "Signing in..." : "Login"}</button>
@@ -1026,13 +1043,20 @@ export default function App() {
           </div>
         </a>
         <nav className="topnav">
-          <NavLink active={route.page === "home"} onClick={() => navigate({ page: "home" })}>Home</NavLink>
-          <NavLink active={route.page === "tree"} onClick={() => navigate({ page: "tree" })}>Tree</NavLink>
-          <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>Gallery</NavLink>
-          <NavLink active={route.page === "admin"} onClick={() => navigate({ page: "admin" })}>Admin</NavLink>
-          <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>About</NavLink>
+          <NavLink active={route.page === "home"} onClick={() => navigate({ page: "home" })}>{NAV_LABELS[language].home}</NavLink>
+          <NavLink active={route.page === "tree"} onClick={() => navigate({ page: "tree" })}>{NAV_LABELS[language].tree}</NavLink>
+          <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
+          <NavLink active={route.page === "admin"} onClick={() => navigate({ page: "admin" })}>{NAV_LABELS[language].admin}</NavLink>
+          <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
         </nav>
         <div className="header-actions">
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => setState((current) => ({ ...current, language: current.language === "ur" ? "en" : "ur" }))}
+          >
+            {state.language === "ur" ? "EN" : "اردو"}
+          </button>
           <button type="button" className="icon-btn" onClick={() => setState((current) => ({ ...current, theme: current.theme === "dark" ? "light" : "dark" }))}>
             {state.theme === "dark" ? "☾" : "☀"}
           </button>
@@ -1045,10 +1069,12 @@ export default function App() {
       {content}
 
       <p className="footer-note">
-        {supabaseConfig
+        {supabaseConfigured
           ? syncStatus === "error"
             ? `Supabase sync issue: ${syncMessage} Local storage and browser backup still work.`
-            : `Supabase sync is on. ${syncMessage}`
+            : syncStatus === "conflict"
+              ? syncMessage
+              : `Supabase sync is on. ${syncMessage}`
           : "This version runs locally in your browser. Add Supabase env vars to enable cloud sync."}
       </p>
 
@@ -1154,7 +1180,7 @@ export default function App() {
       {userDraft ? (
         <Modal
           title={userDraft.id ? "Edit user" : "Add user"}
-          subtitle="Client-side users are stored in the app backup."
+          subtitle="A directory label only — it does not grant login access. Manage real sign-in accounts in Supabase Authentication."
           onClose={closeEditors}
         >
           <div className="form-grid">
@@ -1176,10 +1202,6 @@ export default function App() {
                 <option value="editor">Editor</option>
                 <option value="admin">Admin</option>
               </select>
-            </label>
-            <label className="span-12">
-              Password {userDraft.id ? "(leave blank to keep current password)" : ""}
-              <input className="field" type="password" value={userDraft.password} onChange={(e) => setUserDraft((current) => current ? { ...current, password: e.target.value } : current)} />
             </label>
           </div>
           <div className="actions-row" style={{ marginTop: 18 }}>
