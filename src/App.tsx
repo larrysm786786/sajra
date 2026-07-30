@@ -1036,7 +1036,11 @@ export default function App() {
     <div className="app-shell">
       <header className="topbar">
         <a className="brand" href="#/home">
-          <div className="brand-mark">S</div>
+          <div className="brand-mark">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2v20M12 6c-3 0-5 2-5 4.5S9 14 12 14s5-1.5 5-3.5S15 6 12 6ZM12 14c-3.5 0-6 2-6 4.5V20h12v-1.5c0-2.5-2.5-4.5-6-4.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+            </svg>
+          </div>
           <div className="brand-title">
             <strong>{state.appName}</strong>
             <span>Family tree and archive</span>
