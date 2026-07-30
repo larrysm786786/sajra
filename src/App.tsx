@@ -314,6 +314,7 @@ export default function App() {
   });
   const [supabaseSession, setSupabaseSession] = useState<Session | null>(null);
   const [route, setRoute] = useState<RouteState>(() => parseRoute());
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const supabaseConfigured = useMemo(() => isSupabaseConfigured(), []);
   const [treeQuery, setTreeQuery] = useState("");
   const [memberQuery, setMemberQuery] = useState("");
@@ -341,11 +342,21 @@ export default function App() {
   const selectedMember = route.page === "member" && route.memberId ? memberMap.get(route.memberId) : undefined;
 
   useEffect(() => {
-    const onHashChange = () => setRoute(parseRoute());
+    const onHashChange = () => {
+      setRoute(parseRoute());
+      setMobileNavOpen(false);
+    };
     window.addEventListener("hashchange", onHashChange);
     if (!window.location.hash) window.location.hash = "#/home";
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileNavOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileNavOpen]);
 
   useEffect(() => {
     saveState(state);
@@ -1046,12 +1057,38 @@ export default function App() {
             <span>Family tree and archive</span>
           </div>
         </a>
-        <nav className="topnav">
+        <button
+          type="button"
+          className={`hamburger-btn${mobileNavOpen ? " open" : ""}`}
+          aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
+          aria-expanded={mobileNavOpen}
+          onClick={() => setMobileNavOpen((open) => !open)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+        <nav className={`topnav${mobileNavOpen ? " open" : ""}`}>
           <NavLink active={route.page === "home"} onClick={() => navigate({ page: "home" })}>{NAV_LABELS[language].home}</NavLink>
           <NavLink active={route.page === "tree"} onClick={() => navigate({ page: "tree" })}>{NAV_LABELS[language].tree}</NavLink>
           <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
           <NavLink active={route.page === "admin"} onClick={() => navigate({ page: "admin" })}>{NAV_LABELS[language].admin}</NavLink>
           <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
+          <div className="topnav-actions-mobile">
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={() => setState((current) => ({ ...current, language: current.language === "ur" ? "en" : "ur" }))}
+            >
+              {state.language === "ur" ? "EN" : "اردو"}
+            </button>
+            <button type="button" className="icon-btn" onClick={() => setState((current) => ({ ...current, theme: current.theme === "dark" ? "light" : "dark" }))}>
+              {state.theme === "dark" ? "☾" : "☀"}
+            </button>
+            {isLoggedIn ? (
+              <button type="button" className="toggle" onClick={logout}>Logout</button>
+            ) : null}
+          </div>
         </nav>
         <div className="header-actions">
           <button
@@ -1069,6 +1106,8 @@ export default function App() {
           ) : null}
         </div>
       </header>
+
+      {mobileNavOpen ? <div className="nav-backdrop" onClick={() => setMobileNavOpen(false)} /> : null}
 
       {content}
 

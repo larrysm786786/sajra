@@ -222,6 +222,55 @@ button {
   gap: 8px;
 }
 
+.topnav-actions-mobile {
+  display: none;
+}
+
+.hamburger-btn {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  flex: 0 0 auto;
+  z-index: 41;
+}
+
+.hamburger-btn span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--bg-soft);
+  transition: transform 200ms ease, opacity 200ms ease;
+}
+
+.hamburger-btn.open span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.hamburger-btn.open span:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger-btn.open span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+.nav-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 10, 6, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 15;
+}
+
 .hero {
   position: relative;
   overflow: hidden;
@@ -741,14 +790,68 @@ button {
   .stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
 
-  .topbar {
-    border-radius: 28px;
-    align-items: start;
+@media (max-width: 860px) {
+  .hamburger-btn {
+    display: flex;
+  }
+
+  .header-actions {
+    display: none;
   }
 
   .topnav {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 40;
+    height: 100vh;
+    width: min(78vw, 320px);
+    flex-wrap: nowrap;
+    flex-direction: column;
+    align-items: stretch;
     justify-content: flex-start;
+    gap: 4px;
+    padding: 84px 18px 24px;
+    background: linear-gradient(165deg, var(--ink), color-mix(in oklab, var(--ink) 82%, #163425));
+    box-shadow: -18px 0 44px rgba(0, 0, 0, 0.35);
+    transform: translateX(100%);
+    transition: transform 240ms ease;
+    overflow-y: auto;
+  }
+
+  html[dir="rtl"] .topnav {
+    right: auto;
+    left: 0;
+    transform: translateX(-100%);
+    box-shadow: 18px 0 44px rgba(0, 0, 0, 0.35);
+  }
+
+  .topnav.open {
+    transform: translateX(0);
+  }
+
+  .navlink,
+  .topnav .chip,
+  .topnav .toggle {
+    width: 100%;
+    text-align: left;
+  }
+
+  .topnav-actions-mobile {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+  }
+}
+
+@media (min-width: 861px) {
+  .nav-backdrop {
+    display: none;
   }
 }
 
@@ -756,6 +859,10 @@ button {
   .app-shell {
     width: min(100vw - 18px, 1240px);
     padding: 10px 0 32px;
+  }
+
+  .topbar {
+    padding: 14px max(16px, calc((100vw - 1240px) / 2));
   }
 
   .hero,
@@ -766,7 +873,10 @@ button {
   }
 
   .profile-layout,
-  .stat-grid {
+  .stat-grid,
+  .card-grid,
+  .gallery-grid,
+  .member-grid {
     grid-template-columns: 1fr;
   }
 
@@ -774,16 +884,34 @@ button {
     max-width: none;
   }
 
-  .topbar {
-    border-radius: 22px;
-    padding: 12px;
+  .form-grid > label {
+    grid-column: span 12 !important;
+  }
+
+  .modal-card {
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .section-head {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .topnav,
-  .header-actions {
-    justify-content: flex-start;
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 420px) {
+  .brand-title span {
+    display: none;
+  }
+
+  .topnav {
+    width: 82vw;
+    padding-top: 76px;
   }
 }
 
