@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import * as d3 from "d3";
 import type { Language, Member } from "./types";
 import { buildTree, calculateAge, displayName, photoSrc } from "./lib";
+import { t } from "./i18n";
 
 type ViewMode = "horizontal" | "vertical" | "boxes";
 
@@ -62,7 +63,7 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
 
     const roots = buildTree(members);
     if (roots.length === 0) {
-      container.innerHTML = '<p class="hint">No members yet.</p>';
+      container.innerHTML = `<p class="hint">${t(language, "treeEmptyState")}</p>`;
       return;
     }
 
@@ -122,15 +123,15 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
     }
 
     function nodeName(d: HNode): string {
-      return d.data.member ? displayName(d.data.member, language) : "Sajra";
+      return d.data.member ? displayName(d.data.member, language) : t(language, "treeSajraFallback");
     }
     function dobLineFor(d: HNode): string {
       if (!d.data.member) return "";
       const age = calculateAge(d.data.member.dob, d.data.member.dod);
-      return age !== null ? `DOB: ${age}` : "";
+      return age !== null ? `${t(language, "dobPrefix")} ${age}` : "";
     }
     function addsLineFor(d: HNode): string {
-      return d.data.member?.birthplace ? `Adds: ${d.data.member.birthplace}` : "";
+      return d.data.member?.birthplace ? `${t(language, "addsPrefix")} ${d.data.member.birthplace}` : "";
     }
     function truncateToWidth(text: string, maxWidth: number, charWidth = 6.2): string {
       const maxChars = Math.max(1, Math.floor((maxWidth - 16) / charWidth));
@@ -343,7 +344,7 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
         allNodes.find((d) => nodeName(d).toLowerCase().includes(query));
 
       if (!match) {
-        setMessage(`No member found with the name "${q}".`);
+        setMessage(`${t(language, "noMemberFoundPrefix")} "${q}"`);
         return;
       }
       setMessage("");
@@ -384,21 +385,21 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
           className={`view-toggle-btn${viewMode === "horizontal" ? " active" : ""}`}
           onClick={() => setViewMode("horizontal")}
         >
-          Left → Right
+          {t(language, "viewLeftRight")}
         </button>
         <button
           type="button"
           className={`view-toggle-btn${viewMode === "vertical" ? " active" : ""}`}
           onClick={() => setViewMode("vertical")}
         >
-          Top ↓ Down
+          {t(language, "viewTopDown")}
         </button>
         <button
           type="button"
           className={`view-toggle-btn${viewMode === "boxes" ? " active" : ""}`}
           onClick={() => setViewMode("boxes")}
         >
-          Colorful Box Chart
+          {t(language, "viewBoxes")}
         </button>
       </div>
 
@@ -407,17 +408,17 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Type a name to search..."
+          placeholder={t(language, "searchPlaceholderTree")}
           autoComplete="off"
         />
         <button type="submit" className="btn-ghost">
-          Show My Position
+          {t(language, "showPositionButton")}
         </button>
       </form>
       {message && <p className="hint">{message}</p>}
 
       <div ref={containerRef} id="tree-container"></div>
-      <p className="hint">Click a node to expand/collapse. Double-click to open the profile. Scroll to zoom, drag to pan.</p>
+      <p className="hint">{t(language, "treeHint")}</p>
     </div>
   );
 }

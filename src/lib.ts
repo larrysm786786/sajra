@@ -48,11 +48,11 @@ export function nextId<T extends { id: number }>(items: T[]): number {
   return items.length ? Math.max(...items.map((item) => item.id)) + 1 : 1;
 }
 
-export function formatDate(value?: string | null): string {
+export function formatDate(value?: string | null, language: AppState["language"] = "en"): string {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  return date.toLocaleDateString(language === "ur" ? "ur" : "en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export function calculateAge(dob?: string | null, dod?: string | null): number | null {

@@ -34,6 +34,8 @@ import {
   StaleWriteError
 } from "./supabase";
 import FamilyTreeD3 from "./FamilyTreeD3";
+import { t, tGender } from "./i18n";
+import type { StringKey } from "./i18n";
 
 const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string; admin: string; about: string }> = {
   en: { home: "Home", tree: "Tree", gallery: "Gallery", admin: "Admin", about: "About" },
@@ -218,8 +220,8 @@ function MemberCard({
       <div style={{ marginTop: 12 }}>
         <div className="tree-name">{displayName(member, language)}</div>
         <div className="tree-sub">
-          {member.birthplace || "No birthplace noted"}
-          {calculateAge(member.dob, member.dod) !== null ? ` • Age ${calculateAge(member.dob, member.dod)}` : ""}
+          {member.birthplace || t(language, "noBirthplace")}
+          {calculateAge(member.dob, member.dod) !== null ? ` • ${t(language, "ageWord")} ${calculateAge(member.dob, member.dod)}` : ""}
         </div>
       </div>
     </button>
@@ -251,19 +253,19 @@ function TreeBranch({
             <div>
               <div className="tree-name">{memberName}</div>
               <div className="tree-sub">
-                {node.member.birthplace || "No birthplace noted"}
-                {age !== null ? ` • Age ${age}` : ""}
-                {node.member.dod ? ` • Died ${formatDate(node.member.dod)}` : ""}
+                {node.member.birthplace || t(language, "noBirthplace")}
+                {age !== null ? ` • ${t(language, "ageWord")} ${age}` : ""}
+                {node.member.dod ? ` • ${t(language, "diedWord")} ${formatDate(node.member.dod, language)}` : ""}
               </div>
             </div>
-            <span className="pill">{node.member.gender}</span>
+            <span className="pill">{tGender(language, node.member.gender)}</span>
           </div>
           <div className="member-chip-list">
             <button type="button" className="member-chip" onClick={(e) => { e.preventDefault(); onOpen(node.member.id); }}>
-              View profile
+              {t(language, "viewProfile")}
             </button>
-            {node.member.spouseIds.length ? <span className="pill">{node.member.spouseIds.length} spouses</span> : null}
-            {node.children.length ? <span className="pill">{node.children.length} children</span> : null}
+            {node.member.spouseIds.length ? <span className="pill">{node.member.spouseIds.length} {t(language, "spousesSuffix")}</span> : null}
+            {node.children.length ? <span className="pill">{node.children.length} {t(language, "childrenSuffix")}</span> : null}
           </div>
         </div>
       </summary>
@@ -323,7 +325,7 @@ export default function App() {
   const [loginError, setLoginError] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
   const [syncStatus, setSyncStatus] = useState<"loading" | "ready" | "error" | "conflict">("loading");
-  const [syncMessage, setSyncMessage] = useState("Checking local data...");
+  const [syncMessageKey, setSyncMessageKey] = useState<StringKey>("checkingLocalData");
   const [memberDraft, setMemberDraft] = useState<MemberDraft | null>(null);
   const [userDraft, setUserDraft] = useState<UserDraft | null>(null);
   const [galleryDraft, setGalleryDraft] = useState<GalleryDraft | null>(null);
@@ -376,7 +378,7 @@ export default function App() {
     async function hydrateSupabase() {
       if (!supabaseConfigured) {
         setSyncStatus("ready");
-        setSyncMessage("Running in local-only mode.");
+        setSyncMessageKey("localOnlyMode");
         hydrationDoneRef.current = true;
         return;
       }
@@ -394,18 +396,18 @@ export default function App() {
           setState(remote.state);
           saveState(remote.state);
           remoteUpdatedAtRef.current = remote.updatedAt;
-          setSyncMessage("Loaded the shared family tree.");
+          setSyncMessageKey("loadedShared");
         } else if (localHasData) {
-          setSyncMessage("The shared archive is empty. Log in as admin to publish this browser's family tree.");
+          setSyncMessageKey("sharedEmpty");
         } else {
-          setSyncMessage("Connected and waiting for the first save.");
+          setSyncMessageKey("connectedWaiting");
         }
 
         setSyncStatus("ready");
       } catch {
         if (cancelled) return;
         setSyncStatus("error");
-        setSyncMessage(supabaseConfigured ? "Cloud sync is unavailable right now. Showing the data stored on this device." : "Running in local-only mode.");
+        setSyncMessageKey(supabaseConfigured ? "cloudUnavailable" : "localOnlyMode");
       } finally {
         if (!cancelled) hydrationDoneRef.current = true;
       }
@@ -430,23 +432,23 @@ export default function App() {
         .then((nextUpdatedAt) => {
           remoteUpdatedAtRef.current = nextUpdatedAt;
           setSyncStatus("ready");
-          setSyncMessage("Changes saved to the shared family archive.");
+          setSyncMessageKey("changesSaved");
         })
         .catch(async (error) => {
           if (error instanceof StaleWriteError) {
             setSyncStatus("conflict");
-            setSyncMessage("Someone else saved changes first. Reloading the latest version...");
+            setSyncMessageKey("conflictReloading");
             const remote = await loadSupabaseState();
             if (remote) {
               setState(remote.state);
               saveState(remote.state);
               remoteUpdatedAtRef.current = remote.updatedAt;
-              setSyncMessage("Reloaded the latest shared version. Please redo your last change.");
+              setSyncMessageKey("conflictReloaded");
             }
             return;
           }
           setSyncStatus("error");
-          setSyncMessage("Could not save to the shared archive. Your local data is safe.");
+          setSyncMessageKey("saveFailed");
         });
     }, 600);
 
@@ -466,7 +468,7 @@ export default function App() {
   async function handleLoginSubmit(event: FormEvent) {
     event.preventDefault();
     if (!supabaseConfigured) {
-      setLoginError("Admin login isn't set up for this copy of Sajra yet. Please contact the family archive administrator.");
+      setLoginError(t(language, "loginNotConfigured"));
       return;
     }
     setLoginBusy(true);
@@ -477,7 +479,7 @@ export default function App() {
       setLoginEmail("");
       setLoginPassword("");
     } catch (error) {
-      setLoginError(error instanceof Error ? error.message : "Invalid email or password.");
+      setLoginError(error instanceof Error ? error.message : t(language, "invalidLogin"));
     } finally {
       setLoginBusy(false);
     }
@@ -562,7 +564,7 @@ export default function App() {
   }
 
   function deleteMember(id: number) {
-    if (!window.confirm("Delete this member and remove relationship links?")) return;
+    if (!window.confirm(t(language, "confirmDeleteMember"))) return;
     updateState((current) => ({
       ...current,
       members: current.members
@@ -602,7 +604,7 @@ export default function App() {
 
   function deleteUser(id: number) {
     if (!isAdmin) return;
-    if (!window.confirm("Delete this user?")) return;
+    if (!window.confirm(t(language, "confirmDeleteUser"))) return;
     updateState((current) => ({ ...current, users: current.users.filter((user) => user.id !== id) }));
   }
 
@@ -637,7 +639,7 @@ export default function App() {
   }
 
   function deleteGalleryItem(id: number) {
-    if (!window.confirm("Delete this gallery photo?")) return;
+    if (!window.confirm(t(language, "confirmDeleteGallery"))) return;
     updateState((current) => ({ ...current, gallery: current.gallery.filter((item) => item.id !== id) }));
   }
 
@@ -663,12 +665,12 @@ export default function App() {
       updateState(() => next);
       setImportError("");
     } catch {
-      setImportError("Invalid backup file.");
+      setImportError(t(language, "invalidBackupFile"));
     }
   }
 
   function resetToEmpty() {
-    if (!window.confirm("Reset the whole app state? This cannot be undone.")) return;
+    if (!window.confirm(t(language, "confirmResetArchive"))) return;
     const defaults = createEmptyState();
     setState(defaults);
     saveState(defaults);
@@ -697,32 +699,32 @@ export default function App() {
         <section className="section">
           <div className="section-head">
             <div>
-              <span className="eyebrow">Admin access</span>
-              <h2 className="section-title" style={{ fontSize: "2.8rem", marginTop: 12 }}>Sign in to manage Sajra</h2>
-              <p className="section-subtitle">Sign in with your family administrator account to add relatives, curate the gallery, and keep the archive up to date.</p>
+              <span className="eyebrow">{t(language, "signInEyebrow")}</span>
+              <h2 className="section-title" style={{ fontSize: "2.8rem", marginTop: 12 }}>{t(language, "signInTitle")}</h2>
+              <p className="section-subtitle">{t(language, "signInSubtitle")}</p>
             </div>
           </div>
           <div className="profile-layout" style={{ gridTemplateColumns: "1fr 1fr" }}>
-            <Card title="Login" subtitle="Secure sign-in for family administrators.">
+            <Card title={t(language, "loginCardTitle")} subtitle={t(language, "loginCardSubtitle")}>
               <form className="form-stack" onSubmit={handleLoginSubmit}>
                 <label>
-                  Email
+                  {t(language, "emailLabel")}
                   <input type="email" className="field" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} autoComplete="username" />
                 </label>
                 <label>
-                  Password
+                  {t(language, "passwordLabel")}
                   <input type="password" className="field" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} autoComplete="current-password" />
                 </label>
                 {loginError ? <div className="notice danger">{loginError}</div> : null}
-                <button className="btn" type="submit" disabled={loginBusy}>{loginBusy ? "Signing in..." : "Login"}</button>
+                <button className="btn" type="submit" disabled={loginBusy}>{loginBusy ? t(language, "signingIn") : t(language, "loginButton")}</button>
               </form>
             </Card>
-            <Card title="What this unlocks" subtitle="Tools for keeping the family archive current.">
+            <Card title={t(language, "unlocksTitle")} subtitle={t(language, "unlocksSubtitle")}>
               <div className="list">
-                <div className="notice">Add and edit members with parent and spouse links.</div>
-                <div className="notice">Manage administrator accounts if you are an admin.</div>
-                <div className="notice">Upload and organize photos in the family gallery.</div>
-                <div className="notice">Download a full backup of the family tree anytime.</div>
+                <div className="notice">{t(language, "unlock1")}</div>
+                <div className="notice">{t(language, "unlock2")}</div>
+                <div className="notice">{t(language, "unlock3")}</div>
+                <div className="notice">{t(language, "unlock4")}</div>
               </div>
             </Card>
           </div>
@@ -739,55 +741,55 @@ export default function App() {
               <div className="profile-layout">
                 <img className="member-photo hero-photo" src={photoSrc(member.photo)} alt={displayName(member, language)} />
                 <div>
-                  <span className="eyebrow">{member.gender}</span>
+                  <span className="eyebrow">{tGender(language, member.gender)}</span>
                   <h1 className="section-title" style={{ marginTop: 12 }}>{displayName(member, language)}</h1>
                   <p className="section-subtitle" style={{ marginTop: 12 }}>
-                    {member.birthplace || "No birthplace noted"}
-                    {member.dob ? ` • Born ${formatDate(member.dob)}` : ""}
-                    {member.dod ? ` • Died ${formatDate(member.dod)}` : ""}
-                    {calculateAge(member.dob, member.dod) !== null ? ` • Age ${calculateAge(member.dob, member.dod)}` : ""}
+                    {member.birthplace || t(language, "noBirthplace")}
+                    {member.dob ? ` • ${t(language, "bornWord")} ${formatDate(member.dob, language)}` : ""}
+                    {member.dod ? ` • ${t(language, "diedWord")} ${formatDate(member.dod, language)}` : ""}
+                    {calculateAge(member.dob, member.dod) !== null ? ` • ${t(language, "ageWord")} ${calculateAge(member.dob, member.dod)}` : ""}
                   </p>
                   <div className="profile-meta">
-                    <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>Open Tree</button>
-                    {isLoggedIn ? <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>Edit member</button> : null}
+                    <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openTreeButton")}</button>
+                    {isLoggedIn ? <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editMemberButton")}</button> : null}
                   </div>
                   {member.bio ? <p style={{ marginTop: 16, lineHeight: 1.8 }}>{member.bio}</p> : null}
                 </div>
               </div>
 
               <div className="card-grid" style={{ marginTop: 20 }}>
-                <Card title="Parents" subtitle="Direct lineage">
+                <Card title={t(language, "parentsTitle")} subtitle={t(language, "parentsSubtitle")}>
                   {getParents(state.members, member).length ? (
                     <div className="member-grid">
                       {getParents(state.members, member).map((parent) => (
                         <MemberCard key={parent.id} member={parent} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
                       ))}
                     </div>
-                  ) : <div className="empty">No parents linked.</div>}
+                  ) : <div className="empty">{t(language, "noParents")}</div>}
                 </Card>
-                <Card title="Spouses" subtitle="Marriage links">
+                <Card title={t(language, "spousesTitle")} subtitle={t(language, "spousesSubtitle")}>
                   {getSpouses(state.members, member).length ? (
                     <div className="member-grid">
                       {getSpouses(state.members, member).map((spouse) => (
                         <MemberCard key={spouse.id} member={spouse} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
                       ))}
                     </div>
-                  ) : <div className="empty">No spouse links yet.</div>}
+                  ) : <div className="empty">{t(language, "noSpouses")}</div>}
                 </Card>
-                <Card title="Children" subtitle="Descendants">
+                <Card title={t(language, "childrenTitle")} subtitle={t(language, "childrenSubtitle")}>
                   {getChildren(state.members, member.id).length ? (
                     <div className="member-grid">
                       {getChildren(state.members, member.id).sort(sortMembers).map((child) => (
                         <MemberCard key={child.id} member={child} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
                       ))}
                     </div>
-                  ) : <div className="empty">No children linked.</div>}
+                  ) : <div className="empty">{t(language, "noChildren")}</div>}
                 </Card>
               </div>
             </>
           ) : (
             <div className="empty">
-              Member not found. Use search or return home.
+              {t(language, "memberNotFound")}
             </div>
           )}
         </section>
@@ -799,9 +801,9 @@ export default function App() {
         <section className="section">
           <div className="section-head">
             <div>
-              <span className="eyebrow">Family tree</span>
-              <h2 className="section-title" style={{ fontSize: "2.9rem", marginTop: 12 }}>Explore the lineage</h2>
-              <p className="section-subtitle">Switch views, search by name, and open detailed member profiles.</p>
+              <span className="eyebrow">{t(language, "eyebrowFamilyTree")}</span>
+              <h2 className="section-title" style={{ fontSize: "2.9rem", marginTop: 12 }}>{t(language, "exploreLineageTitle")}</h2>
+              <p className="section-subtitle">{t(language, "exploreLineageSubtitle")}</p>
             </div>
           </div>
 
@@ -812,7 +814,7 @@ export default function App() {
               onOpenMember={(id) => navigate({ page: "member", memberId: id })}
             />
           ) : (
-            <div className="empty">No members yet. Add the first root member from admin.</div>
+            <div className="empty">{t(language, "noMembersYet")}</div>
           )}
         </section>
       );
@@ -823,32 +825,32 @@ export default function App() {
         <section className="section">
           <div className="section-head">
             <div>
-              <span className="eyebrow">Gallery</span>
-              <h2 className="section-title" style={{ fontSize: "2.9rem", marginTop: 12 }}>Captured memories</h2>
-              <p className="section-subtitle">Photos and memories shared by the family, kept safe alongside every backup of the archive.</p>
+              <span className="eyebrow">{t(language, "eyebrowGallery")}</span>
+              <h2 className="section-title" style={{ fontSize: "2.9rem", marginTop: 12 }}>{t(language, "capturedMemoriesTitle")}</h2>
+              <p className="section-subtitle">{t(language, "gallerySubtitle")}</p>
             </div>
-            {isLoggedIn ? <button className="btn" type="button" onClick={() => openGalleryEditor()}>Add photo</button> : null}
+            {isLoggedIn ? <button className="btn" type="button" onClick={() => openGalleryEditor()}>{t(language, "addPhotoButton")}</button> : null}
           </div>
           {state.gallery.length ? (
             <div className="gallery-grid">
               {state.gallery.map((image) => (
                 <article className="gallery-card" key={image.id}>
-                  <img className="member-photo" src={photoSrc(image.src)} alt={image.caption ?? "Gallery image"} />
+                  <img className="member-photo" src={photoSrc(image.src)} alt={image.caption ?? t(language, "galleryImageAlt")} />
                   <div style={{ marginTop: 12 }}>
-                    <div className="tree-name">{image.caption || "Untitled photo"}</div>
-                    <div className="tree-sub">{formatDate(image.uploadedAt)}</div>
+                    <div className="tree-name">{image.caption || t(language, "untitledPhoto")}</div>
+                    <div className="tree-sub">{formatDate(image.uploadedAt, language)}</div>
                   </div>
                   {isLoggedIn ? (
                     <div className="actions-row" style={{ marginTop: 12 }}>
-                      <button className="btn-ghost" type="button" onClick={() => openGalleryEditor(image)}>Edit</button>
-                      <button className="btn-ghost danger" type="button" onClick={() => deleteGalleryItem(image.id)}>Delete</button>
+                      <button className="btn-ghost" type="button" onClick={() => openGalleryEditor(image)}>{t(language, "editButton")}</button>
+                      <button className="btn-ghost danger" type="button" onClick={() => deleteGalleryItem(image.id)}>{t(language, "deleteButton")}</button>
                     </div>
                   ) : null}
                 </article>
               ))}
             </div>
           ) : (
-            <div className="empty">No photos yet.</div>
+            <div className="empty">{t(language, "noPhotosYet")}</div>
           )}
         </section>
       );
@@ -860,29 +862,29 @@ export default function App() {
         <section className="section">
           <div className="section-head">
             <div>
-              <span className="eyebrow">Admin console</span>
-              <h2 className="section-title" style={{ fontSize: "2.9rem", marginTop: 12 }}>Manage the archive</h2>
-              <p className="section-subtitle">Edit family members, manage administrator accounts, curate the gallery, and keep a full backup of the archive.</p>
+              <span className="eyebrow">{t(language, "eyebrowAdminConsole")}</span>
+              <h2 className="section-title" style={{ fontSize: "2.9rem", marginTop: 12 }}>{t(language, "manageArchiveTitle")}</h2>
+              <p className="section-subtitle">{t(language, "manageArchiveSubtitle")}</p>
             </div>
             <div className="actions-row">
-              <button className="btn" type="button" onClick={() => openMemberEditor()}>Add member</button>
-              {isAdmin ? <button className="btn-ghost" type="button" onClick={() => openUserEditor()}>Add user</button> : null}
-              <button className="btn-ghost" type="button" onClick={() => openGalleryEditor()}>Add gallery photo</button>
+              <button className="btn" type="button" onClick={() => openMemberEditor()}>{t(language, "addMemberButton")}</button>
+              {isAdmin ? <button className="btn-ghost" type="button" onClick={() => openUserEditor()}>{t(language, "addUserButton")}</button> : null}
+              <button className="btn-ghost" type="button" onClick={() => openGalleryEditor()}>{t(language, "addGalleryPhotoButton")}</button>
             </div>
           </div>
 
           <div className="stat-grid">
-            <StatCard value={stats.members} label="Members" />
-            <StatCard value={stats.roots} label="Roots" />
-            <StatCard value={stats.gallery} label="Gallery items" />
-            <StatCard value={stats.users} label="Users" />
+            <StatCard value={stats.members} label={t(language, "membersLabel")} />
+            <StatCard value={stats.roots} label={t(language, "rootsLabel")} />
+            <StatCard value={stats.gallery} label={t(language, "galleryItemsLabel")} />
+            <StatCard value={stats.users} label={t(language, "usersLabel")} />
           </div>
 
           <div className="card-grid" style={{ marginTop: 18 }}>
             <Card
-              title="Members"
-              subtitle="Find, edit, or remove people in the family tree."
-              actions={<input className="field" style={{ maxWidth: 280 }} placeholder="Search members" value={memberQuery} onChange={(e) => setMemberQuery(e.target.value)} />}
+              title={t(language, "membersLabel")}
+              subtitle={t(language, "membersCardSubtitle")}
+              actions={<input className="field" style={{ maxWidth: 280 }} placeholder={t(language, "searchMembersPlaceholder")} value={memberQuery} onChange={(e) => setMemberQuery(e.target.value)} />}
             >
               <div className="list">
                 {memberSearchResults.map((member) => (
@@ -890,25 +892,25 @@ export default function App() {
                     <div className="tree-head">
                       <div>
                         <div className="tree-name">{displayName(member, language)}</div>
-                        <div className="tree-sub">{member.birthplace || "No birthplace noted"}</div>
+                        <div className="tree-sub">{member.birthplace || t(language, "noBirthplace")}</div>
                       </div>
                       <div className="actions-row">
-                        <button className="btn-ghost" type="button" onClick={() => navigate({ page: "member", memberId: member.id })}>Open</button>
-                        <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>Edit</button>
-                        <button className="btn-ghost danger" type="button" onClick={() => deleteMember(member.id)}>Delete</button>
+                        <button className="btn-ghost" type="button" onClick={() => navigate({ page: "member", memberId: member.id })}>{t(language, "openButton")}</button>
+                        <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editButton")}</button>
+                        <button className="btn-ghost danger" type="button" onClick={() => deleteMember(member.id)}>{t(language, "deleteButton")}</button>
                       </div>
                     </div>
                   </div>
                 ))}
-                {!memberSearchResults.length ? <div className="empty">No member matches found.</div> : null}
+                {!memberSearchResults.length ? <div className="empty">{t(language, "noMemberMatches")}</div> : null}
               </div>
             </Card>
 
             {isAdmin ? (
               <Card
-                title="Users"
-                subtitle="Admin and editor accounts for the family archive."
-                actions={<button className="btn-ghost" type="button" onClick={() => openUserEditor()}>Add user</button>}
+                title={t(language, "usersLabel")}
+                subtitle={t(language, "usersCardSubtitle")}
+                actions={<button className="btn-ghost" type="button" onClick={() => openUserEditor()}>{t(language, "addUserButton")}</button>}
               >
                 <div className="list">
                   {sortedUsers.map((user) => (
@@ -916,11 +918,11 @@ export default function App() {
                       <div className="tree-head">
                         <div>
                           <div className="tree-name">{user.username}</div>
-                          <div className="tree-sub">{user.name || "No name"} • {user.role}</div>
+                          <div className="tree-sub">{user.name || t(language, "noName")} • {user.role}</div>
                         </div>
                         <div className="actions-row">
-                          <button className="btn-ghost" type="button" onClick={() => openUserEditor(user)}>Edit</button>
-                          <button className="btn-ghost danger" type="button" onClick={() => deleteUser(user.id)}>Delete</button>
+                          <button className="btn-ghost" type="button" onClick={() => openUserEditor(user)}>{t(language, "editButton")}</button>
+                          <button className="btn-ghost danger" type="button" onClick={() => deleteUser(user.id)}>{t(language, "deleteButton")}</button>
                         </div>
                       </div>
                     </div>
@@ -929,11 +931,11 @@ export default function App() {
               </Card>
             ) : null}
 
-            <Card title="Backup" subtitle="Export or import the complete family archive.">
+            <Card title={t(language, "backupCardTitle")} subtitle={t(language, "backupCardSubtitle")}>
               <div className="list">
-                <button className="btn" type="button" onClick={exportState}>Download backup</button>
-                <button className="btn-ghost" type="button" onClick={triggerImport}>Import backup</button>
-                <button className="btn-ghost danger" type="button" onClick={resetToEmpty}>Reset archive</button>
+                <button className="btn" type="button" onClick={exportState}>{t(language, "downloadBackupButton")}</button>
+                <button className="btn-ghost" type="button" onClick={triggerImport}>{t(language, "importBackupButton")}</button>
+                <button className="btn-ghost danger" type="button" onClick={resetToEmpty}>{t(language, "resetArchiveButton")}</button>
                 {importError ? <div className="notice danger">{importError}</div> : null}
                 <input ref={importInputRef} type="file" accept="application/json,.json" hidden onChange={(e) => handleImportFile(e.target.files?.[0])} />
               </div>
@@ -946,13 +948,13 @@ export default function App() {
     if (route.page === "about") {
       return (
         <section className="section">
-          <span className="eyebrow">About</span>
-          <h2 className="section-title" style={{ fontSize: "3rem", marginTop: 12 }}>About Sajra</h2>
+          <span className="eyebrow">{t(language, "eyebrowAbout")}</span>
+          <h2 className="section-title" style={{ fontSize: "3rem", marginTop: 12 }}>{t(language, "aboutTitle")}</h2>
           <p className="section-subtitle" style={{ marginTop: 12 }}>
-            Sajra is our family's living shajra nasab — a shared home for the family tree, member profiles, and the photographs that hold our memories together across generations.
+            {t(language, "aboutParagraph")}
           </p>
           <div className="notice" style={{ marginTop: 18 }}>
-            Every member added, every photo uploaded, and every story recorded here becomes part of the archive the next generation will inherit.
+            {t(language, "aboutNotice")}
           </div>
         </section>
       );
@@ -961,46 +963,46 @@ export default function App() {
     return (
       <>
         <section className="hero">
-          <span className="eyebrow">Sajra family archive</span>
-          <h1>Preserve lineage, stories, and shared memory.</h1>
+          <span className="eyebrow">{t(language, "eyebrowHero")}</span>
+          <h1>{t(language, "heroTitle")}</h1>
           <p>
-            Sajra brings our family tree, member profiles, and cherished photographs together in one living archive, so every branch of the family stays connected across generations.
+            {t(language, "heroParagraph")}
           </p>
           <div className="hero-actions">
-            <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>Open Family Tree</button>
-            <button className="btn-ghost" type="button" onClick={() => navigate({ page: "gallery" })}>View Gallery</button>
-            <button className="btn-ghost" type="button" onClick={() => navigate({ page: "about" })}>About Sajra</button>
+            <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openFamilyTreeButton")}</button>
+            <button className="btn-ghost" type="button" onClick={() => navigate({ page: "gallery" })}>{t(language, "viewGalleryButton")}</button>
+            <button className="btn-ghost" type="button" onClick={() => navigate({ page: "about" })}>{t(language, "aboutSajraButton")}</button>
           </div>
           <div className="hero-kpis">
-            <span className="kpi">{stats.members} members</span>
-            <span className="kpi">{stats.roots} roots</span>
-            <span className="kpi">{stats.gallery} photos</span>
-            <span className="kpi">{stats.users} accounts</span>
+            <span className="kpi">{stats.members} {t(language, "kpiMembersSuffix")}</span>
+            <span className="kpi">{stats.roots} {t(language, "kpiRootsSuffix")}</span>
+            <span className="kpi">{stats.gallery} {t(language, "kpiPhotosSuffix")}</span>
+            <span className="kpi">{stats.users} {t(language, "kpiAccountsSuffix")}</span>
           </div>
         </section>
 
         <section className="section">
           <div className="section-head">
             <div>
-              <span className="eyebrow">Snapshot</span>
-              <h2 className="section-title" style={{ fontSize: "2.7rem", marginTop: 12 }}>Quick stats</h2>
+              <span className="eyebrow">{t(language, "eyebrowSnapshot")}</span>
+              <h2 className="section-title" style={{ fontSize: "2.7rem", marginTop: 12 }}>{t(language, "quickStatsTitle")}</h2>
             </div>
           </div>
           <div className="stat-grid">
-            <StatCard value={stats.members} label="Members" hint="People stored in the family tree." />
-            <StatCard value={stats.roots} label="Root branches" hint="Ancestors without parent links." />
-            <StatCard value={stats.male} label="Male members" hint="Gender split from saved data." />
-            <StatCard value={stats.female} label="Female members" hint="Gender split from saved data." />
+            <StatCard value={stats.members} label={t(language, "membersLabel")} hint={t(language, "hintMembers")} />
+            <StatCard value={stats.roots} label={t(language, "rootBranchesLabel")} hint={t(language, "hintRoots")} />
+            <StatCard value={stats.male} label={t(language, "maleMembersLabel")} hint={t(language, "hintGender")} />
+            <StatCard value={stats.female} label={t(language, "femaleMembersLabel")} hint={t(language, "hintGender")} />
           </div>
         </section>
 
         <section className="section">
           <div className="section-head">
             <div>
-              <span className="eyebrow">Founding branches</span>
-              <h2 className="section-title" style={{ fontSize: "2.7rem", marginTop: 12 }}>Roots and elders</h2>
+              <span className="eyebrow">{t(language, "eyebrowFounding")}</span>
+              <h2 className="section-title" style={{ fontSize: "2.7rem", marginTop: 12 }}>{t(language, "rootsEldersTitle")}</h2>
             </div>
-            <button className="btn-ghost" type="button" onClick={() => navigate({ page: "tree" })}>Open tree</button>
+            <button className="btn-ghost" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openTreeLink")}</button>
           </div>
           {roots.length ? (
             <div className="member-grid">
@@ -1010,7 +1012,7 @@ export default function App() {
             </div>
           ) : (
             <div className="empty">
-              No root members yet. Sign in and add the first ancestor from the admin panel.
+              {t(language, "noRootsYet")}
             </div>
           )}
         </section>
@@ -1018,13 +1020,13 @@ export default function App() {
         <section className="section">
           <div className="section-head">
             <div>
-              <span className="eyebrow">Recent people</span>
-              <h2 className="section-title" style={{ fontSize: "2.7rem", marginTop: 12 }}>Newest additions</h2>
+              <span className="eyebrow">{t(language, "eyebrowRecent")}</span>
+              <h2 className="section-title" style={{ fontSize: "2.7rem", marginTop: 12 }}>{t(language, "newestAdditionsTitle")}</h2>
             </div>
             <input
               className="field"
               style={{ maxWidth: 320 }}
-              placeholder="Search member names"
+              placeholder={t(language, "searchMemberNamesPlaceholder")}
               value={memberQuery}
               onChange={(e) => setMemberQuery(e.target.value)}
             />
@@ -1036,7 +1038,7 @@ export default function App() {
               ))}
             </div>
           ) : (
-            <div className="empty">No members match your search.</div>
+            <div className="empty">{t(language, "noSearchMatches")}</div>
           )}
         </section>
       </>
@@ -1054,13 +1056,13 @@ export default function App() {
           </div>
           <div className="brand-title">
             <strong>{state.appName}</strong>
-            <span>Family tree and archive</span>
+            <span>{t(language, "brandSubtitle")}</span>
           </div>
         </a>
         <button
           type="button"
           className={`hamburger-btn${mobileNavOpen ? " open" : ""}`}
-          aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
+          aria-label={mobileNavOpen ? t(language, "ariaCloseMenu") : t(language, "ariaOpenMenu")}
           aria-expanded={mobileNavOpen}
           onClick={() => setMobileNavOpen((open) => !open)}
         >
@@ -1086,7 +1088,7 @@ export default function App() {
               {state.theme === "dark" ? "☾" : "☀"}
             </button>
             {isLoggedIn ? (
-              <button type="button" className="toggle" onClick={logout}>Logout</button>
+              <button type="button" className="toggle" onClick={logout}>{t(language, "logoutButton")}</button>
             ) : null}
           </div>
         </nav>
@@ -1102,7 +1104,7 @@ export default function App() {
             {state.theme === "dark" ? "☾" : "☀"}
           </button>
           {isLoggedIn ? (
-            <button type="button" className="toggle" onClick={logout}>Logout</button>
+            <button type="button" className="toggle" onClick={logout}>{t(language, "logoutButton")}</button>
           ) : null}
         </div>
       </header>
@@ -1114,53 +1116,53 @@ export default function App() {
       <p className="footer-note">
         {supabaseConfigured
           ? syncStatus === "error"
-            ? `Sync issue: ${syncMessage} Local storage and browser backup still work.`
+            ? `${t(language, "syncIssuePrefix")} ${t(language, syncMessageKey)} ${t(language, "syncIssueSuffix")}`
             : syncStatus === "conflict"
-              ? syncMessage
-              : `Family archive sync is on. ${syncMessage}`
-          : "This copy of Sajra is running in local-only mode on this device."}
+              ? t(language, syncMessageKey)
+              : `${t(language, "syncOnPrefix")} ${t(language, syncMessageKey)}`
+          : t(language, "localOnlyFooter")}
       </p>
 
       {memberDraft ? (
         <Modal
-          title={memberDraft.id ? "Edit member" : "Add member"}
-          subtitle="Capture names, lineage, and spouse links in one place."
+          title={memberDraft.id ? t(language, "editMemberModalTitle") : t(language, "addMemberModalTitle")}
+          subtitle={t(language, "memberModalSubtitle")}
           onClose={closeEditors}
         >
           <div className="form-grid">
             <label className="span-6">
-              Name
+              {t(language, "nameLabel")}
               <input className="field" value={memberDraft.name} onChange={(e) => setMemberDraft((current) => current ? { ...current, name: e.target.value } : current)} />
             </label>
             <label className="span-6">
-              Urdu name
+              {t(language, "urduNameLabel")}
               <input className="field" value={memberDraft.nameUr} onChange={(e) => setMemberDraft((current) => current ? { ...current, nameUr: e.target.value } : current)} />
             </label>
             <label className="span-4">
-              Gender
+              {t(language, "genderLabel")}
               <select className="select" value={memberDraft.gender} onChange={(e) => setMemberDraft((current) => current ? { ...current, gender: e.target.value as Gender } : current)}>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
+                <option value="male">{t(language, "genderMale")}</option>
+                <option value="female">{t(language, "genderFemale")}</option>
               </select>
             </label>
             <label className="span-4">
-              Date of birth
+              {t(language, "dobLabel")}
               <input className="field" type="date" value={memberDraft.dob} onChange={(e) => setMemberDraft((current) => current ? { ...current, dob: e.target.value } : current)} />
             </label>
             <label className="span-4">
-              Date of death
+              {t(language, "dodLabel")}
               <input className="field" type="date" value={memberDraft.dod} onChange={(e) => setMemberDraft((current) => current ? { ...current, dod: e.target.value } : current)} />
             </label>
             <label className="span-6">
-              Birthplace
+              {t(language, "birthplaceLabel")}
               <input className="field" value={memberDraft.birthplace} onChange={(e) => setMemberDraft((current) => current ? { ...current, birthplace: e.target.value } : current)} />
             </label>
             <label className="span-6">
-              Photo data or URL
+              {t(language, "photoUrlLabel")}
               <input className="field" value={memberDraft.photo} onChange={(e) => setMemberDraft((current) => current ? { ...current, photo: e.target.value } : current)} />
             </label>
             <label className="span-12">
-              Upload photo
+              {t(language, "uploadPhotoLabel")}
               <input
                 className="field"
                 type="file"
@@ -1169,29 +1171,29 @@ export default function App() {
               />
             </label>
             <label className="span-12">
-              Bio
+              {t(language, "bioLabel")}
               <textarea className="textarea" value={memberDraft.bio} onChange={(e) => setMemberDraft((current) => current ? { ...current, bio: e.target.value } : current)} />
             </label>
             <label className="span-6">
-              Father
+              {t(language, "fatherLabel")}
               <select className="select" value={memberDraft.fatherId} onChange={(e) => setMemberDraft((current) => current ? { ...current, fatherId: e.target.value } : current)}>
-                <option value="">None</option>
+                <option value="">{t(language, "noneOption")}</option>
                 {state.members.filter((member) => member.gender === "male" && member.id !== memberDraft.id).map((member) => (
                   <option key={member.id} value={member.id}>{displayName(member, language)}</option>
                 ))}
               </select>
             </label>
             <label className="span-6">
-              Mother
+              {t(language, "motherLabel")}
               <select className="select" value={memberDraft.motherId} onChange={(e) => setMemberDraft((current) => current ? { ...current, motherId: e.target.value } : current)}>
-                <option value="">None</option>
+                <option value="">{t(language, "noneOption")}</option>
                 {state.members.filter((member) => member.gender === "female" && member.id !== memberDraft.id).map((member) => (
                   <option key={member.id} value={member.id}>{displayName(member, language)}</option>
                 ))}
               </select>
             </label>
             <div className="span-12">
-              <div className="muted" style={{ marginBottom: 10, fontWeight: 700 }}>Spouses</div>
+              <div className="muted" style={{ marginBottom: 10, fontWeight: 700 }}>{t(language, "spousesFieldLabel")}</div>
               <div className="member-chip-list">
                 {state.members.filter((member) => member.id !== memberDraft.id).map((member) => {
                   const selected = memberDraft.spouseIds.includes(member.id);
@@ -1213,71 +1215,71 @@ export default function App() {
             </div>
           </div>
           <div className="actions-row" style={{ marginTop: 18 }}>
-            <button className="btn" type="button" onClick={saveMember}>Save member</button>
-            <button className="btn-ghost" type="button" onClick={closeEditors}>Cancel</button>
-            {memberDraft.id ? <button className="btn-ghost danger" type="button" onClick={() => { deleteMember(memberDraft.id!); closeEditors(); }}>Delete</button> : null}
+            <button className="btn" type="button" onClick={saveMember}>{t(language, "saveMemberButton")}</button>
+            <button className="btn-ghost" type="button" onClick={closeEditors}>{t(language, "cancelButton")}</button>
+            {memberDraft.id ? <button className="btn-ghost danger" type="button" onClick={() => { deleteMember(memberDraft.id!); closeEditors(); }}>{t(language, "deleteButton")}</button> : null}
           </div>
         </Modal>
       ) : null}
 
       {userDraft ? (
         <Modal
-          title={userDraft.id ? "Edit user" : "Add user"}
-          subtitle="A directory label only — it does not grant login access. Real sign-in accounts are managed separately by the archive administrator."
+          title={userDraft.id ? t(language, "editUserModalTitle") : t(language, "addUserModalTitle")}
+          subtitle={t(language, "userModalSubtitle")}
           onClose={closeEditors}
         >
           <div className="form-grid">
             <label className="span-6">
-              Username
+              {t(language, "usernameLabel")}
               <input className="field" value={userDraft.username} onChange={(e) => setUserDraft((current) => current ? { ...current, username: e.target.value } : current)} />
             </label>
             <label className="span-6">
-              Name
+              {t(language, "nameLabel")}
               <input className="field" value={userDraft.name} onChange={(e) => setUserDraft((current) => current ? { ...current, name: e.target.value } : current)} />
             </label>
             <label className="span-6">
-              Email
+              {t(language, "emailLabel")}
               <input className="field" value={userDraft.email} onChange={(e) => setUserDraft((current) => current ? { ...current, email: e.target.value } : current)} />
             </label>
             <label className="span-6">
-              Role
+              {t(language, "roleLabel")}
               <select className="select" value={userDraft.role} onChange={(e) => setUserDraft((current) => current ? { ...current, role: e.target.value as Role } : current)}>
-                <option value="editor">Editor</option>
-                <option value="admin">Admin</option>
+                <option value="editor">{t(language, "editorOption")}</option>
+                <option value="admin">{t(language, "adminOption")}</option>
               </select>
             </label>
           </div>
           <div className="actions-row" style={{ marginTop: 18 }}>
-            <button className="btn" type="button" onClick={saveUser}>Save user</button>
-            <button className="btn-ghost" type="button" onClick={closeEditors}>Cancel</button>
-            {userDraft.id ? <button className="btn-ghost danger" type="button" onClick={() => { deleteUser(userDraft.id!); closeEditors(); }}>Delete</button> : null}
+            <button className="btn" type="button" onClick={saveUser}>{t(language, "saveUserButton")}</button>
+            <button className="btn-ghost" type="button" onClick={closeEditors}>{t(language, "cancelButton")}</button>
+            {userDraft.id ? <button className="btn-ghost danger" type="button" onClick={() => { deleteUser(userDraft.id!); closeEditors(); }}>{t(language, "deleteButton")}</button> : null}
           </div>
         </Modal>
       ) : null}
 
       {galleryDraft ? (
         <Modal
-          title={galleryDraft.id ? "Edit gallery photo" : "Add gallery photo"}
-          subtitle="Store a photo as a data URL or paste a direct image URL."
+          title={galleryDraft.id ? t(language, "editGalleryModalTitle") : t(language, "addGalleryModalTitle")}
+          subtitle={t(language, "galleryModalSubtitle")}
           onClose={closeEditors}
         >
           <div className="form-grid">
             <label className="span-12">
-              Photo URL or data URL
+              {t(language, "photoUrlDataLabel")}
               <input className="field" value={galleryDraft.src} onChange={(e) => setGalleryDraft((current) => current ? { ...current, src: e.target.value } : current)} />
             </label>
             <label className="span-12">
-              Upload image
+              {t(language, "uploadImageLabel")}
               <input className="field" type="file" accept="image/*" onChange={(e) => handleGalleryFile(e.target.files?.[0])} />
             </label>
             <label className="span-12">
-              Caption
+              {t(language, "captionLabel")}
               <input className="field" value={galleryDraft.caption} onChange={(e) => setGalleryDraft((current) => current ? { ...current, caption: e.target.value } : current)} />
             </label>
           </div>
           <div className="actions-row" style={{ marginTop: 18 }}>
-            <button className="btn" type="button" onClick={saveGallery}>Save photo</button>
-            <button className="btn-ghost" type="button" onClick={closeEditors}>Cancel</button>
+            <button className="btn" type="button" onClick={saveGallery}>{t(language, "savePhotoButton")}</button>
+            <button className="btn-ghost" type="button" onClick={closeEditors}>{t(language, "cancelButton")}</button>
           </div>
         </Modal>
       ) : null}
