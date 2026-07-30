@@ -437,6 +437,25 @@ button {
   padding: 20px;
 }
 
+.gallery-card {
+  width: 250px;
+  height: 250px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gallery-card .tree-name,
+.gallery-card .tree-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gallery-card .actions-row {
+  flex-shrink: 0;
+}
+
 .stat-value {
   display: block;
   font-family: "Playfair Display", serif;
@@ -591,7 +610,7 @@ button {
 
 .gallery-photo {
   width: 100%;
-  height: 130px;
+  height: 100px;
   object-fit: cover;
   border-radius: 12px;
   border: 1px solid var(--border);
