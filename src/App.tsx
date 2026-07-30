@@ -394,18 +394,18 @@ export default function App() {
           setState(remote.state);
           saveState(remote.state);
           remoteUpdatedAtRef.current = remote.updatedAt;
-          setSyncMessage("Loaded the shared family tree from Supabase.");
+          setSyncMessage("Loaded the shared family tree.");
         } else if (localHasData) {
-          setSyncMessage("Supabase has no data yet. Log in as admin to publish this browser's data.");
+          setSyncMessage("The shared archive is empty. Log in as admin to publish this browser's family tree.");
         } else {
-          setSyncMessage("Supabase is connected and waiting for the first save.");
+          setSyncMessage("Connected and waiting for the first save.");
         }
 
         setSyncStatus("ready");
       } catch {
         if (cancelled) return;
         setSyncStatus("error");
-        setSyncMessage(supabaseConfigured ? "Supabase sync is unavailable. Showing local data." : "Running in local-only mode.");
+        setSyncMessage(supabaseConfigured ? "Cloud sync is unavailable right now. Showing the data stored on this device." : "Running in local-only mode.");
       } finally {
         if (!cancelled) hydrationDoneRef.current = true;
       }
@@ -430,7 +430,7 @@ export default function App() {
         .then((nextUpdatedAt) => {
           remoteUpdatedAtRef.current = nextUpdatedAt;
           setSyncStatus("ready");
-          setSyncMessage("Changes synced to Supabase.");
+          setSyncMessage("Changes saved to the shared family archive.");
         })
         .catch(async (error) => {
           if (error instanceof StaleWriteError) {
@@ -441,12 +441,12 @@ export default function App() {
               setState(remote.state);
               saveState(remote.state);
               remoteUpdatedAtRef.current = remote.updatedAt;
-              setSyncMessage("Reloaded the latest version from Supabase. Please redo your last change.");
+              setSyncMessage("Reloaded the latest shared version. Please redo your last change.");
             }
             return;
           }
           setSyncStatus("error");
-          setSyncMessage("Could not save to Supabase. Local data is safe.");
+          setSyncMessage("Could not save to the shared archive. Your local data is safe.");
         });
     }, 600);
 
@@ -466,7 +466,7 @@ export default function App() {
   async function handleLoginSubmit(event: FormEvent) {
     event.preventDefault();
     if (!supabaseConfigured) {
-      setLoginError("Admin login requires Supabase to be configured.");
+      setLoginError("Admin login isn't set up for this copy of Sajra yet. Please contact the family archive administrator.");
       return;
     }
     setLoginBusy(true);
@@ -699,11 +699,11 @@ export default function App() {
             <div>
               <span className="eyebrow">Admin access</span>
               <h2 className="section-title" style={{ fontSize: "2.8rem", marginTop: 12 }}>Sign in to manage Sajra</h2>
-              <p className="section-subtitle">Use the stored user accounts to unlock editing, gallery uploads, and data export.</p>
+              <p className="section-subtitle">Sign in with your family administrator account to add relatives, curate the gallery, and keep the archive up to date.</p>
             </div>
           </div>
           <div className="profile-layout" style={{ gridTemplateColumns: "1fr 1fr" }}>
-            <Card title="Login" subtitle="Managed by Supabase Authentication.">
+            <Card title="Login" subtitle="Secure sign-in for family administrators.">
               <form className="form-stack" onSubmit={handleLoginSubmit}>
                 <label>
                   Email
@@ -717,12 +717,12 @@ export default function App() {
                 <button className="btn" type="submit" disabled={loginBusy}>{loginBusy ? "Signing in..." : "Login"}</button>
               </form>
             </Card>
-            <Card title="What this unlocks" subtitle="Client-side admin tools on GitHub Pages.">
+            <Card title="What this unlocks" subtitle="Tools for keeping the family archive current.">
               <div className="list">
                 <div className="notice">Add and edit members with parent and spouse links.</div>
-                <div className="notice">Manage users if you are an admin.</div>
-                <div className="notice">Upload photos directly into the static app backup.</div>
-                <div className="notice">Export the full app state as JSON for backup or migration.</div>
+                <div className="notice">Manage administrator accounts if you are an admin.</div>
+                <div className="notice">Upload and organize photos in the family gallery.</div>
+                <div className="notice">Download a full backup of the family tree anytime.</div>
               </div>
             </Card>
           </div>
@@ -825,7 +825,7 @@ export default function App() {
             <div>
               <span className="eyebrow">Gallery</span>
               <h2 className="section-title" style={{ fontSize: "2.9rem", marginTop: 12 }}>Captured memories</h2>
-              <p className="section-subtitle">Photos are kept inside this static app backup, so they travel with export/import.</p>
+              <p className="section-subtitle">Photos and memories shared by the family, kept safe alongside every backup of the archive.</p>
             </div>
             {isLoggedIn ? <button className="btn" type="button" onClick={() => openGalleryEditor()}>Add photo</button> : null}
           </div>
@@ -862,7 +862,7 @@ export default function App() {
             <div>
               <span className="eyebrow">Admin console</span>
               <h2 className="section-title" style={{ fontSize: "2.9rem", marginTop: 12 }}>Manage the archive</h2>
-              <p className="section-subtitle">Edit members, users, gallery photos, and download a full backup as JSON.</p>
+              <p className="section-subtitle">Edit family members, manage administrator accounts, curate the gallery, and keep a full backup of the archive.</p>
             </div>
             <div className="actions-row">
               <button className="btn" type="button" onClick={() => openMemberEditor()}>Add member</button>
@@ -907,7 +907,7 @@ export default function App() {
             {isAdmin ? (
               <Card
                 title="Users"
-                subtitle="Admin and editor accounts stored in the backup."
+                subtitle="Admin and editor accounts for the family archive."
                 actions={<button className="btn-ghost" type="button" onClick={() => openUserEditor()}>Add user</button>}
               >
                 <div className="list">
@@ -929,11 +929,11 @@ export default function App() {
               </Card>
             ) : null}
 
-            <Card title="Backup" subtitle="Export or import the complete static app state.">
+            <Card title="Backup" subtitle="Export or import the complete family archive.">
               <div className="list">
-                <button className="btn" type="button" onClick={exportState}>Download JSON backup</button>
-                <button className="btn-ghost" type="button" onClick={triggerImport}>Import JSON backup</button>
-                <button className="btn-ghost danger" type="button" onClick={resetToEmpty}>Reset app state</button>
+                <button className="btn" type="button" onClick={exportState}>Download backup</button>
+                <button className="btn-ghost" type="button" onClick={triggerImport}>Import backup</button>
+                <button className="btn-ghost danger" type="button" onClick={resetToEmpty}>Reset archive</button>
                 {importError ? <div className="notice danger">{importError}</div> : null}
                 <input ref={importInputRef} type="file" accept="application/json,.json" hidden onChange={(e) => handleImportFile(e.target.files?.[0])} />
               </div>
@@ -947,12 +947,12 @@ export default function App() {
       return (
         <section className="section">
           <span className="eyebrow">About</span>
-          <h2 className="section-title" style={{ fontSize: "3rem", marginTop: 12 }}>Static React conversion</h2>
+          <h2 className="section-title" style={{ fontSize: "3rem", marginTop: 12 }}>About Sajra</h2>
           <p className="section-subtitle" style={{ marginTop: 12 }}>
-            Sajra has been rewritten as a client-side React app suitable for GitHub Pages. State is stored locally in the browser and can be exported as JSON.
+            Sajra is our family's living shajra nasab — a shared home for the family tree, member profiles, and the photographs that hold our memories together across generations.
           </p>
           <div className="notice" style={{ marginTop: 18 }}>
-            If you want a database-backed version later, this structure can be connected to Supabase storage and tables in a second pass.
+            Every member added, every photo uploaded, and every story recorded here becomes part of the archive the next generation will inherit.
           </div>
         </section>
       );
@@ -964,12 +964,12 @@ export default function App() {
           <span className="eyebrow">Sajra family archive</span>
           <h1>Preserve lineage, stories, and shared memory.</h1>
           <p>
-            A single-page React build for GitHub Pages that keeps the family tree, member profiles, and gallery together in a polished static experience.
+            Sajra brings our family tree, member profiles, and cherished photographs together in one living archive, so every branch of the family stays connected across generations.
           </p>
           <div className="hero-actions">
             <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>Open Family Tree</button>
             <button className="btn-ghost" type="button" onClick={() => navigate({ page: "gallery" })}>View Gallery</button>
-            <button className="btn-ghost" type="button" onClick={() => navigate({ page: "about" })}>About the rewrite</button>
+            <button className="btn-ghost" type="button" onClick={() => navigate({ page: "about" })}>About Sajra</button>
           </div>
           <div className="hero-kpis">
             <span className="kpi">{stats.members} members</span>
@@ -1114,11 +1114,11 @@ export default function App() {
       <p className="footer-note">
         {supabaseConfigured
           ? syncStatus === "error"
-            ? `Supabase sync issue: ${syncMessage} Local storage and browser backup still work.`
+            ? `Sync issue: ${syncMessage} Local storage and browser backup still work.`
             : syncStatus === "conflict"
               ? syncMessage
-              : `Supabase sync is on. ${syncMessage}`
-          : "This version runs locally in your browser. Add Supabase env vars to enable cloud sync."}
+              : `Family archive sync is on. ${syncMessage}`
+          : "This copy of Sajra is running in local-only mode on this device."}
       </p>
 
       {memberDraft ? (
@@ -1223,7 +1223,7 @@ export default function App() {
       {userDraft ? (
         <Modal
           title={userDraft.id ? "Edit user" : "Add user"}
-          subtitle="A directory label only — it does not grant login access. Manage real sign-in accounts in Supabase Authentication."
+          subtitle="A directory label only — it does not grant login access. Real sign-in accounts are managed separately by the archive administrator."
           onClose={closeEditors}
         >
           <div className="form-grid">
