@@ -1042,7 +1042,7 @@ export default function App() {
           )}
         </section>
 
-        <section className="section">
+        <section className="section newest-additions-section">
           <div className="section-head">
             <div>
               <span className="eyebrow">{t(language, "eyebrowRecent")}</span>
@@ -1057,7 +1057,7 @@ export default function App() {
             />
           </div>
           {memberSearchResults.length ? (
-            <div className="member-grid">
+            <div className="newest-additions-grid">
               {memberSearchResults.map((member) => (
                 <MemberCard key={member.id} member={member} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
               ))}
