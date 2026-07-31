@@ -422,9 +422,6 @@ button {
 .modal-card,
 .tree-card {
   position: relative;
-  height: 400px;
-  width: 400px;
-  overflow: auto;
   border: 1px solid var(--border);
   border-top: 3px solid var(--accent);
   border-radius: 10px;
