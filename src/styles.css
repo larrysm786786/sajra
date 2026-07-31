@@ -453,6 +453,53 @@ button {
   font-size: 0.78rem;
 }
 
+.profile-relations-grid {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.profile-relations-grid .card {
+  padding: 14px;
+}
+
+.profile-relations-inner {
+  grid-template-columns: repeat(auto-fit, minmax(100px, 130px));
+  gap: 10px;
+}
+
+.profile-relations-inner .member-card {
+  padding: 8px;
+}
+
+.profile-relations-inner .tree-name {
+  font-size: 0.84rem;
+}
+
+.profile-relations-inner .tree-sub {
+  font-size: 0.74rem;
+}
+
+.member-profile-section {
+  padding: 18px 22px;
+}
+
+.member-profile-layout {
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 18px;
+}
+
+.member-profile-photo {
+  width: min(160px, 100%);
+  border-radius: 14px;
+}
+
+.member-profile-section .section-title {
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+}
+
+.member-profile-section .section-subtitle {
+  font-size: 0.86rem;
+}
+
 .form-grid {
   grid-template-columns: repeat(12, minmax(0, 1fr));
 }

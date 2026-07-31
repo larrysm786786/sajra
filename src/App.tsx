@@ -758,11 +758,11 @@ export default function App() {
     if (route.page === "member") {
       const member = selectedMember;
       return (
-        <section className="section">
+        <section className="section member-profile-section">
           {member ? (
             <>
-              <div className="profile-layout">
-                <img className="member-photo hero-photo" src={photoSrc(member.photo)} alt={displayName(member, language)} />
+              <div className="profile-layout member-profile-layout">
+                <img className="member-photo hero-photo member-profile-photo" src={photoSrc(member.photo)} alt={displayName(member, language)} />
                 <div>
                   <span className="eyebrow">{tGender(language, member.gender)}</span>
                   <h1 className="section-title" style={{ marginTop: 12 }}>{displayName(member, language)}</h1>
@@ -780,10 +780,10 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="card-grid" style={{ marginTop: 20 }}>
+              <div className="card-grid profile-relations-grid" style={{ marginTop: 20 }}>
                 <Card title={t(language, "parentsTitle")} subtitle={t(language, "parentsSubtitle")}>
                   {getParents(state.members, member).length ? (
-                    <div className="member-grid">
+                    <div className="member-grid profile-relations-inner">
                       {getParents(state.members, member).map((parent) => (
                         <MemberCard key={parent.id} member={parent} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
                       ))}
@@ -792,7 +792,7 @@ export default function App() {
                 </Card>
                 <Card title={t(language, "spousesTitle")} subtitle={t(language, "spousesSubtitle")}>
                   {getSpouses(state.members, member).length ? (
-                    <div className="member-grid">
+                    <div className="member-grid profile-relations-inner">
                       {getSpouses(state.members, member).map((spouse) => (
                         <MemberCard key={spouse.id} member={spouse} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
                       ))}
@@ -801,7 +801,7 @@ export default function App() {
                 </Card>
                 <Card title={t(language, "childrenTitle")} subtitle={t(language, "childrenSubtitle")}>
                   {getChildren(state.members, member.id).length ? (
-                    <div className="member-grid">
+                    <div className="member-grid profile-relations-inner">
                       {getChildren(state.members, member.id).sort(sortMembers).map((child) => (
                         <MemberCard key={child.id} member={child} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
                       ))}
