@@ -925,13 +925,6 @@ button {
     overflow-y: auto;
   }
 
-  html[dir="rtl"] .topnav {
-    right: auto;
-    left: 0;
-    transform: translateX(-100%);
-    box-shadow: 18px 0 44px rgba(0, 0, 0, 0.35);
-  }
-
   .topnav.open {
     transform: translateX(0);
   }
@@ -1131,7 +1124,6 @@ button {
 
 /* ===== RTL (Urdu) support ===== */
 html[dir="rtl"] body { text-align: right; }
-html[dir="rtl"] .topnav,
 html[dir="rtl"] .header-actions,
 html[dir="rtl"] .form-stack label,
 html[dir="rtl"] .actions-row {
