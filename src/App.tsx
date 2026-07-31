@@ -296,7 +296,7 @@ function Modal({
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <div>
-            <h2 className="section-title" style={{ fontSize: "2.4rem" }}>{title}</h2>
+            <h2 className="section-title">{title}</h2>
             {subtitle ? <p className="section-subtitle">{subtitle}</p> : null}
           </div>
           <button type="button" className="close-btn" onClick={onClose}>✕</button>
@@ -723,7 +723,7 @@ export default function App() {
           <div className="section-head">
             <div>
               <span className="eyebrow">{t(language, "signInEyebrow")}</span>
-              <h2 className="section-title" style={{ fontSize: "2.8rem", marginTop: 12 }}>{t(language, "signInTitle")}</h2>
+              <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "signInTitle")}</h2>
               <p className="section-subtitle">{t(language, "signInSubtitle")}</p>
             </div>
           </div>
@@ -825,7 +825,7 @@ export default function App() {
           <div className="section-head">
             <div>
               <span className="eyebrow">{t(language, "eyebrowFamilyTree")}</span>
-              <h2 className="section-title" style={{ fontSize: "2.9rem", marginTop: 12 }}>{t(language, "exploreLineageTitle")}</h2>
+              <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "exploreLineageTitle")}</h2>
               <p className="section-subtitle">{t(language, "exploreLineageSubtitle")}</p>
             </div>
           </div>
@@ -849,7 +849,7 @@ export default function App() {
           <div className="section-head">
             <div>
               <span className="eyebrow">{t(language, "eyebrowGallery")}</span>
-              <h2 className="section-title" style={{ fontSize: "2.9rem", marginTop: 12 }}>{t(language, "capturedMemoriesTitle")}</h2>
+              <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "capturedMemoriesTitle")}</h2>
               <p className="section-subtitle">{t(language, "gallerySubtitle")}</p>
             </div>
             {isLoggedIn ? <button className="btn" type="button" onClick={() => openGalleryEditor()}>{t(language, "addPhotoButton")}</button> : null}
@@ -888,7 +888,7 @@ export default function App() {
           <div className="section-head">
             <div>
               <span className="eyebrow">{t(language, "eyebrowAdminConsole")}</span>
-              <h2 className="section-title" style={{ fontSize: "2.9rem", marginTop: 12 }}>{t(language, "manageArchiveTitle")}</h2>
+              <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "manageArchiveTitle")}</h2>
               <p className="section-subtitle">{t(language, "manageArchiveSubtitle")}</p>
             </div>
             <div className="actions-row">
@@ -974,7 +974,7 @@ export default function App() {
       return (
         <section className="section">
           <span className="eyebrow">{t(language, "eyebrowAbout")}</span>
-          <h2 className="section-title" style={{ fontSize: "3rem", marginTop: 12 }}>{t(language, "aboutTitle")}</h2>
+          <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "aboutTitle")}</h2>
           <p className="section-subtitle" style={{ marginTop: 12 }}>
             {t(language, "aboutParagraph")}
           </p>
@@ -1010,7 +1010,7 @@ export default function App() {
           <div className="section-head">
             <div>
               <span className="eyebrow">{t(language, "eyebrowSnapshot")}</span>
-              <h2 className="section-title" style={{ fontSize: "2.7rem", marginTop: 12 }}>{t(language, "quickStatsTitle")}</h2>
+              <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "quickStatsTitle")}</h2>
             </div>
           </div>
           <div className="stat-grid">
@@ -1025,7 +1025,7 @@ export default function App() {
           <div className="section-head">
             <div>
               <span className="eyebrow">{t(language, "eyebrowFounding")}</span>
-              <h2 className="section-title" style={{ fontSize: "2.7rem", marginTop: 12 }}>{t(language, "rootsEldersTitle")}</h2>
+              <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "rootsEldersTitle")}</h2>
             </div>
             <button className="btn-ghost" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openTreeLink")}</button>
           </div>
@@ -1046,7 +1046,7 @@ export default function App() {
           <div className="section-head">
             <div>
               <span className="eyebrow">{t(language, "eyebrowRecent")}</span>
-              <h2 className="section-title" style={{ fontSize: "2.7rem", marginTop: 12 }}>{t(language, "newestAdditionsTitle")}</h2>
+              <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "newestAdditionsTitle")}</h2>
             </div>
             <input
               className="field"

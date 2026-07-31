@@ -67,6 +67,16 @@ html[lang="ur"] .section-title {
   font-family: "Noto Nastaliq Urdu", "Inter", serif;
 }
 
+html[lang="ur"] .hero h1 {
+  font-size: clamp(1.6rem, 3.6vw, 2.6rem);
+  line-height: 1.5;
+}
+
+html[lang="ur"] .section-title {
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  line-height: 1.5;
+}
+
 a {
   color: inherit;
 }
@@ -325,7 +335,7 @@ button {
 }
 
 .hero h1 {
-  font-size: clamp(2.8rem, 6vw, 4.8rem);
+  font-size: clamp(1.9rem, 4.4vw, 3.2rem);
   margin-top: 16px;
   max-width: 14ch;
 }
@@ -365,7 +375,7 @@ button {
 }
 
 .section-title {
-  font-size: clamp(1.7rem, 3.4vw, 2.5rem);
+  font-size: clamp(1.4rem, 2.4vw, 1.9rem);
 }
 
 .section-subtitle {
@@ -412,6 +422,9 @@ button {
 .modal-card,
 .tree-card {
   position: relative;
+  height: 400px;
+  width: 400px;
+  overflow: auto;
   border: 1px solid var(--border);
   border-top: 3px solid var(--accent);
   border-radius: 10px;
@@ -979,6 +992,19 @@ button {
 
   .hero h1 {
     max-width: none;
+    font-size: clamp(1.6rem, 7vw, 2.2rem);
+  }
+
+  .section-title {
+    font-size: clamp(1.15rem, 5vw, 1.5rem);
+  }
+
+  html[lang="ur"] .hero h1 {
+    font-size: clamp(1.4rem, 6.4vw, 1.9rem);
+  }
+
+  html[lang="ur"] .section-title {
+    font-size: clamp(1.05rem, 4.6vw, 1.3rem);
   }
 
   .form-grid > label {
