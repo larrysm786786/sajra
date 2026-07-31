@@ -1021,7 +1021,7 @@ export default function App() {
           </div>
         </section>
 
-        <section className="section">
+        <section className="section roots-elders-section">
           <div className="section-head">
             <div>
               <span className="eyebrow">{t(language, "eyebrowFounding")}</span>
@@ -1030,7 +1030,7 @@ export default function App() {
             <button className="btn-ghost" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openTreeLink")}</button>
           </div>
           {roots.length ? (
-            <div className="member-grid">
+            <div className="roots-elders-grid">
               {roots.slice(0, 4).map((member) => (
                 <MemberCard key={member.id} member={member} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
               ))}

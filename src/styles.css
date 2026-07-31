@@ -409,6 +409,28 @@ button {
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 
+.roots-elders-section {
+  padding: 18px 22px;
+}
+
+.roots-elders-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 140px));
+}
+
+.roots-elders-grid .member-card {
+  padding: 10px;
+}
+
+.roots-elders-grid .tree-name {
+  font-size: 0.88rem;
+}
+
+.roots-elders-grid .tree-sub {
+  font-size: 0.78rem;
+}
+
 .form-grid {
   grid-template-columns: repeat(12, minmax(0, 1fr));
 }
