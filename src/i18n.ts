@@ -93,11 +93,6 @@ const STRINGS = {
     openTreeLink: "Open tree",
     noRootsYet: "No root members yet. Sign in and add the first ancestor from the admin panel.",
 
-    eyebrowRecent: "Recent people",
-    newestAdditionsTitle: "Newest additions",
-    searchMemberNamesPlaceholder: "Search member names",
-    noSearchMatches: "No members match your search.",
-
     brandSubtitle: "Family tree and archive",
     ariaOpenMenu: "Open menu",
     ariaCloseMenu: "Close menu",
@@ -285,11 +280,6 @@ const STRINGS = {
     rootsEldersTitle: "جڑیں اور بزرگ",
     openTreeLink: "شجرہ کھولیں",
     noRootsYet: "ابھی تک کوئی جڑ رکن نہیں۔ سائن ان کریں اور ایڈمن پینل سے پہلا جدِ امجد شامل کریں۔",
-
-    eyebrowRecent: "حالیہ افراد",
-    newestAdditionsTitle: "نئے اضافے",
-    searchMemberNamesPlaceholder: "رکن کے نام تلاش کریں",
-    noSearchMatches: "آپ کی تلاش سے کوئی رکن مماثل نہیں۔",
 
     brandSubtitle: "شجرہ نسب اور آرکائیو",
     ariaOpenMenu: "مینو کھولیں",

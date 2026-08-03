@@ -1041,31 +1041,6 @@ export default function App() {
             </div>
           )}
         </section>
-
-        <section className="section newest-additions-section">
-          <div className="section-head">
-            <div>
-              <span className="eyebrow">{t(language, "eyebrowRecent")}</span>
-              <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "newestAdditionsTitle")}</h2>
-            </div>
-            <input
-              className="field"
-              style={{ maxWidth: 320 }}
-              placeholder={t(language, "searchMemberNamesPlaceholder")}
-              value={memberQuery}
-              onChange={(e) => setMemberQuery(e.target.value)}
-            />
-          </div>
-          {memberSearchResults.length ? (
-            <div className="newest-additions-grid">
-              {memberSearchResults.map((member) => (
-                <MemberCard key={member.id} member={member} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
-              ))}
-            </div>
-          ) : (
-            <div className="empty">{t(language, "noSearchMatches")}</div>
-          )}
-        </section>
       </>
     );
   })();
