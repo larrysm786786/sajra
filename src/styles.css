@@ -811,6 +811,7 @@ button {
 
 .tree-head {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 12px;
   align-items: start;
@@ -1087,9 +1088,46 @@ button {
     align-items: stretch;
   }
 
+  .section-head .actions-row {
+    width: 100%;
+  }
+
+  .section-head .actions-row .btn,
+  .section-head .actions-row .btn-ghost {
+    flex: 1 1 auto;
+  }
+
   .toolbar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .tree-head {
+    gap: 8px;
+  }
+
+  .tree-head .actions-row {
+    width: 100%;
+    gap: 6px;
+  }
+
+  .tree-head .actions-row .btn-ghost {
+    padding: 8px 12px;
+    font-size: 0.82rem;
+  }
+
+  .stat-grid .stat-card {
+    padding: 16px;
+  }
+
+  .stat-value {
+    font-size: 1.7rem;
+  }
+
+  .backup-actions .btn,
+  .backup-actions .btn-ghost {
+    width: 100%;
+    justify-content: center;
   }
 }
 

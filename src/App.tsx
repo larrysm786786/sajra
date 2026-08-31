@@ -957,7 +957,7 @@ export default function App() {
             ) : null}
 
             <Card title={t(language, "backupCardTitle")} subtitle={t(language, "backupCardSubtitle")}>
-              <div className="list">
+              <div className="list backup-actions">
                 <button className="btn" type="button" onClick={exportState}>{t(language, "downloadBackupButton")}</button>
                 <button className="btn-ghost" type="button" onClick={triggerImport}>{t(language, "importBackupButton")}</button>
                 <button className="btn-ghost danger" type="button" onClick={resetToEmpty}>{t(language, "resetArchiveButton")}</button>
