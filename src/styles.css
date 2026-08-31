@@ -456,6 +456,56 @@ button {
   font-size: 0.74rem;
 }
 
+.guide-section {
+  background: linear-gradient(150deg, color-mix(in oklab, var(--accent) 10%, var(--surface)), var(--surface-strong));
+}
+
+.guide-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.guide-step {
+  position: relative;
+  padding: 20px 18px 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-sm);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.guide-step:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+}
+
+.guide-step-number {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 12px;
+  border-radius: 50%;
+  background: linear-gradient(150deg, var(--accent), var(--accent-strong));
+  color: var(--ink);
+  font-family: "Playfair Display", serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.guide-step .tree-name {
+  margin-bottom: 6px;
+}
+
+.guide-step-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
 .member-profile-section {
   padding: 18px 22px;
 }

@@ -1006,6 +1006,37 @@ export default function App() {
           </div>
         </section>
 
+        <section className="section guide-section">
+          <div className="section-head">
+            <div>
+              <span className="eyebrow">{t(language, "guideEyebrow")}</span>
+              <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "guideTitle")}</h2>
+            </div>
+          </div>
+          <div className="guide-grid">
+            <div className="guide-step">
+              <span className="guide-step-number">1</span>
+              <div className="tree-name">{t(language, "guideStep1Title")}</div>
+              <p className="guide-step-text">{t(language, "guideStep1Text")}</p>
+            </div>
+            <div className="guide-step">
+              <span className="guide-step-number">2</span>
+              <div className="tree-name">{t(language, "guideStep2Title")}</div>
+              <p className="guide-step-text">{t(language, "guideStep2Text")}</p>
+            </div>
+            <div className="guide-step">
+              <span className="guide-step-number">3</span>
+              <div className="tree-name">{t(language, "guideStep3Title")}</div>
+              <p className="guide-step-text">{t(language, "guideStep3Text")}</p>
+            </div>
+            <div className="guide-step">
+              <span className="guide-step-number">4</span>
+              <div className="tree-name">{t(language, "guideStep4Title")}</div>
+              <p className="guide-step-text">{t(language, "guideStep4Text")}</p>
+            </div>
+          </div>
+        </section>
+
         <section className="section">
           <div className="section-head">
             <div>
