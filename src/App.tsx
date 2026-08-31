@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
-import type { AppState, GalleryImage, Gender, Language, Member, Role, TreeNode, User, ViewKey } from "./types";
+import type { AppState, GalleryImage, Gender, Language, Member, Role, User, ViewKey } from "./types";
 import {
   assignUniqueName,
-  buildTree,
   calculateAge,
   createEmptyState,
   displayName,
@@ -228,58 +227,6 @@ function MemberCard({
   );
 }
 
-function TreeBranch({
-  node,
-  language,
-  onOpen,
-  query,
-  depth = 0
-}: {
-  node: TreeNode;
-  language: AppState["language"];
-  onOpen: (id: number) => void;
-  query: string;
-  depth?: number;
-}) {
-  const memberName = displayName(node.member, language);
-  const matches = !query || memberName.toLowerCase().includes(query.toLowerCase());
-  const age = calculateAge(node.member.dob, node.member.dod);
-
-  return (
-    <details className="tree-details" open={depth < 2 || Boolean(query)}>
-      <summary className="tree-summary">
-        <div className="tree-card" style={{ opacity: matches ? 1 : 0.62, marginBottom: 10 }}>
-          <div className="tree-head">
-            <div>
-              <div className="tree-name">{memberName}</div>
-              <div className="tree-sub">
-                {node.member.birthplace || t(language, "noBirthplace")}
-                {age !== null ? ` • ${t(language, "ageWord")} ${age}` : ""}
-                {node.member.dod ? ` • ${t(language, "diedWord")} ${formatDate(node.member.dod, language)}` : ""}
-              </div>
-            </div>
-            <span className="pill">{tGender(language, node.member.gender)}</span>
-          </div>
-          <div className="member-chip-list">
-            <button type="button" className="member-chip" onClick={(e) => { e.preventDefault(); onOpen(node.member.id); }}>
-              {t(language, "viewProfile")}
-            </button>
-            {node.member.spouseIds.length ? <span className="pill">{node.member.spouseIds.length} {t(language, "spousesSuffix")}</span> : null}
-            {node.children.length ? <span className="pill">{node.children.length} {t(language, "childrenSuffix")}</span> : null}
-          </div>
-        </div>
-      </summary>
-      {node.children.length ? (
-        <div className="tree-branch">
-          {node.children.map((child) => (
-            <TreeBranch key={child.member.id} node={child} language={language} onOpen={onOpen} query={query} depth={depth + 1} />
-          ))}
-        </div>
-      ) : null}
-    </details>
-  );
-}
-
 function Modal({
   title,
   subtitle,
@@ -318,7 +265,6 @@ export default function App() {
   const [route, setRoute] = useState<RouteState>(() => parseRoute());
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const supabaseConfigured = useMemo(() => isSupabaseConfigured(), []);
-  const [treeQuery, setTreeQuery] = useState("");
   const [memberQuery, setMemberQuery] = useState("");
   const [spouseSearchQuery, setSpouseSearchQuery] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
@@ -343,7 +289,6 @@ export default function App() {
   const members = useMemo(() => [...state.members].sort(sortMembers), [state.members]);
   const memberMap = useMemo(() => new Map(state.members.map((member) => [member.id, member])), [state.members]);
   const roots = useMemo(() => state.members.filter(isRoot).sort(sortMembers), [state.members]);
-  const tree = useMemo(() => buildTree(state.members), [state.members]);
   const selectedMember = route.page === "member" && route.memberId ? memberMap.get(route.memberId) : undefined;
 
   useEffect(() => {
@@ -727,7 +672,7 @@ export default function App() {
               <p className="section-subtitle">{t(language, "signInSubtitle")}</p>
             </div>
           </div>
-          <div className="profile-layout" style={{ gridTemplateColumns: "1fr 1fr" }}>
+          <div className="profile-layout login-panels">
             <Card title={t(language, "loginCardTitle")} subtitle={t(language, "loginCardSubtitle")}>
               <form className="form-stack" onSubmit={handleLoginSubmit}>
                 <label>

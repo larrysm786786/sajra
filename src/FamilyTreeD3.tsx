@@ -53,6 +53,8 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [resizeTick, setResizeTick] = useState(0);
+  const lastWidthRef = useRef(0);
   const onOpenRef = useRef(onOpenMember);
   onOpenRef.current = onOpenMember;
 
@@ -66,6 +68,28 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
     setSuggestionsOpen(false);
     findRef.current(name);
   }
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let resizeTimer: number | undefined;
+    const observer = new ResizeObserver((entries) => {
+      const newWidth = entries[0]?.contentRect.width ?? 0;
+      if (Math.abs(newWidth - lastWidthRef.current) < 24) return;
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        lastWidthRef.current = newWidth;
+        setResizeTick((tick) => tick + 1);
+      }, 200);
+    });
+    observer.observe(container);
+
+    return () => {
+      window.clearTimeout(resizeTimer);
+      observer.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -85,6 +109,7 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
         : { member: null, children: roots as unknown as NodeDatum[] };
 
     const width = container.clientWidth || 1000;
+    lastWidthRef.current = width;
     const height = 700;
 
     const svg = d3
@@ -382,7 +407,7 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
       container.innerHTML = "";
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [members, language, viewMode]);
+  }, [members, language, viewMode, resizeTick]);
 
   function handleSearch(event: FormEvent) {
     event.preventDefault();

@@ -538,8 +538,7 @@ button {
 .gallery-card,
 .panel,
 .login-card,
-.modal-card,
-.tree-card {
+.modal-card {
   position: relative;
   border: 1px solid var(--border);
   border-top: 3px solid var(--accent);
@@ -561,13 +560,13 @@ button {
 .stat-card,
 .card,
 .member-card,
-.gallery-card,
-.tree-card {
+.gallery-card {
   padding: 20px;
 }
 
 .gallery-card {
-  width: 250px;
+  width: 100%;
+  max-width: 250px;
   height: 250px;
   display: flex;
   flex-direction: column;
@@ -821,42 +820,15 @@ button {
   align-items: start;
 }
 
+.login-panels {
+  grid-template-columns: 1fr 1fr;
+}
+
 .profile-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   margin: 14px 0 0;
-}
-
-.tree-root {
-  display: grid;
-  gap: 14px;
-}
-
-.tree-details {
-  border-left: 1px solid color-mix(in oklab, var(--accent) 28%, var(--border));
-  padding-left: 16px;
-  margin-left: 4px;
-}
-
-.tree-summary {
-  list-style: none;
-  cursor: pointer;
-}
-
-.tree-summary::-webkit-details-marker {
-  display: none;
-}
-
-.tree-branch {
-  display: grid;
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.tree-card {
-  display: grid;
-  gap: 12px;
 }
 
 .tree-head {
@@ -1023,6 +995,10 @@ button {
   .profile-layout,
   .stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .member-profile-layout {
+    grid-template-columns: 160px minmax(0, 1fr);
   }
 }
 
