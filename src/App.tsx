@@ -36,9 +36,9 @@ import FamilyTreeD3 from "./FamilyTreeD3";
 import { t, tGender } from "./i18n";
 import type { StringKey } from "./i18n";
 
-const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string; admin: string; about: string }> = {
-  en: { home: "Home", tree: "Tree", gallery: "Gallery", admin: "Admin", about: "About" },
-  ur: { home: "ہوم", tree: "شجرہ", gallery: "گیلری", admin: "ایڈمن", about: "تعارف" }
+const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string; admin: string; about: string; guide: string; roots: string }> = {
+  en: { home: "Home", tree: "Tree", gallery: "Gallery", admin: "Admin", about: "About", guide: "Guide", roots: "Founding Branches" },
+  ur: { home: "ہوم", tree: "شجرہ", gallery: "گیلری", admin: "ایڈمن", about: "تعارف", guide: "رہنمائی", roots: "بانی شاخیں" }
 };
 
 type RouteState = { page: ViewKey; memberId?: number };
@@ -88,7 +88,7 @@ function parseRoute(): RouteState {
   if (!raw || raw === "/") return { page: "home" };
   const [page, id] = raw.split("/").filter(Boolean);
   if (page === "member" && id) return { page: "member", memberId: Number(id) || undefined };
-  if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about") {
+  if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots") {
     return { page };
   }
   return { page: "home" };
@@ -655,11 +655,9 @@ export default function App() {
   const stats = useMemo(() => ({
     members: state.members.length,
     roots: roots.length,
-    male: state.members.filter((member) => member.gender === "male").length,
-    female: state.members.filter((member) => member.gender === "female").length,
     gallery: state.gallery.length,
     users: state.users.length
-  }), [roots.length, state.gallery.length, state.members, state.users.length]);
+  }), [roots.length, state.gallery.length, state.members.length, state.users.length]);
 
   const content = (() => {
     if (!isLoggedIn && route.page === "admin") {
@@ -930,27 +928,8 @@ export default function App() {
       );
     }
 
-    return (
-      <>
-        <section className="hero">
-          <span className="eyebrow">{t(language, "eyebrowHero")}</span>
-          <h1>{t(language, "heroTitle")}</h1>
-          <p>
-            {t(language, "heroParagraph")}
-          </p>
-          <div className="hero-actions">
-            <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openFamilyTreeButton")}</button>
-            <button className="btn-ghost" type="button" onClick={() => navigate({ page: "gallery" })}>{t(language, "viewGalleryButton")}</button>
-            <button className="btn-ghost" type="button" onClick={() => navigate({ page: "about" })}>{t(language, "aboutSajraButton")}</button>
-          </div>
-          <div className="hero-kpis">
-            <span className="kpi">{stats.members} {t(language, "kpiMembersSuffix")}</span>
-            <span className="kpi">{stats.roots} {t(language, "kpiRootsSuffix")}</span>
-            <span className="kpi">{stats.gallery} {t(language, "kpiPhotosSuffix")}</span>
-            <span className="kpi">{stats.users} {t(language, "kpiAccountsSuffix")}</span>
-          </div>
-        </section>
-
+    if (route.page === "guide") {
+      return (
         <section className="section guide-section">
           <div className="section-head">
             <div>
@@ -981,22 +960,11 @@ export default function App() {
             </div>
           </div>
         </section>
+      );
+    }
 
-        <section className="section">
-          <div className="section-head">
-            <div>
-              <span className="eyebrow">{t(language, "eyebrowSnapshot")}</span>
-              <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "quickStatsTitle")}</h2>
-            </div>
-          </div>
-          <div className="stat-grid">
-            <StatCard value={stats.members} label={t(language, "membersLabel")} hint={t(language, "hintMembers")} />
-            <StatCard value={stats.roots} label={t(language, "rootBranchesLabel")} hint={t(language, "hintRoots")} />
-            <StatCard value={stats.male} label={t(language, "maleMembersLabel")} hint={t(language, "hintGender")} />
-            <StatCard value={stats.female} label={t(language, "femaleMembersLabel")} hint={t(language, "hintGender")} />
-          </div>
-        </section>
-
+    if (route.page === "roots") {
+      return (
         <section className="section roots-elders-section">
           <div className="section-head">
             <div>
@@ -1007,7 +975,7 @@ export default function App() {
           </div>
           {roots.length ? (
             <div className="roots-elders-grid">
-              {roots.slice(0, 4).map((member) => (
+              {roots.map((member) => (
                 <MemberCard key={member.id} member={member} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
               ))}
             </div>
@@ -1017,7 +985,26 @@ export default function App() {
             </div>
           )}
         </section>
-      </>
+      );
+    }
+
+    return (
+      <section className="hero">
+        <span className="eyebrow">{t(language, "eyebrowHero")}</span>
+        <h1>{t(language, "heroTitle")}</h1>
+        <p>
+          {t(language, "heroParagraph")}
+        </p>
+        <div className="hero-actions">
+          <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openFamilyTreeButton")}</button>
+        </div>
+        <div className="hero-kpis">
+          <span className="kpi">{stats.members} {t(language, "kpiMembersSuffix")}</span>
+          <span className="kpi">{stats.roots} {t(language, "kpiRootsSuffix")}</span>
+          <span className="kpi">{stats.gallery} {t(language, "kpiPhotosSuffix")}</span>
+          <span className="kpi">{stats.users} {t(language, "kpiAccountsSuffix")}</span>
+        </div>
+      </section>
     );
   })();
 
@@ -1049,7 +1036,9 @@ export default function App() {
         <nav className={`topnav${mobileNavOpen ? " open" : ""}`}>
           <NavLink active={route.page === "home"} onClick={() => navigate({ page: "home" })}>{NAV_LABELS[language].home}</NavLink>
           <NavLink active={route.page === "tree"} onClick={() => navigate({ page: "tree" })}>{NAV_LABELS[language].tree}</NavLink>
+          <NavLink active={route.page === "roots"} onClick={() => navigate({ page: "roots" })}>{NAV_LABELS[language].roots}</NavLink>
           <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
+          <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
           <NavLink active={route.page === "admin"} onClick={() => navigate({ page: "admin" })}>{NAV_LABELS[language].admin}</NavLink>
           <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
           <div className="topnav-actions-mobile">

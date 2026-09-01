@@ -110,7 +110,7 @@ button {
   justify-content: space-between;
   gap: 16px;
   padding: 16px max(20px, calc((100vw - 1240px) / 2));
-  background: linear-gradient(115deg, #2e5185, #000000);
+  background: #2e5185;
   border-bottom: 1px solid color-mix(in oklab, var(--accent) 30%, transparent);
   box-shadow: var(--shadow);
 }
@@ -622,7 +622,7 @@ button {
 }
 
 .btn {
-  background: linear-gradient(150deg, #2e5185, #000000);
+  background: #2e5185;
   border-color: transparent;
   color: var(--accent-light);
   box-shadow: var(--shadow-sm);
@@ -1024,7 +1024,7 @@ button {
     justify-content: flex-start;
     gap: 4px;
     padding: 84px 18px 24px;
-    background: linear-gradient(165deg, #2e5185, #000000);
+    background: #2e5185;
     box-shadow: -18px 0 44px rgba(0, 0, 0, 0.35);
     transform: translateX(100%);
     transition: transform 240ms ease;

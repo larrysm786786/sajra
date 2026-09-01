@@ -76,8 +76,6 @@ const STRINGS = {
     heroTitle: "Preserve lineage, stories, and shared memory.",
     heroParagraph: "Sajra brings our family tree, member profiles, and cherished photographs together in one living archive, so every branch of the family stays connected across generations.",
     openFamilyTreeButton: "Open Family Tree",
-    viewGalleryButton: "View Gallery",
-    aboutSajraButton: "About Sajra",
 
     guideEyebrow: "Getting started",
     guideTitle: "How to use Sajra",
@@ -89,15 +87,6 @@ const STRINGS = {
     guideStep3Text: "Open Gallery to browse family photos everyone has shared over the years.",
     guideStep4Title: "Family admins can add and edit",
     guideStep4Text: "If you're a family administrator, sign in from Admin to add relatives, upload photos, or fix details.",
-
-    eyebrowSnapshot: "Snapshot",
-    quickStatsTitle: "Quick stats",
-    hintMembers: "People stored in the family tree.",
-    rootBranchesLabel: "Root branches",
-    hintRoots: "Ancestors without parent links.",
-    maleMembersLabel: "Male members",
-    hintGender: "Gender split from saved data.",
-    femaleMembersLabel: "Female members",
 
     eyebrowFounding: "Founding branches",
     rootsEldersTitle: "Roots and elders",
@@ -275,8 +264,6 @@ const STRINGS = {
     heroTitle: "نسب، کہانیاں اور مشترکہ یادیں محفوظ رکھیں۔",
     heroParagraph: "شجرہ ہمارے خاندانی شجرے، ارکان کے پروفائلز، اور قیمتی تصاویر کو ایک زندہ آرکائیو میں یکجا کرتا ہے، تاکہ خاندان کی ہر شاخ نسلوں تک جڑی رہے۔",
     openFamilyTreeButton: "شجرہ نسب کھولیں",
-    viewGalleryButton: "گیلری دیکھیں",
-    aboutSajraButton: "شجرہ کے بارے میں",
 
     guideEyebrow: "شروع کیسے کریں",
     guideTitle: "شجرہ کیسے استعمال کریں",
@@ -288,15 +275,6 @@ const STRINGS = {
     guideStep3Text: "\"گیلری\" کھولیں اور خاندان کی شیئر کی گئی تصاویر دیکھیں۔",
     guideStep4Title: "فیملی ایڈمن شامل اور ترمیم کر سکتے ہیں",
     guideStep4Text: "اگر آپ فیملی ایڈمنسٹریٹر ہیں تو \"ایڈمن\" سے سائن ان کریں اور رشتہ دار شامل کریں، تصاویر اپ لوڈ کریں، یا تفصیلات درست کریں۔",
-
-    eyebrowSnapshot: "ایک نظر میں",
-    quickStatsTitle: "فوری اعداد و شمار",
-    hintMembers: "شجرہ میں محفوظ افراد۔",
-    rootBranchesLabel: "جڑ کی شاخیں",
-    hintRoots: "وہ اجداد جن کے والدین کا کوئی ریکارڈ نہیں۔",
-    maleMembersLabel: "مرد ارکان",
-    hintGender: "محفوظ ڈیٹا سے صنفی تقسیم۔",
-    femaleMembersLabel: "خواتین ارکان",
 
     eyebrowFounding: "بانی شاخیں",
     rootsEldersTitle: "جڑیں اور بزرگ",
