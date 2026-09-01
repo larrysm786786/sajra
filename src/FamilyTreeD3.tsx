@@ -28,7 +28,7 @@ const PHOTO_CY = -CARD_H / 2 + 12 + PHOTO_R;
 const NAME_Y = PHOTO_CY + PHOTO_R + 16;
 const DOB_Y = NAME_Y + 15;
 const ADDS_Y = DOB_Y + 13;
-const ROOT_COLOR = "#000000";
+const ROOT_COLOR = "#2e5185";
 const BRANCH_COLORS = [
   "#2e5185", "#71d0f6", "#16233b", "#a8e3fb", "#3d6aa8",
   "#4fb8e0", "#5c89c2", "#2e93bd", "#8aa9d4", "#c3ecfc"

@@ -670,7 +670,7 @@ export default function App() {
               <p className="section-subtitle">{t(language, "signInSubtitle")}</p>
             </div>
           </div>
-          <div className="profile-layout login-panels">
+          <div className="login-panel-single">
             <Card title={t(language, "loginCardTitle")} subtitle={t(language, "loginCardSubtitle")}>
               <form className="form-stack" onSubmit={handleLoginSubmit}>
                 <label>
@@ -684,14 +684,6 @@ export default function App() {
                 {loginError ? <div className="notice danger">{loginError}</div> : null}
                 <button className="btn" type="submit" disabled={loginBusy}>{loginBusy ? t(language, "signingIn") : t(language, "loginButton")}</button>
               </form>
-            </Card>
-            <Card title={t(language, "unlocksTitle")} subtitle={t(language, "unlocksSubtitle")}>
-              <div className="list">
-                <div className="notice">{t(language, "unlock1")}</div>
-                <div className="notice">{t(language, "unlock2")}</div>
-                <div className="notice">{t(language, "unlock3")}</div>
-                <div className="notice">{t(language, "unlock4")}</div>
-              </div>
             </Card>
           </div>
         </section>
@@ -1096,62 +1088,63 @@ export default function App() {
         >
           <div className="form-grid">
             <label className="span-6">
-              {t(language, "nameLabel")}
-              <input className="field" value={memberDraft.name} onChange={(e) => setMemberDraft((current) => current ? { ...current, name: e.target.value } : current)} />
+              <span className="sr-only">{t(language, "nameLabel")}</span>
+              <input className="field" placeholder={t(language, "nameLabel")} value={memberDraft.name} onChange={(e) => setMemberDraft((current) => current ? { ...current, name: e.target.value } : current)} />
             </label>
             <label className="span-6">
-              {t(language, "urduNameLabel")}
-              <input className="field" value={memberDraft.nameUr} onChange={(e) => setMemberDraft((current) => current ? { ...current, nameUr: e.target.value } : current)} />
+              <span className="sr-only">{t(language, "urduNameLabel")}</span>
+              <input className="field" placeholder={t(language, "urduNameLabel")} value={memberDraft.nameUr} onChange={(e) => setMemberDraft((current) => current ? { ...current, nameUr: e.target.value } : current)} />
             </label>
             <label className="span-4">
-              {t(language, "genderLabel")}
-              <select className="select" value={memberDraft.gender} onChange={(e) => setMemberDraft((current) => current ? { ...current, gender: e.target.value as Gender } : current)}>
+              <span className="sr-only">{t(language, "genderLabel")}</span>
+              <select className="select" aria-label={t(language, "genderLabel")} value={memberDraft.gender} onChange={(e) => setMemberDraft((current) => current ? { ...current, gender: e.target.value as Gender } : current)}>
                 <option value="male">{t(language, "genderMale")}</option>
                 <option value="female">{t(language, "genderFemale")}</option>
               </select>
             </label>
             <label className="span-4">
-              {t(language, "dobLabel")}
-              <input className="field" type="date" value={memberDraft.dob} onChange={(e) => setMemberDraft((current) => current ? { ...current, dob: e.target.value } : current)} />
+              <span className="sr-only">{t(language, "dobLabel")}</span>
+              <input className="field" type="date" aria-label={t(language, "dobLabel")} value={memberDraft.dob} onChange={(e) => setMemberDraft((current) => current ? { ...current, dob: e.target.value } : current)} />
             </label>
             <label className="span-4">
-              {t(language, "dodLabel")}
-              <input className="field" type="date" value={memberDraft.dod} onChange={(e) => setMemberDraft((current) => current ? { ...current, dod: e.target.value } : current)} />
+              <span className="sr-only">{t(language, "dodLabel")}</span>
+              <input className="field" type="date" aria-label={t(language, "dodLabel")} value={memberDraft.dod} onChange={(e) => setMemberDraft((current) => current ? { ...current, dod: e.target.value } : current)} />
             </label>
             <label className="span-6">
-              {t(language, "birthplaceLabel")}
-              <input className="field" value={memberDraft.birthplace} onChange={(e) => setMemberDraft((current) => current ? { ...current, birthplace: e.target.value } : current)} />
+              <span className="sr-only">{t(language, "birthplaceLabel")}</span>
+              <input className="field" placeholder={t(language, "birthplaceLabel")} value={memberDraft.birthplace} onChange={(e) => setMemberDraft((current) => current ? { ...current, birthplace: e.target.value } : current)} />
             </label>
             <label className="span-6">
-              {t(language, "photoUrlLabel")}
-              <input className="field" value={memberDraft.photo} onChange={(e) => setMemberDraft((current) => current ? { ...current, photo: e.target.value } : current)} />
+              <span className="sr-only">{t(language, "photoUrlLabel")}</span>
+              <input className="field" placeholder={t(language, "photoUrlLabel")} value={memberDraft.photo} onChange={(e) => setMemberDraft((current) => current ? { ...current, photo: e.target.value } : current)} />
             </label>
             <label className="span-12">
-              {t(language, "uploadPhotoLabel")}
+              <span className="sr-only">{t(language, "uploadPhotoLabel")}</span>
               <input
                 className="field"
                 type="file"
                 accept="image/*"
+                aria-label={t(language, "uploadPhotoLabel")}
                 onChange={(e) => handleMemberPhoto(e.target.files?.[0])}
               />
             </label>
             <label className="span-12">
-              {t(language, "bioLabel")}
-              <textarea className="textarea" value={memberDraft.bio} onChange={(e) => setMemberDraft((current) => current ? { ...current, bio: e.target.value } : current)} />
+              <span className="sr-only">{t(language, "bioLabel")}</span>
+              <textarea className="textarea" placeholder={t(language, "bioLabel")} value={memberDraft.bio} onChange={(e) => setMemberDraft((current) => current ? { ...current, bio: e.target.value } : current)} />
             </label>
             <label className="span-6">
-              {t(language, "fatherLabel")}
-              <select className="select" value={memberDraft.fatherId} onChange={(e) => setMemberDraft((current) => current ? { ...current, fatherId: e.target.value } : current)}>
-                <option value="">{t(language, "noneOption")}</option>
+              <span className="sr-only">{t(language, "fatherLabel")}</span>
+              <select className="select" aria-label={t(language, "fatherLabel")} value={memberDraft.fatherId} onChange={(e) => setMemberDraft((current) => current ? { ...current, fatherId: e.target.value } : current)}>
+                <option value="">{t(language, "fatherLabel")} — {t(language, "noneOption")}</option>
                 {state.members.filter((member) => member.gender === "male" && member.id !== memberDraft.id).map((member) => (
                   <option key={member.id} value={member.id}>{displayName(member, language)}</option>
                 ))}
               </select>
             </label>
             <label className="span-6">
-              {t(language, "motherLabel")}
-              <select className="select" value={memberDraft.motherId} onChange={(e) => setMemberDraft((current) => current ? { ...current, motherId: e.target.value } : current)}>
-                <option value="">{t(language, "noneOption")}</option>
+              <span className="sr-only">{t(language, "motherLabel")}</span>
+              <select className="select" aria-label={t(language, "motherLabel")} value={memberDraft.motherId} onChange={(e) => setMemberDraft((current) => current ? { ...current, motherId: e.target.value } : current)}>
+                <option value="">{t(language, "motherLabel")} — {t(language, "noneOption")}</option>
                 {state.members.filter((member) => member.gender === "female" && member.id !== memberDraft.id).map((member) => (
                   <option key={member.id} value={member.id}>{displayName(member, language)}</option>
                 ))}
