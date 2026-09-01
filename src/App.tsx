@@ -28,9 +28,11 @@ import {
   onSupabaseAuthChange,
   publishInitialState,
   saveSupabaseState,
+  sendPasswordResetEmail,
   signInWithPassword,
   signOutSupabase,
-  StaleWriteError
+  StaleWriteError,
+  updatePassword
 } from "./supabase";
 import FamilyTreeD3 from "./FamilyTreeD3";
 import { t, tGender } from "./i18n";
@@ -271,6 +273,17 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [forgotMessage, setForgotMessage] = useState("");
+  const [forgotError, setForgotError] = useState("");
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordChangeBusy, setPasswordChangeBusy] = useState(false);
+  const [passwordChangeError, setPasswordChangeError] = useState("");
+  const [passwordChangeSuccess, setPasswordChangeSuccess] = useState(false);
   const [syncStatus, setSyncStatus] = useState<"loading" | "ready" | "error" | "conflict">("loading");
   const [syncMessageKey, setSyncMessageKey] = useState<StringKey>("checkingLocalData");
   const [memberDraft, setMemberDraft] = useState<MemberDraft | null>(null);
@@ -317,7 +330,13 @@ export default function App() {
 
   useEffect(() => {
     void getSupabaseSession().then(setSupabaseSession);
-    return onSupabaseAuthChange(setSupabaseSession);
+    return onSupabaseAuthChange((session, event) => {
+      setSupabaseSession(session);
+      if (event === "PASSWORD_RECOVERY") {
+        setRecoveryMode(true);
+        navigate({ page: "admin" });
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -436,6 +455,51 @@ export default function App() {
   function logout() {
     void signOutSupabase();
     navigate({ page: "home" });
+  }
+
+  async function handleForgotPasswordSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!supabaseConfigured) {
+      setForgotError(t(language, "loginNotConfigured"));
+      return;
+    }
+    setForgotBusy(true);
+    setForgotError("");
+    setForgotMessage("");
+    try {
+      await sendPasswordResetEmail(forgotEmail.trim());
+      setForgotMessage(t(language, "forgotPasswordSent"));
+    } catch (error) {
+      setForgotError(error instanceof Error ? error.message : t(language, "forgotPasswordFailed"));
+    } finally {
+      setForgotBusy(false);
+    }
+  }
+
+  async function handleChangePasswordSubmit(event: FormEvent) {
+    event.preventDefault();
+    setPasswordChangeError("");
+    setPasswordChangeSuccess(false);
+    if (newPassword.length < 6) {
+      setPasswordChangeError(t(language, "passwordTooShort"));
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordChangeError(t(language, "passwordsDontMatch"));
+      return;
+    }
+    setPasswordChangeBusy(true);
+    try {
+      await updatePassword(newPassword);
+      setPasswordChangeSuccess(true);
+      setNewPassword("");
+      setConfirmPassword("");
+      setRecoveryMode(false);
+    } catch (error) {
+      setPasswordChangeError(error instanceof Error ? error.message : t(language, "passwordChangeFailed"));
+    } finally {
+      setPasswordChangeBusy(false);
+    }
   }
 
   function updateState(next: (current: AppState) => AppState) {
@@ -660,31 +724,89 @@ export default function App() {
   }), [roots.length, state.gallery.length, state.members.length, state.users.length]);
 
   const content = (() => {
+    if (!isLoggedIn && route.page === "admin" && recoveryMode) {
+      return (
+        <section className="section">
+          <div className="section-head">
+            <div>
+              <span className="eyebrow">{t(language, "signInEyebrow")}</span>
+              <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "recoveryModeTitle")}</h2>
+              <p className="section-subtitle">{t(language, "recoveryModeSubtitle")}</p>
+            </div>
+          </div>
+          <div className="login-panel-single">
+            <Card title={t(language, "recoveryModeTitle")}>
+              <form className="form-stack" onSubmit={handleChangePasswordSubmit}>
+                <label>
+                  {t(language, "newPasswordLabel")}
+                  <input type="password" className="field" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
+                </label>
+                <label>
+                  {t(language, "confirmPasswordLabel")}
+                  <input type="password" className="field" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" />
+                </label>
+                {passwordChangeError ? <div className="notice danger">{passwordChangeError}</div> : null}
+                <button className="btn" type="submit" disabled={passwordChangeBusy}>{passwordChangeBusy ? t(language, "savingPassword") : t(language, "savePasswordButton")}</button>
+              </form>
+            </Card>
+          </div>
+        </section>
+      );
+    }
+
     if (!isLoggedIn && route.page === "admin") {
       return (
         <section className="section">
           <div className="section-head">
             <div>
               <span className="eyebrow">{t(language, "signInEyebrow")}</span>
-              <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "signInTitle")}</h2>
-              <p className="section-subtitle">{t(language, "signInSubtitle")}</p>
+              <h2 className="section-title" style={{ marginTop: 12 }}>{forgotPasswordOpen ? t(language, "forgotPasswordTitle") : t(language, "signInTitle")}</h2>
+              <p className="section-subtitle">{forgotPasswordOpen ? t(language, "forgotPasswordSubtitle") : t(language, "signInSubtitle")}</p>
             </div>
           </div>
           <div className="login-panel-single">
-            <Card title={t(language, "loginCardTitle")} subtitle={t(language, "loginCardSubtitle")}>
-              <form className="form-stack" onSubmit={handleLoginSubmit}>
-                <label>
-                  {t(language, "emailLabel")}
-                  <input type="email" className="field" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} autoComplete="username" />
-                </label>
-                <label>
-                  {t(language, "passwordLabel")}
-                  <input type="password" className="field" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} autoComplete="current-password" />
-                </label>
-                {loginError ? <div className="notice danger">{loginError}</div> : null}
-                <button className="btn" type="submit" disabled={loginBusy}>{loginBusy ? t(language, "signingIn") : t(language, "loginButton")}</button>
-              </form>
-            </Card>
+            {forgotPasswordOpen ? (
+              <Card title={t(language, "forgotPasswordTitle")}>
+                <form className="form-stack" onSubmit={handleForgotPasswordSubmit}>
+                  <label>
+                    {t(language, "emailLabel")}
+                    <input type="email" className="field" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} autoComplete="username" />
+                  </label>
+                  {forgotError ? <div className="notice danger">{forgotError}</div> : null}
+                  {forgotMessage ? <div className="notice">{forgotMessage}</div> : null}
+                  <button className="btn" type="submit" disabled={forgotBusy}>{forgotBusy ? t(language, "sendingResetLink") : t(language, "sendResetLinkButton")}</button>
+                  <button
+                    className="btn-ghost"
+                    type="button"
+                    onClick={() => { setForgotPasswordOpen(false); setForgotError(""); setForgotMessage(""); }}
+                  >
+                    {t(language, "backToLoginButton")}
+                  </button>
+                </form>
+              </Card>
+            ) : (
+              <Card title={t(language, "loginCardTitle")} subtitle={t(language, "loginCardSubtitle")}>
+                <form className="form-stack" onSubmit={handleLoginSubmit}>
+                  <label>
+                    {t(language, "emailLabel")}
+                    <input type="email" className="field" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} autoComplete="username" />
+                  </label>
+                  <label>
+                    {t(language, "passwordLabel")}
+                    <input type="password" className="field" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} autoComplete="current-password" />
+                  </label>
+                  {loginError ? <div className="notice danger">{loginError}</div> : null}
+                  <button className="btn" type="submit" disabled={loginBusy}>{loginBusy ? t(language, "signingIn") : t(language, "loginButton")}</button>
+                  <button
+                    className="btn-ghost"
+                    type="button"
+                    onClick={() => { setForgotPasswordOpen(true); setForgotEmail(loginEmail); setForgotError(""); setForgotMessage(""); }}
+                  >
+                    {t(language, "forgotPasswordLink")}
+                  </button>
+                </form>
+              </Card>
+            )}
           </div>
         </section>
       );
@@ -899,6 +1021,22 @@ export default function App() {
                 {importError ? <div className="notice danger">{importError}</div> : null}
                 <input ref={importInputRef} type="file" accept="application/json,.json" hidden onChange={(e) => handleImportFile(e.target.files?.[0])} />
               </div>
+            </Card>
+
+            <Card title={t(language, "changePasswordTitle")} subtitle={t(language, "changePasswordSubtitle")}>
+              <form className="form-stack" onSubmit={handleChangePasswordSubmit}>
+                <label>
+                  {t(language, "newPasswordLabel")}
+                  <input type="password" className="field" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
+                </label>
+                <label>
+                  {t(language, "confirmPasswordLabel")}
+                  <input type="password" className="field" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" />
+                </label>
+                {passwordChangeError ? <div className="notice danger">{passwordChangeError}</div> : null}
+                {passwordChangeSuccess ? <div className="notice">{t(language, "passwordChangedSuccess")}</div> : null}
+                <button className="btn" type="submit" disabled={passwordChangeBusy}>{passwordChangeBusy ? t(language, "savingPassword") : t(language, "savePasswordButton")}</button>
+              </form>
             </Card>
           </div>
         </section>

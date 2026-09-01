@@ -1,4 +1,4 @@
-import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type AuthChangeEvent, type Session, type SupabaseClient } from "@supabase/supabase-js";
 import { createEmptyState, importJson } from "./lib";
 import type { AppState } from "./types";
 
@@ -122,9 +122,28 @@ export async function getSupabaseSession(): Promise<Session | null> {
   return data.session;
 }
 
-export function onSupabaseAuthChange(callback: (session: Session | null) => void): () => void {
+export function onSupabaseAuthChange(
+  callback: (session: Session | null, event: AuthChangeEvent) => void
+): () => void {
   const supabase = getSupabaseClient();
   if (!supabase) return () => {};
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => callback(session));
+  const { data } = supabase.auth.onAuthStateChange((event, session) => callback(session, event));
   return () => data.subscription.unsubscribe();
+}
+
+/** Sends a password-recovery email with a link back to this site. */
+export async function sendPasswordResetEmail(email: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}`;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) throw new Error(error.message);
+}
+
+/** Updates the password for the currently signed-in user (also used to finish a recovery-link flow). */
+export async function updatePassword(newPassword: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw new Error(error.message);
 }
