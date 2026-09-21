@@ -401,12 +401,17 @@ button {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+/* Fixed-size tracks, left-aligned: a few items stay small instead of stretching across the row. */
 .gallery-grid {
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 180px));
+  justify-content: start;
+  gap: 12px;
 }
 
 .member-grid {
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 260px));
+  justify-content: start;
+  gap: 10px;
 }
 
 .roots-elders-section {
@@ -415,12 +420,9 @@ button {
 
 .roots-elders-grid {
   display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 140px));
-}
-
-.roots-elders-grid .member-card {
-  padding: 10px;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 260px));
+  justify-content: start;
 }
 
 .roots-elders-grid .tree-name {
@@ -436,16 +438,12 @@ button {
 }
 
 .profile-relations-grid .card {
-  padding: 14px;
+  padding: 12px;
 }
 
 .profile-relations-inner {
-  grid-template-columns: repeat(auto-fit, minmax(100px, 130px));
-  gap: 10px;
-}
-
-.profile-relations-inner .member-card {
-  padding: 8px;
+  grid-template-columns: 1fr;
+  gap: 8px;
 }
 
 .profile-relations-inner .tree-name {
@@ -510,12 +508,12 @@ button {
   padding: 18px 22px;
 }
 
-.member-profile-layout {
+.profile-layout.member-profile-layout {
   grid-template-columns: 160px minmax(0, 1fr);
   gap: 18px;
 }
 
-.member-profile-photo {
+.member-photo.hero-photo.member-profile-photo {
   width: min(160px, 100%);
   border-radius: 14px;
 }
@@ -558,19 +556,60 @@ button {
 }
 
 .stat-card,
-.card,
-.member-card,
-.gallery-card {
-  padding: 20px;
+.card {
+  padding: 16px;
+}
+
+.stat-card:hover,
+.card:hover,
+.member-card:hover,
+.gallery-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Compact member card: small photo on the left, name and place beside it. */
+.member-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+}
+
+.member-card .avatar {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 auto;
+  border-width: 2px;
+  border-radius: 12px;
+}
+
+.member-card-text {
+  min-width: 0;
+}
+
+.member-card-text .tree-name,
+.member-card-text .tree-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .gallery-card {
   width: 100%;
-  max-width: 250px;
-  height: 250px;
   display: flex;
   flex-direction: column;
+  gap: 8px;
+  padding: 8px;
   overflow: hidden;
+}
+
+.gallery-meta {
+  min-width: 0;
+  padding: 0 2px;
 }
 
 .gallery-card .tree-name,
@@ -580,14 +619,28 @@ button {
   white-space: nowrap;
 }
 
+.gallery-card .tree-name {
+  font-size: 0.88rem;
+}
+
+.gallery-card .tree-sub {
+  font-size: 0.76rem;
+}
+
 .gallery-card .actions-row {
   flex-shrink: 0;
+  gap: 6px;
+}
+
+.gallery-card .actions-row .btn-ghost {
+  padding: 6px 12px;
+  font-size: 0.8rem;
 }
 
 .stat-value {
   display: block;
   font-family: "Playfair Display", serif;
-  font-size: 2.1rem;
+  font-size: 1.8rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--ink);
@@ -749,8 +802,10 @@ button {
 }
 
 .gallery-photo {
+  display: block;
   width: 100%;
-  height: 100px;
+  height: auto;
+  aspect-ratio: 4 / 3;
   object-fit: cover;
   border-radius: 12px;
   border: 1px solid var(--border);
@@ -1342,9 +1397,24 @@ button {
 
   .profile-layout,
   .card-grid,
-  .gallery-grid,
   .member-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* Phones: two small gallery cards per row, and the profile photo sits beside the name. */
+  .gallery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .profile-layout.member-profile-layout {
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .member-photo.hero-photo.member-profile-photo {
+    width: 96px;
+    border-radius: 12px;
   }
 
   .stat-grid {

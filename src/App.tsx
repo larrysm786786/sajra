@@ -297,9 +297,9 @@ function MemberCard({
   onOpen: (id: number) => void;
 }) {
   return (
-    <button type="button" className="member-card" onClick={() => onOpen(member.id)} style={{ textAlign: "left" }}>
+    <button type="button" className="member-card" onClick={() => onOpen(member.id)}>
       <img className="avatar" src={photoSrc(member.photo)} alt={displayName(member, language)} />
-      <div style={{ marginTop: 12 }}>
+      <div className="member-card-text">
         <div className="tree-name">{displayName(member, language)}</div>
         <div className="tree-sub">
           {member.birthplace || t(language, "noBirthplace")}
@@ -1124,12 +1124,12 @@ export default function App() {
                   <button type="button" className="gallery-thumb-btn" onClick={() => openLightbox(image)}>
                     <img className="gallery-photo" src={photoSrc(image.src)} alt={image.caption ?? t(language, "galleryImageAlt")} />
                   </button>
-                  <div style={{ marginTop: 12 }}>
+                  <div className="gallery-meta">
                     <div className="tree-name">{image.caption || t(language, "untitledPhoto")}</div>
                     <div className="tree-sub">{formatDate(image.uploadedAt, language)}</div>
                   </div>
                   {isAdmin ? (
-                    <div className="actions-row" style={{ marginTop: 12 }}>
+                    <div className="actions-row">
                       <button className="btn-ghost" type="button" onClick={() => openGalleryEditor(image)}>{t(language, "editButton")}</button>
                       <button className="btn-ghost danger" type="button" onClick={() => deleteGalleryItem(image.id)}>{t(language, "deleteButton")}</button>
                     </div>
