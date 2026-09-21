@@ -12,6 +12,8 @@ export interface Member {
   dob?: string | null;
   dod?: string | null;
   birthplace?: string | null;
+  /** A preset key from professions.ts (e.g. "doctor") or free text for anything else. */
+  profession?: string | null;
   photo?: string | null;
   bio?: string | null;
   fatherId?: number | null;

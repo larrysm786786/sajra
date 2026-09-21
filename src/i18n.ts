@@ -221,7 +221,26 @@ const STRINGS = {
 
     zoomInLabel: "Zoom in",
     zoomOutLabel: "Zoom out",
-    closeLabel: "Close"
+    closeLabel: "Close",
+
+    professionLabel: "Profession",
+    professionNone: "Not specified",
+    professionOther: "Other…",
+    professionOtherPlaceholder: "Type the profession",
+    professionDoctor: "Doctor",
+    professionEngineer: "Engineer",
+    professionHafiz: "Hafiz",
+    professionMaulana: "Maulana",
+    professionTeacher: "Teacher",
+    professionLawyer: "Lawyer",
+    professionBusinessman: "Businessman",
+    professionFarmer: "Farmer",
+    professionGovernment: "Government employee",
+    professionStudent: "Student",
+    professionHomemaker: "Homemaker",
+    eyebrowProfessions: "Professions",
+    professionsTitle: "Who does what in the family",
+    professionsSubtitle: "Tap a profession to see who is in it."
   },
   ur: {
     signInEyebrow: "ایڈمن رسائی",
@@ -443,7 +462,26 @@ const STRINGS = {
 
     zoomInLabel: "زوم ان",
     zoomOutLabel: "زوم آؤٹ",
-    closeLabel: "بند کریں"
+    closeLabel: "بند کریں",
+
+    professionLabel: "پیشہ",
+    professionNone: "نامعلوم",
+    professionOther: "دیگر…",
+    professionOtherPlaceholder: "پیشہ لکھیں",
+    professionDoctor: "ڈاکٹر",
+    professionEngineer: "انجینئر",
+    professionHafiz: "حافظ",
+    professionMaulana: "مولانا",
+    professionTeacher: "استاد",
+    professionLawyer: "وکیل",
+    professionBusinessman: "تاجر",
+    professionFarmer: "کسان",
+    professionGovernment: "سرکاری ملازم",
+    professionStudent: "طالب علم",
+    professionHomemaker: "گھریلو خاتون",
+    eyebrowProfessions: "پیشے",
+    professionsTitle: "خاندان میں کون کیا کرتا ہے",
+    professionsSubtitle: "کسی پیشے پر کلک کریں تاکہ اس کے ارکان دیکھ سکیں۔"
   }
 } as const;
 

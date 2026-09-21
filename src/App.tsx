@@ -36,6 +36,14 @@ import {
   updatePassword
 } from "./supabase";
 import FamilyTreeD3 from "./FamilyTreeD3";
+import {
+  groupByProfession,
+  isProfessionKey,
+  normalizeProfession,
+  PROFESSION_KEYS,
+  PROFESSION_OTHER,
+  professionLabel
+} from "./professions";
 import { t, tGender } from "./i18n";
 import type { StringKey } from "./i18n";
 
@@ -59,6 +67,8 @@ type MemberDraft = {
   dob: string;
   dod: string;
   birthplace: string;
+  professionChoice: string;
+  professionOther: string;
   photo: string;
   bio: string;
   fatherId: string;
@@ -108,6 +118,14 @@ function routeHash(route: RouteState): string {
   return `#/${route.page}`;
 }
 
+function professionDraftFields(profession?: string | null): Pick<MemberDraft, "professionChoice" | "professionOther"> {
+  const value = profession?.trim() ?? "";
+  if (!value) return { professionChoice: "", professionOther: "" };
+  return isProfessionKey(value)
+    ? { professionChoice: value, professionOther: "" }
+    : { professionChoice: PROFESSION_OTHER, professionOther: value };
+}
+
 function emptyMemberDraft(member?: Member): MemberDraft {
   return member
     ? {
@@ -118,6 +136,7 @@ function emptyMemberDraft(member?: Member): MemberDraft {
         dob: member.dob ?? "",
         dod: member.dod ?? "",
         birthplace: member.birthplace ?? "",
+        ...professionDraftFields(member.profession),
         photo: member.photo ?? "",
         bio: member.bio ?? "",
         fatherId: member.fatherId ? String(member.fatherId) : "",
@@ -131,6 +150,8 @@ function emptyMemberDraft(member?: Member): MemberDraft {
         dob: "",
         dod: "",
         birthplace: "",
+        professionChoice: "",
+        professionOther: "",
         photo: "",
         bio: "",
         fatherId: "",
@@ -350,6 +371,7 @@ export default function App() {
   const [syncMessageKey, setSyncMessageKey] = useState<StringKey>("checkingLocalData");
   const [memberDraft, setMemberDraft] = useState<MemberDraft | null>(null);
   const [userDraft, setUserDraft] = useState<UserDraft | null>(null);
+  const [selectedProfession, setSelectedProfession] = useState<string | null>(null);
   const [userBusy, setUserBusy] = useState(false);
   const [userError, setUserError] = useState("");
   const [galleryDraft, setGalleryDraft] = useState<GalleryDraft | null>(null);
@@ -634,6 +656,7 @@ export default function App() {
       dob: memberDraft.dob || null,
       dod: memberDraft.dod || null,
       birthplace: memberDraft.birthplace.trim() || null,
+      profession: normalizeProfession(memberDraft.professionChoice === PROFESSION_OTHER ? memberDraft.professionOther : memberDraft.professionChoice),
       photo: memberDraft.photo.trim() || null,
       bio: memberDraft.bio.trim() || null,
       fatherId: memberDraft.fatherId ? Number(memberDraft.fatherId) : null,
@@ -843,6 +866,9 @@ export default function App() {
     ).slice(0, 24);
   }, [memberQuery, members]);
 
+  const professionGroups = useMemo(() => groupByProfession(state.members, language), [state.members, language]);
+  const activeProfessionGroup = professionGroups.find((group) => group.id === selectedProfession);
+
   const stats = useMemo(() => ({
     members: state.members.length,
     roots: roots.length,
@@ -949,7 +975,7 @@ export default function App() {
               <div className="profile-layout member-profile-layout">
                 <img className="member-photo hero-photo member-profile-photo" src={photoSrc(member.photo)} alt={displayName(member, language)} />
                 <div>
-                  <span className="eyebrow">{tGender(language, member.gender)}</span>
+                  <span className="eyebrow">{tGender(language, member.gender)}{member.profession?.trim() ? ` • ${professionLabel(language, member.profession.trim())}` : ""}</span>
                   <h1 className="section-title" style={{ marginTop: 12 }}>{displayName(member, language)}</h1>
                   <p className="section-subtitle" style={{ marginTop: 12 }}>
                     {member.birthplace || t(language, "noBirthplace")}
@@ -1119,7 +1145,10 @@ export default function App() {
                   <div className="tree-head">
                     <div>
                       <div className="tree-name">{displayName(member, language)}</div>
-                      <div className="tree-sub">{member.birthplace || t(language, "noBirthplace")}</div>
+                      <div className="tree-sub">
+                        {member.birthplace || t(language, "noBirthplace")}
+                        {member.profession?.trim() ? ` • ${professionLabel(language, member.profession.trim())}` : ""}
+                      </div>
                     </div>
                     <div className="actions-row">
                       <button className="btn-ghost" type="button" onClick={() => navigate({ page: "member", memberId: member.id })}>{t(language, "openButton")}</button>
@@ -1331,22 +1360,57 @@ export default function App() {
     }
 
     return (
-      <section className="hero">
-        <span className="eyebrow">{t(language, "eyebrowHero")}</span>
-        <h1>{t(language, "heroTitle")}</h1>
-        <p>
-          {t(language, "heroParagraph")}
-        </p>
-        <div className="hero-actions">
-          <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openFamilyTreeButton")}</button>
-        </div>
-        <div className="hero-kpis">
-          <span className="kpi">{stats.members} {t(language, "kpiMembersSuffix")}</span>
-          <span className="kpi">{stats.roots} {t(language, "kpiRootsSuffix")}</span>
-          <span className="kpi">{stats.gallery} {t(language, "kpiPhotosSuffix")}</span>
-          <span className="kpi">{stats.users} {t(language, "kpiAccountsSuffix")}</span>
-        </div>
-      </section>
+      <>
+        <section className="hero">
+          <span className="eyebrow">{t(language, "eyebrowHero")}</span>
+          <h1>{t(language, "heroTitle")}</h1>
+          <p>
+            {t(language, "heroParagraph")}
+          </p>
+          <div className="hero-actions">
+            <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openFamilyTreeButton")}</button>
+          </div>
+          <div className="hero-kpis">
+            <span className="kpi">{stats.members} {t(language, "kpiMembersSuffix")}</span>
+            <span className="kpi">{stats.roots} {t(language, "kpiRootsSuffix")}</span>
+            <span className="kpi">{stats.gallery} {t(language, "kpiPhotosSuffix")}</span>
+            <span className="kpi">{stats.users} {t(language, "kpiAccountsSuffix")}</span>
+          </div>
+        </section>
+
+        {professionGroups.length ? (
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <span className="eyebrow">{t(language, "eyebrowProfessions")}</span>
+                <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "professionsTitle")}</h2>
+                <p className="section-subtitle">{t(language, "professionsSubtitle")}</p>
+              </div>
+            </div>
+            <div className="profession-grid">
+              {professionGroups.map((group) => (
+                <button
+                  key={group.id}
+                  type="button"
+                  className={`stat-card profession-card${group.id === activeProfessionGroup?.id ? " active" : ""}`}
+                  aria-pressed={group.id === activeProfessionGroup?.id}
+                  onClick={() => setSelectedProfession((current) => (current === group.id ? null : group.id))}
+                >
+                  <span className="stat-value">{group.members.length}</span>
+                  <span className="muted" style={{ fontWeight: 700 }}>{group.label}</span>
+                </button>
+              ))}
+            </div>
+            {activeProfessionGroup ? (
+              <div className="member-grid profession-members">
+                {[...activeProfessionGroup.members].sort(sortMembers).map((member) => (
+                  <MemberCard key={member.id} member={member} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
+                ))}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+      </>
     );
   })();
 
@@ -1464,6 +1528,22 @@ export default function App() {
               <span className="sr-only">{t(language, "birthplaceLabel")}</span>
               <input className="field" placeholder={t(language, "birthplaceLabel")} value={memberDraft.birthplace} onChange={(e) => setMemberDraft((current) => current ? { ...current, birthplace: e.target.value } : current)} />
             </label>
+            <label className="span-6">
+              <span className="sr-only">{t(language, "professionLabel")}</span>
+              <select className="select" aria-label={t(language, "professionLabel")} value={memberDraft.professionChoice} onChange={(e) => setMemberDraft((current) => current ? { ...current, professionChoice: e.target.value } : current)}>
+                <option value="">{t(language, "professionLabel")} — {t(language, "professionNone")}</option>
+                {PROFESSION_KEYS.map((key) => (
+                  <option key={key} value={key}>{professionLabel(language, key)}</option>
+                ))}
+                <option value={PROFESSION_OTHER}>{t(language, "professionOther")}</option>
+              </select>
+            </label>
+            {memberDraft.professionChoice === PROFESSION_OTHER ? (
+              <label className="span-6">
+                <span className="sr-only">{t(language, "professionOtherPlaceholder")}</span>
+                <input className="field" placeholder={t(language, "professionOtherPlaceholder")} value={memberDraft.professionOther} onChange={(e) => setMemberDraft((current) => current ? { ...current, professionOther: e.target.value } : current)} />
+              </label>
+            ) : null}
             <label className="span-6">
               <span className="sr-only">{t(language, "photoUrlLabel")}</span>
               <input className="field" placeholder={t(language, "photoUrlLabel")} value={memberDraft.photo} onChange={(e) => setMemberDraft((current) => current ? { ...current, photo: e.target.value } : current)} />

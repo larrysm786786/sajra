@@ -836,6 +836,30 @@ button {
   width: min(440px, 100%);
 }
 
+/* ===== Professions (home) ===== */
+.profession-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+
+.profession-card {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.profession-card.active {
+  border-top-color: var(--accent-strong);
+  box-shadow: var(--shadow);
+}
+
+.profession-members {
+  margin-top: 18px;
+}
+
 /* ===== Auth forms ===== */
 .form-stack {
   display: grid;
