@@ -577,8 +577,9 @@ export default function App() {
     setState((current) => next(current));
   }
 
+  // Editors may only add new entries; changing existing ones is admin-only.
   function openMemberEditor(member?: Member) {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn || (member && !isAdmin)) return;
     setMemberDraft(emptyMemberDraft(member));
     setSpouseSearchQuery("");
   }
@@ -590,7 +591,7 @@ export default function App() {
   }
 
   function openGalleryEditor(image?: GalleryImage) {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn || (image && !isAdmin)) return;
     setGalleryDraft(emptyGalleryDraft(image));
   }
 
@@ -669,6 +670,7 @@ export default function App() {
   }
 
   function deleteMember(id: number) {
+    if (!isAdmin) return;
     if (!window.confirm(t(language, "confirmDeleteMember"))) return;
     updateState((current) => ({
       ...current,
@@ -795,6 +797,7 @@ export default function App() {
   }
 
   function deleteGalleryItem(id: number) {
+    if (!isAdmin) return;
     if (!window.confirm(t(language, "confirmDeleteGallery"))) return;
     updateState((current) => ({ ...current, gallery: current.gallery.filter((item) => item.id !== id) }));
   }
@@ -956,7 +959,7 @@ export default function App() {
                   </p>
                   <div className="profile-meta">
                     <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openTreeButton")}</button>
-                    {isLoggedIn ? <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editMemberButton")}</button> : null}
+                    {isAdmin ? <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editMemberButton")}</button> : null}
                   </div>
                   {member.bio ? <p style={{ marginTop: 16, lineHeight: 1.8 }}>{member.bio}</p> : null}
                 </div>
@@ -1047,7 +1050,7 @@ export default function App() {
                     <div className="tree-name">{image.caption || t(language, "untitledPhoto")}</div>
                     <div className="tree-sub">{formatDate(image.uploadedAt, language)}</div>
                   </div>
-                  {isLoggedIn ? (
+                  {isAdmin ? (
                     <div className="actions-row" style={{ marginTop: 12 }}>
                       <button className="btn-ghost" type="button" onClick={() => openGalleryEditor(image)}>{t(language, "editButton")}</button>
                       <button className="btn-ghost danger" type="button" onClick={() => deleteGalleryItem(image.id)}>{t(language, "deleteButton")}</button>
@@ -1120,8 +1123,12 @@ export default function App() {
                     </div>
                     <div className="actions-row">
                       <button className="btn-ghost" type="button" onClick={() => navigate({ page: "member", memberId: member.id })}>{t(language, "openButton")}</button>
-                      <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editButton")}</button>
-                      <button className="btn-ghost danger" type="button" onClick={() => deleteMember(member.id)}>{t(language, "deleteButton")}</button>
+                      {isAdmin ? (
+                        <>
+                          <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editButton")}</button>
+                          <button className="btn-ghost danger" type="button" onClick={() => deleteMember(member.id)}>{t(language, "deleteButton")}</button>
+                        </>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -1162,10 +1169,12 @@ export default function App() {
                       <div className="tree-sub">{formatDate(image.uploadedAt, language)}</div>
                     </div>
                   </div>
-                  <div className="actions-row">
-                    <button className="btn-ghost" type="button" onClick={() => openGalleryEditor(image)}>{t(language, "editButton")}</button>
-                    <button className="btn-ghost danger" type="button" onClick={() => deleteGalleryItem(image.id)}>{t(language, "deleteButton")}</button>
-                  </div>
+                  {isAdmin ? (
+                    <div className="actions-row">
+                      <button className="btn-ghost" type="button" onClick={() => openGalleryEditor(image)}>{t(language, "editButton")}</button>
+                      <button className="btn-ghost danger" type="button" onClick={() => deleteGalleryItem(image.id)}>{t(language, "deleteButton")}</button>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ))}
