@@ -161,7 +161,7 @@ const STRINGS = {
     invalidBackupFile: "Invalid backup file.",
 
     confirmDeleteMember: "Delete this member and remove relationship links?",
-    confirmDeleteUser: "Delete this user?",
+    confirmDeleteUser: "Delete this user? If they have a login account, it will be removed too.",
     confirmDeleteGallery: "Delete this gallery photo?",
     confirmResetArchive: "Reset the whole app state? This cannot be undone.",
 
@@ -186,7 +186,12 @@ const STRINGS = {
 
     editUserModalTitle: "Edit user",
     addUserModalTitle: "Add user",
-    userModalSubtitle: "A directory label only — it does not grant login access. Real sign-in accounts are managed separately by the archive administrator.",
+    userModalSubtitle: "Adding a user here also creates their login (email + password) so they can sign in to the admin panel. Editors can manage members and the gallery; only admins see Users and Backup.",
+    userPasswordLabel: "Login password",
+    userPasswordEditLabel: "New password (leave blank to keep the current one)",
+    userLoginRequired: "Email and password are required to create a login.",
+    userEmailNeededForPassword: "Enter an email to set a login password.",
+    savingUser: "Saving...",
     usernameLabel: "Username",
     roleLabel: "Role",
     editorOption: "Editor",
@@ -378,7 +383,7 @@ const STRINGS = {
     invalidBackupFile: "غلط بیک اپ فائل۔",
 
     confirmDeleteMember: "کیا اس رکن اور اس کے تمام رشتہ داری روابط کو حذف کر دیا جائے؟",
-    confirmDeleteUser: "کیا اس صارف کو حذف کر دیا جائے؟",
+    confirmDeleteUser: "کیا اس صارف کو حذف کر دیا جائے؟ اگر اس کا لاگ ان اکاؤنٹ ہے تو وہ بھی ہٹ جائے گا۔",
     confirmDeleteGallery: "کیا یہ گیلری تصویر حذف کر دی جائے؟",
     confirmResetArchive: "کیا پوری ایپ ری سیٹ کر دی جائے؟ اسے واپس نہیں لایا جا سکتا۔",
 
@@ -403,7 +408,12 @@ const STRINGS = {
 
     editUserModalTitle: "صارف میں ترمیم کریں",
     addUserModalTitle: "صارف شامل کریں",
-    userModalSubtitle: "صرف ایک فہرستی لیبل — یہ لاگ ان تک رسائی نہیں دیتا۔ اصل سائن ان اکاؤنٹس آرکائیو ایڈمنسٹریٹر الگ سے منظم کرتا ہے۔",
+    userModalSubtitle: "یہاں صارف بنانے سے اس کا لاگ ان (ای میل اور پاسورڈ) بھی بن جاتا ہے تاکہ وہ ایڈمن پینل میں سائن ان کر سکے۔ ایڈیٹر ارکان اور گیلری سنبھال سکتا ہے؛ صارفین اور بیک اپ صرف ایڈمن کو نظر آتے ہیں۔",
+    userPasswordLabel: "لاگ ان پاسورڈ",
+    userPasswordEditLabel: "نیا پاسورڈ (موجودہ رکھنے کے لیے خالی چھوڑیں)",
+    userLoginRequired: "لاگ ان بنانے کے لیے ای میل اور پاسورڈ ضروری ہیں۔",
+    userEmailNeededForPassword: "لاگ ان پاسورڈ سیٹ کرنے کے لیے ای میل درج کریں۔",
+    savingUser: "محفوظ ہو رہا ہے...",
     usernameLabel: "یوزر نیم",
     roleLabel: "کردار",
     editorOption: "ایڈیٹر",

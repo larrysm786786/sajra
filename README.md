@@ -69,6 +69,18 @@ VITE_SUPABASE_URL=https://eobseycmexagcdyjgsch.supabase.co
 VITE_SUPABASE_ANON_KEY=your_publishable_key_here
 ```
 
+## Admin users (login accounts)
+
+"Add user" in the admin panel creates a real Supabase login (email + password) through the
+`admin-users` Edge Function in [`supabase/functions/admin-users/index.ts`](./supabase/functions/admin-users/index.ts).
+One-time setup in the Supabase dashboard:
+
+1. **Edge Functions → Deploy a new function → Via Editor**. Name it `admin-users`, paste the file above, keep *Verify JWT* on, and deploy.
+2. **Authentication → Sign In / Providers → turn off "Allow new users to sign up"**, so only admins can create accounts.
+
+Roles live in each account's `app_metadata.role`. `editor` accounts can manage members and the gallery;
+only admins see Users and Backup. Accounts without a role (for example ones created by hand in the dashboard) count as admins.
+
 ## Important files
 
 - [`src/App.tsx`](./src/App.tsx) contains the full React app.

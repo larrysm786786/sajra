@@ -25,6 +25,7 @@ import {
   getSupabaseSession,
   isSupabaseConfigured,
   loadSupabaseState,
+  manageAuthUser,
   onSupabaseAuthChange,
   publishInitialState,
   saveSupabaseState,
@@ -70,6 +71,7 @@ type UserDraft = {
   username: string;
   name: string;
   email: string;
+  password: string;
   role: Role;
 };
 
@@ -144,12 +146,14 @@ function emptyUserDraft(user?: User): UserDraft {
         username: user.username,
         name: user.name ?? "",
         email: user.email ?? "",
+        password: "",
         role: user.role
       }
     : {
         username: "",
         name: "",
         email: "",
+        password: "",
         role: "editor"
       };
 }
@@ -346,6 +350,8 @@ export default function App() {
   const [syncMessageKey, setSyncMessageKey] = useState<StringKey>("checkingLocalData");
   const [memberDraft, setMemberDraft] = useState<MemberDraft | null>(null);
   const [userDraft, setUserDraft] = useState<UserDraft | null>(null);
+  const [userBusy, setUserBusy] = useState(false);
+  const [userError, setUserError] = useState("");
   const [galleryDraft, setGalleryDraft] = useState<GalleryDraft | null>(null);
   const [lightboxImage, setLightboxImage] = useState<GalleryImage | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -355,7 +361,9 @@ export default function App() {
   const remoteUpdatedAtRef = useRef<string | null>(null);
 
   const isLoggedIn = Boolean(supabaseSession);
-  const isAdmin = isLoggedIn;
+  // Accounts made with the "editor" role can manage members and the gallery but not users or backups.
+  // Accounts without a role (e.g. created by hand in the Supabase dashboard) count as admins.
+  const isAdmin = isLoggedIn && supabaseSession?.user.app_metadata?.role !== "editor";
   const language = state.language;
   const members = useMemo(() => [...state.members].sort(sortMembers), [state.members]);
   const memberMap = useMemo(() => new Map(state.members.map((member) => [member.id, member])), [state.members]);
@@ -577,6 +585,7 @@ export default function App() {
 
   function openUserEditor(user?: User) {
     if (!isAdmin) return;
+    setUserError("");
     setUserDraft(user ? emptyUserDraft(user) : emptyUserDraft());
   }
 
@@ -588,6 +597,7 @@ export default function App() {
   function closeEditors() {
     setMemberDraft(null);
     setUserDraft(null);
+    setUserError("");
     setGalleryDraft(null);
     setSpouseSearchQuery("");
   }
@@ -673,17 +683,59 @@ export default function App() {
     }));
   }
 
-  function saveUser() {
-    if (!userDraft || !userDraft.username.trim()) return;
-    if (!isAdmin) return;
+  async function saveUser() {
+    if (!userDraft || !isAdmin || userBusy) return;
+    const email = userDraft.email.trim();
+    const password = userDraft.password;
+    const username = userDraft.username.trim() || email.split("@")[0];
+    if (!username) return;
+
     const id = userDraft.id ?? nextId(state.users);
     const existing = state.users.find((user) => user.id === id);
+    // A login account is needed when this entry gets an email it did not have (or a different one).
+    const needsNewLogin = Boolean(email) && (!existing?.email || existing.email.toLowerCase() !== email.toLowerCase());
+
+    setUserError("");
+    if (needsNewLogin && !password) {
+      setUserError(t(language, "userLoginRequired"));
+      return;
+    }
+    if (!email && password) {
+      setUserError(t(language, "userEmailNeededForPassword"));
+      return;
+    }
+    if (password && password.length < 6) {
+      setUserError(t(language, "passwordTooShort"));
+      return;
+    }
+
+    if (email && (needsNewLogin || password || existing?.role !== userDraft.role)) {
+      const request = { email, password: password || undefined, role: userDraft.role, name: userDraft.name.trim() || undefined };
+      setUserBusy(true);
+      try {
+        try {
+          await manageAuthUser({ action: needsNewLogin ? "create" : "update", ...request });
+        } catch (error) {
+          // The entry already had an email, but no login account was ever created for it.
+          if (!needsNewLogin && password && error instanceof Error && error.message.startsWith("No login account")) {
+            await manageAuthUser({ action: "create", ...request });
+          } else {
+            throw error;
+          }
+        }
+      } catch (error) {
+        setUserError(error instanceof Error ? error.message : String(error));
+        return;
+      } finally {
+        setUserBusy(false);
+      }
+    }
 
     const updated: User = {
       id,
-      username: userDraft.username.trim(),
+      username,
       name: userDraft.name.trim() || null,
-      email: userDraft.email.trim() || null,
+      email: email || null,
       role: userDraft.role,
       createdAt: existing?.createdAt || new Date().toISOString()
     };
@@ -697,9 +749,18 @@ export default function App() {
     closeEditors();
   }
 
-  function deleteUser(id: number) {
+  async function deleteUser(id: number) {
     if (!isAdmin) return;
     if (!window.confirm(t(language, "confirmDeleteUser"))) return;
+    const target = state.users.find((user) => user.id === id);
+    if (target?.email) {
+      try {
+        await manageAuthUser({ action: "delete", email: target.email });
+      } catch (error) {
+        window.alert(error instanceof Error ? error.message : String(error));
+        return;
+      }
+    }
     updateState((current) => ({ ...current, users: current.users.filter((user) => user.id !== id) }));
   }
 
@@ -1009,7 +1070,7 @@ export default function App() {
         { key: "members", label: t(language, "membersLabel"), subtitle: t(language, "membersCardSubtitle") },
         ...(isAdmin ? [{ key: "users" as const, label: t(language, "usersLabel"), subtitle: t(language, "usersCardSubtitle") }] : []),
         { key: "gallery", label: t(language, "adminNavGallery"), subtitle: t(language, "galleryAdminSubtitle") },
-        { key: "backup", label: t(language, "backupCardTitle"), subtitle: t(language, "backupCardSubtitle") },
+        ...(isAdmin ? [{ key: "backup" as const, label: t(language, "backupCardTitle"), subtitle: t(language, "backupCardSubtitle") }] : []),
         { key: "security", label: t(language, "adminNavSecurity"), subtitle: t(language, "changePasswordSubtitle") }
       ];
       const activeSection = sections.find((section) => section.key === adminSection) ?? sections[0];
@@ -1039,7 +1100,7 @@ export default function App() {
                   <button className="btn" type="button" onClick={() => openMemberEditor()}>{t(language, "addMemberButton")}</button>
                   {isAdmin ? <button className="btn-ghost" type="button" onClick={() => openUserEditor()}>{t(language, "addUserButton")}</button> : null}
                   <button className="btn-ghost" type="button" onClick={() => openGalleryEditor()}>{t(language, "addGalleryPhotoButton")}</button>
-                  <button className="btn-ghost" type="button" onClick={exportState}>{t(language, "downloadBackupButton")}</button>
+                  {isAdmin ? <button className="btn-ghost" type="button" onClick={exportState}>{t(language, "downloadBackupButton")}</button> : null}
                 </div>
               </Card>
             </div>
@@ -1510,7 +1571,7 @@ export default function App() {
             </label>
             <label className="span-6">
               {t(language, "emailLabel")}
-              <input className="field" value={userDraft.email} onChange={(e) => setUserDraft((current) => current ? { ...current, email: e.target.value } : current)} />
+              <input type="email" className="field" autoComplete="off" value={userDraft.email} onChange={(e) => setUserDraft((current) => current ? { ...current, email: e.target.value } : current)} />
             </label>
             <label className="span-6">
               {t(language, "roleLabel")}
@@ -1519,11 +1580,21 @@ export default function App() {
                 <option value="admin">{t(language, "adminOption")}</option>
               </select>
             </label>
+            <label className="span-12">
+              {t(language, userDraft.id ? "userPasswordEditLabel" : "userPasswordLabel")}
+              <PasswordField
+                value={userDraft.password}
+                onChange={(value) => setUserDraft((current) => current ? { ...current, password: value } : current)}
+                autoComplete="new-password"
+                language={language}
+              />
+            </label>
+            {userError ? <div className="notice danger span-12">{userError}</div> : null}
           </div>
           <div className="actions-row" style={{ marginTop: 18 }}>
-            <button className="btn" type="button" onClick={saveUser}>{t(language, "saveUserButton")}</button>
+            <button className="btn" type="button" disabled={userBusy} onClick={() => void saveUser()}>{userBusy ? t(language, "savingUser") : t(language, "saveUserButton")}</button>
             <button className="btn-ghost" type="button" onClick={closeEditors}>{t(language, "cancelButton")}</button>
-            {userDraft.id ? <button className="btn-ghost danger" type="button" onClick={() => { deleteUser(userDraft.id!); closeEditors(); }}>{t(language, "deleteButton")}</button> : null}
+            {userDraft.id ? <button className="btn-ghost danger" type="button" disabled={userBusy} onClick={() => { void deleteUser(userDraft.id!); closeEditors(); }}>{t(language, "deleteButton")}</button> : null}
           </div>
         </Modal>
       ) : null}

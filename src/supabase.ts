@@ -131,6 +131,42 @@ export function onSupabaseAuthChange(
   return () => data.subscription.unsubscribe();
 }
 
+export interface ManageUserRequest {
+  action: "create" | "update" | "delete";
+  email: string;
+  password?: string;
+  role?: "admin" | "editor";
+  name?: string;
+}
+
+/**
+ * Creates / updates / deletes a login account through the `admin-users` Edge
+ * Function (supabase/functions/admin-users). The function checks that the caller
+ * is a signed-in admin, so the service-role key never reaches the browser.
+ */
+export async function manageAuthUser(request: ManageUserRequest): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+
+  const { data, error } = await supabase.functions.invoke("admin-users", { body: request });
+  if (error) {
+    let message = error.message;
+    const response = (error as { context?: Response }).context;
+    if (response && typeof response.json === "function") {
+      if (response.status === 404) {
+        message = "The admin-users function is not deployed in Supabase yet.";
+      } else {
+        const body = await response.json().catch(() => null);
+        if (body?.error) message = String(body.error);
+      }
+    }
+    throw new Error(message);
+  }
+  if (data && typeof data === "object" && "error" in data && data.error) {
+    throw new Error(String(data.error));
+  }
+}
+
 /** Sends a password-recovery email with a link back to this site. */
 export async function sendPasswordResetEmail(email: string): Promise<void> {
   const supabase = getSupabaseClient();
