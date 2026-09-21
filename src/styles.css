@@ -836,6 +836,208 @@ button {
   width: min(440px, 100%);
 }
 
+/* ===== Auth forms ===== */
+.form-stack {
+  display: grid;
+  gap: 14px;
+}
+
+/* Give the submit / secondary buttons breathing room above them. */
+.form-stack > .btn,
+.form-stack > .btn-ghost {
+  margin-top: 8px;
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field .field {
+  padding-inline-end: 46px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  inset-inline-end: 6px;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.password-toggle:hover {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.link-btn {
+  justify-self: end;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-strong);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.link-btn:hover {
+  color: var(--text);
+}
+
+/* ===== Admin panel (sidebar layout) ===== */
+.admin-layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 22px;
+  margin-top: 22px;
+  align-items: start;
+}
+
+.admin-main {
+  margin-top: 0;
+  min-width: 0;
+}
+
+.admin-sidebar {
+  position: sticky;
+  top: 92px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow-sm);
+}
+
+.admin-sidebar-title,
+.admin-sidebar-label {
+  padding: 4px 12px 10px;
+  color: var(--accent-strong);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.admin-sidebar-nav,
+.admin-sidebar-group {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-sidebar-group {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.admin-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: start;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.admin-nav-item:hover {
+  background: var(--accent-soft);
+}
+
+.admin-nav-item.active {
+  background: var(--accent-strong);
+  color: var(--bg-soft);
+}
+
+.admin-nav-item.danger {
+  color: var(--danger);
+}
+
+.admin-nav-item svg {
+  flex: 0 0 auto;
+}
+
+.admin-search {
+  max-width: 360px;
+  margin-bottom: 14px;
+}
+
+.admin-form-narrow {
+  max-width: 440px;
+}
+
+.admin-gallery-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.admin-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+@media (max-width: 860px) {
+  .admin-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  /* On small screens the sidebar becomes a horizontally scrollable tab bar;
+     the website links and logout already live in the top menu. */
+  .admin-sidebar {
+    position: static;
+    padding: 10px;
+  }
+
+  .admin-sidebar-title,
+  .admin-sidebar-group {
+    display: none;
+  }
+
+  .admin-sidebar-nav {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .admin-nav-item {
+    width: auto;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 9px 14px;
+    border-color: var(--border);
+    border-radius: 999px;
+  }
+}
+
 .profile-meta {
   display: flex;
   flex-wrap: wrap;

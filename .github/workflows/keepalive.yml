@@ -1,0 +1,32 @@
+name: Keep Supabase awake
+
+# Supabase free projects pause after 7 days without activity.
+# This reads one row every 2 days so the project never goes idle.
+
+on:
+  schedule:
+    - cron: "17 3 */2 * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+    steps:
+      - name: Query sajra_state
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
+            echo "VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY secrets are missing"
+            exit 1
+          fi
+          status=$(curl -s -o response.json -w "%{http_code}" \
+            "$SUPABASE_URL/rest/v1/sajra_state?id=eq.main&select=id,updated_at" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY")
+          echo "HTTP $status"
+          cat response.json
+          test "$status" = "200"

@@ -45,6 +45,11 @@ const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string
 
 type RouteState = { page: ViewKey; memberId?: number };
 
+type AdminSection = "overview" | "members" | "users" | "gallery" | "backup" | "security";
+
+// Supabase reports an expired / already-used reset link through the URL hash.
+const STARTED_WITH_EXPIRED_LINK = typeof window !== "undefined" && window.location.hash.includes("error_code=otp_expired");
+
 type MemberDraft = {
   id?: number;
   name: string;
@@ -206,6 +211,56 @@ function StatCard({ value, label, hint }: { value: string | number; label: strin
   );
 }
 
+function PasswordField({
+  value,
+  onChange,
+  autoComplete,
+  language
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  autoComplete: string;
+  language: Language;
+}) {
+  const [visible, setVisible] = useState(false);
+  const label = t(language, visible ? "passwordHide" : "passwordShow");
+  return (
+    <div className="password-field">
+      <input
+        type={visible ? "text" : "password"}
+        className="field"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        autoComplete={autoComplete}
+      />
+      <button type="button" className="password-toggle" onClick={() => setVisible((current) => !current)} aria-label={label} aria-pressed={visible} title={label}>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+          <circle cx="12" cy="12" r="3" />
+          {visible ? null : <path d="M4 4l16 16" />}
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+const ADMIN_ICONS: Record<AdminSection, string> = {
+  overview: "M3 3h8v8H3V3Zm10 0h8v5h-8V3ZM3 13h8v8H3v-8Zm10-3h8v11h-8V10Z",
+  members: "M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0ZM4 21c0-4 3.6-6 8-6s8 2 8 6",
+  users: "M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3Z",
+  gallery: "M3 5h18v14H3V5Zm0 11 5-5 4 4 3-3 6 6M15.5 9.5h.01",
+  backup: "M12 3v12m0 0-4-4m4 4 4-4M4 17v3h16v-3",
+  security: "M6 11V8a6 6 0 1 1 12 0v3M5 11h14v10H5V11Zm7 4v2"
+};
+
+function AdminIcon({ section }: { section: AdminSection }) {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={ADMIN_ICONS[section]} />
+    </svg>
+  );
+}
+
 function MemberCard({
   member,
   language,
@@ -273,12 +328,15 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
-  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(STARTED_WITH_EXPIRED_LINK);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotBusy, setForgotBusy] = useState(false);
   const [forgotMessage, setForgotMessage] = useState("");
-  const [forgotError, setForgotError] = useState("");
+  const [forgotError, setForgotError] = useState(() =>
+    STARTED_WITH_EXPIRED_LINK ? t(initialStateRef.current?.language ?? "en", "resetLinkExpired") : ""
+  );
   const [recoveryMode, setRecoveryMode] = useState(false);
+  const [adminSection, setAdminSection] = useState<AdminSection>("overview");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordChangeBusy, setPasswordChangeBusy] = useState(false);
@@ -311,6 +369,10 @@ export default function App() {
     };
     window.addEventListener("hashchange", onHashChange);
     if (!window.location.hash) window.location.hash = "#/home";
+    // Expired reset link: land on the admin page, where the "request a new link" UI lives.
+    // (A valid recovery link is left alone so Supabase can read its tokens from the hash;
+    // the PASSWORD_RECOVERY event below then takes the user to the admin page.)
+    if (STARTED_WITH_EXPIRED_LINK) window.location.hash = "#/admin";
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
@@ -494,6 +556,7 @@ export default function App() {
       setPasswordChangeSuccess(true);
       setNewPassword("");
       setConfirmPassword("");
+      if (recoveryMode) setAdminSection("security");
       setRecoveryMode(false);
     } catch (error) {
       setPasswordChangeError(error instanceof Error ? error.message : t(language, "passwordChangeFailed"));
@@ -724,7 +787,8 @@ export default function App() {
   }), [roots.length, state.gallery.length, state.members.length, state.users.length]);
 
   const content = (() => {
-    if (!isLoggedIn && route.page === "admin" && recoveryMode) {
+    // A recovery link signs the user in with a temporary session, so this must not depend on !isLoggedIn.
+    if (route.page === "admin" && recoveryMode) {
       return (
         <section className="section">
           <div className="section-head">
@@ -739,11 +803,11 @@ export default function App() {
               <form className="form-stack" onSubmit={handleChangePasswordSubmit}>
                 <label>
                   {t(language, "newPasswordLabel")}
-                  <input type="password" className="field" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
+                  <PasswordField value={newPassword} onChange={setNewPassword} autoComplete="new-password" language={language} />
                 </label>
                 <label>
                   {t(language, "confirmPasswordLabel")}
-                  <input type="password" className="field" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" />
+                  <PasswordField value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" language={language} />
                 </label>
                 {passwordChangeError ? <div className="notice danger">{passwordChangeError}</div> : null}
                 <button className="btn" type="submit" disabled={passwordChangeBusy}>{passwordChangeBusy ? t(language, "savingPassword") : t(language, "savePasswordButton")}</button>
@@ -793,17 +857,17 @@ export default function App() {
                   </label>
                   <label>
                     {t(language, "passwordLabel")}
-                    <input type="password" className="field" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} autoComplete="current-password" />
+                    <PasswordField value={loginPassword} onChange={setLoginPassword} autoComplete="current-password" language={language} />
                   </label>
-                  {loginError ? <div className="notice danger">{loginError}</div> : null}
-                  <button className="btn" type="submit" disabled={loginBusy}>{loginBusy ? t(language, "signingIn") : t(language, "loginButton")}</button>
                   <button
-                    className="btn-ghost"
+                    className="link-btn"
                     type="button"
                     onClick={() => { setForgotPasswordOpen(true); setForgotEmail(loginEmail); setForgotError(""); setForgotMessage(""); }}
                   >
                     {t(language, "forgotPasswordLink")}
                   </button>
+                  {loginError ? <div className="notice danger">{loginError}</div> : null}
+                  <button className="btn" type="submit" disabled={loginBusy}>{loginBusy ? t(language, "signingIn") : t(language, "loginButton")}</button>
                 </form>
               </Card>
             )}
@@ -940,106 +1004,184 @@ export default function App() {
 
     if (route.page === "admin") {
       const sortedUsers = [...state.users].sort((a, b) => a.username.localeCompare(b.username));
-      return (
-        <section className="section">
-          <div className="section-head">
-            <div>
-              <span className="eyebrow">{t(language, "eyebrowAdminConsole")}</span>
-              <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "manageArchiveTitle")}</h2>
-              <p className="section-subtitle">{t(language, "manageArchiveSubtitle")}</p>
+      const sections: { key: AdminSection; label: string; subtitle: string }[] = [
+        { key: "overview", label: t(language, "adminNavOverview"), subtitle: t(language, "adminOverviewSubtitle") },
+        { key: "members", label: t(language, "membersLabel"), subtitle: t(language, "membersCardSubtitle") },
+        ...(isAdmin ? [{ key: "users" as const, label: t(language, "usersLabel"), subtitle: t(language, "usersCardSubtitle") }] : []),
+        { key: "gallery", label: t(language, "adminNavGallery"), subtitle: t(language, "galleryAdminSubtitle") },
+        { key: "backup", label: t(language, "backupCardTitle"), subtitle: t(language, "backupCardSubtitle") },
+        { key: "security", label: t(language, "adminNavSecurity"), subtitle: t(language, "changePasswordSubtitle") }
+      ];
+      const activeSection = sections.find((section) => section.key === adminSection) ?? sections[0];
+
+      let sectionActions: ReactNode = null;
+      if (activeSection.key === "members") {
+        sectionActions = <button className="btn" type="button" onClick={() => openMemberEditor()}>{t(language, "addMemberButton")}</button>;
+      } else if (activeSection.key === "users") {
+        sectionActions = <button className="btn" type="button" onClick={() => openUserEditor()}>{t(language, "addUserButton")}</button>;
+      } else if (activeSection.key === "gallery") {
+        sectionActions = <button className="btn" type="button" onClick={() => openGalleryEditor()}>{t(language, "addGalleryPhotoButton")}</button>;
+      }
+
+      let sectionBody: ReactNode = null;
+      if (activeSection.key === "overview") {
+        sectionBody = (
+          <>
+            <div className="stat-grid">
+              <StatCard value={stats.members} label={t(language, "membersLabel")} />
+              <StatCard value={stats.roots} label={t(language, "rootsLabel")} />
+              <StatCard value={stats.gallery} label={t(language, "galleryItemsLabel")} />
+              <StatCard value={stats.users} label={t(language, "usersLabel")} />
             </div>
-            <div className="actions-row">
-              <button className="btn" type="button" onClick={() => openMemberEditor()}>{t(language, "addMemberButton")}</button>
-              {isAdmin ? <button className="btn-ghost" type="button" onClick={() => openUserEditor()}>{t(language, "addUserButton")}</button> : null}
-              <button className="btn-ghost" type="button" onClick={() => openGalleryEditor()}>{t(language, "addGalleryPhotoButton")}</button>
-            </div>
-          </div>
-
-          <div className="stat-grid">
-            <StatCard value={stats.members} label={t(language, "membersLabel")} />
-            <StatCard value={stats.roots} label={t(language, "rootsLabel")} />
-            <StatCard value={stats.gallery} label={t(language, "galleryItemsLabel")} />
-            <StatCard value={stats.users} label={t(language, "usersLabel")} />
-          </div>
-
-          <div className="card-grid" style={{ marginTop: 18 }}>
-            <Card
-              title={t(language, "membersLabel")}
-              subtitle={t(language, "membersCardSubtitle")}
-              actions={<input className="field" style={{ maxWidth: 280 }} placeholder={t(language, "searchMembersPlaceholder")} value={memberQuery} onChange={(e) => setMemberQuery(e.target.value)} />}
-            >
-              <div className="list">
-                {memberSearchResults.map((member) => (
-                  <div key={member.id} className="card" style={{ padding: 14 }}>
-                    <div className="tree-head">
-                      <div>
-                        <div className="tree-name">{displayName(member, language)}</div>
-                        <div className="tree-sub">{member.birthplace || t(language, "noBirthplace")}</div>
-                      </div>
-                      <div className="actions-row">
-                        <button className="btn-ghost" type="button" onClick={() => navigate({ page: "member", memberId: member.id })}>{t(language, "openButton")}</button>
-                        <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editButton")}</button>
-                        <button className="btn-ghost danger" type="button" onClick={() => deleteMember(member.id)}>{t(language, "deleteButton")}</button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {!memberSearchResults.length ? <div className="empty">{t(language, "noMemberMatches")}</div> : null}
-              </div>
-            </Card>
-
-            {isAdmin ? (
-              <Card
-                title={t(language, "usersLabel")}
-                subtitle={t(language, "usersCardSubtitle")}
-                actions={<button className="btn-ghost" type="button" onClick={() => openUserEditor()}>{t(language, "addUserButton")}</button>}
-              >
-                <div className="list">
-                  {sortedUsers.map((user) => (
-                    <div key={user.id} className="card" style={{ padding: 14 }}>
-                      <div className="tree-head">
-                        <div>
-                          <div className="tree-name">{user.username}</div>
-                          <div className="tree-sub">{user.name || t(language, "noName")} • {user.role}</div>
-                        </div>
-                        <div className="actions-row">
-                          <button className="btn-ghost" type="button" onClick={() => openUserEditor(user)}>{t(language, "editButton")}</button>
-                          <button className="btn-ghost danger" type="button" onClick={() => deleteUser(user.id)}>{t(language, "deleteButton")}</button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+            <div style={{ marginTop: 18 }}>
+              <Card title={t(language, "quickActionsTitle")} subtitle={t(language, "quickActionsSubtitle")}>
+                <div className="actions-row">
+                  <button className="btn" type="button" onClick={() => openMemberEditor()}>{t(language, "addMemberButton")}</button>
+                  {isAdmin ? <button className="btn-ghost" type="button" onClick={() => openUserEditor()}>{t(language, "addUserButton")}</button> : null}
+                  <button className="btn-ghost" type="button" onClick={() => openGalleryEditor()}>{t(language, "addGalleryPhotoButton")}</button>
+                  <button className="btn-ghost" type="button" onClick={exportState}>{t(language, "downloadBackupButton")}</button>
                 </div>
               </Card>
-            ) : null}
-
-            <Card title={t(language, "backupCardTitle")} subtitle={t(language, "backupCardSubtitle")}>
-              <div className="list backup-actions">
-                <button className="btn" type="button" onClick={exportState}>{t(language, "downloadBackupButton")}</button>
-                <button className="btn-ghost" type="button" onClick={triggerImport}>{t(language, "importBackupButton")}</button>
-                <button className="btn-ghost danger" type="button" onClick={resetToEmpty}>{t(language, "resetArchiveButton")}</button>
-                {importError ? <div className="notice danger">{importError}</div> : null}
-                <input ref={importInputRef} type="file" accept="application/json,.json" hidden onChange={(e) => handleImportFile(e.target.files?.[0])} />
+            </div>
+          </>
+        );
+      } else if (activeSection.key === "members") {
+        sectionBody = (
+          <>
+            <input className="field admin-search" placeholder={t(language, "searchMembersPlaceholder")} value={memberQuery} onChange={(e) => setMemberQuery(e.target.value)} />
+            <div className="list">
+              {memberSearchResults.map((member) => (
+                <div key={member.id} className="card" style={{ padding: 14 }}>
+                  <div className="tree-head">
+                    <div>
+                      <div className="tree-name">{displayName(member, language)}</div>
+                      <div className="tree-sub">{member.birthplace || t(language, "noBirthplace")}</div>
+                    </div>
+                    <div className="actions-row">
+                      <button className="btn-ghost" type="button" onClick={() => navigate({ page: "member", memberId: member.id })}>{t(language, "openButton")}</button>
+                      <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editButton")}</button>
+                      <button className="btn-ghost danger" type="button" onClick={() => deleteMember(member.id)}>{t(language, "deleteButton")}</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {!memberSearchResults.length ? <div className="empty">{t(language, "noMemberMatches")}</div> : null}
+            </div>
+          </>
+        );
+      } else if (activeSection.key === "users") {
+        sectionBody = (
+          <div className="list">
+            {sortedUsers.map((user) => (
+              <div key={user.id} className="card" style={{ padding: 14 }}>
+                <div className="tree-head">
+                  <div>
+                    <div className="tree-name">{user.username}</div>
+                    <div className="tree-sub">{user.name || t(language, "noName")} • {user.role}</div>
+                  </div>
+                  <div className="actions-row">
+                    <button className="btn-ghost" type="button" onClick={() => openUserEditor(user)}>{t(language, "editButton")}</button>
+                    <button className="btn-ghost danger" type="button" onClick={() => deleteUser(user.id)}>{t(language, "deleteButton")}</button>
+                  </div>
+                </div>
               </div>
-            </Card>
-
-            <Card title={t(language, "changePasswordTitle")} subtitle={t(language, "changePasswordSubtitle")}>
-              <form className="form-stack" onSubmit={handleChangePasswordSubmit}>
-                <label>
-                  {t(language, "newPasswordLabel")}
-                  <input type="password" className="field" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
-                </label>
-                <label>
-                  {t(language, "confirmPasswordLabel")}
-                  <input type="password" className="field" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" />
-                </label>
-                {passwordChangeError ? <div className="notice danger">{passwordChangeError}</div> : null}
-                {passwordChangeSuccess ? <div className="notice">{t(language, "passwordChangedSuccess")}</div> : null}
-                <button className="btn" type="submit" disabled={passwordChangeBusy}>{passwordChangeBusy ? t(language, "savingPassword") : t(language, "savePasswordButton")}</button>
-              </form>
-            </Card>
+            ))}
           </div>
-        </section>
+        );
+      } else if (activeSection.key === "gallery") {
+        sectionBody = state.gallery.length ? (
+          <div className="list">
+            {state.gallery.map((image) => (
+              <div key={image.id} className="card" style={{ padding: 14 }}>
+                <div className="tree-head">
+                  <div className="admin-gallery-item">
+                    <img className="admin-thumb" src={photoSrc(image.src)} alt={image.caption ?? t(language, "galleryImageAlt")} />
+                    <div>
+                      <div className="tree-name">{image.caption || t(language, "untitledPhoto")}</div>
+                      <div className="tree-sub">{formatDate(image.uploadedAt, language)}</div>
+                    </div>
+                  </div>
+                  <div className="actions-row">
+                    <button className="btn-ghost" type="button" onClick={() => openGalleryEditor(image)}>{t(language, "editButton")}</button>
+                    <button className="btn-ghost danger" type="button" onClick={() => deleteGalleryItem(image.id)}>{t(language, "deleteButton")}</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty">{t(language, "noPhotosYet")}</div>
+        );
+      } else if (activeSection.key === "backup") {
+        sectionBody = (
+          <div className="list backup-actions">
+            <button className="btn" type="button" onClick={exportState}>{t(language, "downloadBackupButton")}</button>
+            <button className="btn-ghost" type="button" onClick={triggerImport}>{t(language, "importBackupButton")}</button>
+            <button className="btn-ghost danger" type="button" onClick={resetToEmpty}>{t(language, "resetArchiveButton")}</button>
+            {importError ? <div className="notice danger">{importError}</div> : null}
+            <input ref={importInputRef} type="file" accept="application/json,.json" hidden onChange={(e) => handleImportFile(e.target.files?.[0])} />
+          </div>
+        );
+      } else {
+        sectionBody = (
+          <div className="admin-form-narrow">
+            <form className="form-stack" onSubmit={handleChangePasswordSubmit}>
+              <label>
+                {t(language, "newPasswordLabel")}
+                <PasswordField value={newPassword} onChange={setNewPassword} autoComplete="new-password" language={language} />
+              </label>
+              <label>
+                {t(language, "confirmPasswordLabel")}
+                <PasswordField value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" language={language} />
+              </label>
+              {passwordChangeError ? <div className="notice danger">{passwordChangeError}</div> : null}
+              {passwordChangeSuccess ? <div className="notice">{t(language, "passwordChangedSuccess")}</div> : null}
+              <button className="btn" type="submit" disabled={passwordChangeBusy}>{passwordChangeBusy ? t(language, "savingPassword") : t(language, "savePasswordButton")}</button>
+            </form>
+          </div>
+        );
+      }
+
+      return (
+        <div className="admin-layout">
+          <aside className="admin-sidebar" aria-label={t(language, "adminSidebarAria")}>
+            <div className="admin-sidebar-title">{t(language, "adminPanelTitle")}</div>
+            <nav className="admin-sidebar-nav">
+              {sections.map((section) => (
+                <button
+                  key={section.key}
+                  type="button"
+                  className={`admin-nav-item${section.key === activeSection.key ? " active" : ""}`}
+                  aria-current={section.key === activeSection.key ? "page" : undefined}
+                  onClick={() => { setAdminSection(section.key); setPasswordChangeError(""); setPasswordChangeSuccess(false); }}
+                >
+                  <AdminIcon section={section.key} />
+                  <span>{section.label}</span>
+                </button>
+              ))}
+            </nav>
+            <div className="admin-sidebar-group">
+              <div className="admin-sidebar-label">{t(language, "adminNavWebsite")}</div>
+              <button type="button" className="admin-nav-item" onClick={() => navigate({ page: "home" })}><span>{NAV_LABELS[language].home}</span></button>
+              <button type="button" className="admin-nav-item" onClick={() => navigate({ page: "tree" })}><span>{NAV_LABELS[language].tree}</span></button>
+              <button type="button" className="admin-nav-item" onClick={() => navigate({ page: "gallery" })}><span>{NAV_LABELS[language].gallery}</span></button>
+              <button type="button" className="admin-nav-item" onClick={() => navigate({ page: "about" })}><span>{NAV_LABELS[language].about}</span></button>
+              <button type="button" className="admin-nav-item danger" onClick={logout}><span>{t(language, "logoutButton")}</span></button>
+            </div>
+          </aside>
+
+          <section className="section admin-main">
+            <div className="section-head">
+              <div>
+                <span className="eyebrow">{t(language, "eyebrowAdminConsole")}</span>
+                <h2 className="section-title" style={{ marginTop: 12 }}>{activeSection.label}</h2>
+                <p className="section-subtitle">{activeSection.subtitle}</p>
+              </div>
+              {sectionActions ? <div className="actions-row">{sectionActions}</div> : null}
+            </div>
+            {sectionBody}
+          </section>
+        </div>
       );
     }
 
