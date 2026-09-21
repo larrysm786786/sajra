@@ -36,6 +36,7 @@ import {
   updatePassword
 } from "./supabase";
 import FamilyTreeD3 from "./FamilyTreeD3";
+import { mergeStates } from "./merge";
 import {
   groupByProfession,
   isProfessionKey,
@@ -381,6 +382,11 @@ export default function App() {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const hydrationDoneRef = useRef(false);
   const remoteUpdatedAtRef = useRef<string | null>(null);
+  // The archive as last confirmed in Supabase; used to skip no-op saves and as the base for merges.
+  const syncedRef = useRef<{ json: string; state: AppState } | null>(null);
+  const saveChainRef = useRef<Promise<void>>(Promise.resolve());
+  const toastTimerRef = useRef<number | undefined>(undefined);
+  const [saveToast, setSaveToast] = useState<{ tone: "ok" | "error"; key: StringKey } | null>(null);
 
   const isLoggedIn = Boolean(supabaseSession);
   // Accounts made with the "editor" role can manage members and the gallery but not users or backups.
@@ -451,10 +457,13 @@ export default function App() {
 
         const remoteHasData = remote ? hasMeaningfulData(remote.state) : false;
 
+        // Remember the row's version whenever one exists, so a later save updates it instead of trying to insert a second row.
+        if (remote) remoteUpdatedAtRef.current = remote.updatedAt;
+
         if (remote && remoteHasData) {
           setState(remote.state);
           saveState(remote.state);
-          remoteUpdatedAtRef.current = remote.updatedAt;
+          syncedRef.current = { json: JSON.stringify(remote.state), state: remote.state };
           setSyncMessageKey("loadedShared");
         } else if (localHasData) {
           setSyncMessageKey("sharedEmpty");
@@ -478,37 +487,80 @@ export default function App() {
     };
   }, [supabaseConfigured]);
 
-  useEffect(() => {
-    if (!hydrationDoneRef.current || !supabaseConfigured || !isLoggedIn) return;
+  function showSaveToast(tone: "ok" | "error", key: StringKey, hideAfterMs?: number) {
+    window.clearTimeout(toastTimerRef.current);
+    setSaveToast({ tone, key });
+    if (hideAfterMs) toastTimerRef.current = window.setTimeout(() => setSaveToast(null), hideAfterMs);
+  }
 
-    const handle = window.setTimeout(() => {
-      const save =
-        remoteUpdatedAtRef.current === null
-          ? publishInitialState(state)
-          : saveSupabaseState(state, remoteUpdatedAtRef.current);
+  /**
+   * Writes `next` to Supabase. If someone else saved first, their version is loaded and our
+   * changes are merged on top of it (see merge.ts) instead of being thrown away.
+   */
+  async function persistToSupabase(next: AppState) {
+    let attempt = next;
 
-      void save
-        .then((nextUpdatedAt) => {
-          remoteUpdatedAtRef.current = nextUpdatedAt;
-          setSyncStatus("ready");
-          setSyncMessageKey("changesSaved");
-        })
-        .catch(async (error) => {
-          if (error instanceof StaleWriteError) {
-            setSyncStatus("conflict");
-            setSyncMessageKey("conflictReloading");
-            const remote = await loadSupabaseState();
-            if (remote) {
-              setState(remote.state);
-              saveState(remote.state);
-              remoteUpdatedAtRef.current = remote.updatedAt;
-              setSyncMessageKey("conflictReloaded");
-            }
-            return;
-          }
+    for (let tries = 0; tries < 3; tries += 1) {
+      const json = JSON.stringify(attempt);
+      if (json === syncedRef.current?.json) return;
+
+      showSaveToast("ok", "savingChanges");
+      try {
+        const updatedAt =
+          remoteUpdatedAtRef.current === null
+            ? await publishInitialState(attempt)
+            : await saveSupabaseState(attempt, remoteUpdatedAtRef.current);
+        remoteUpdatedAtRef.current = updatedAt;
+        syncedRef.current = { json, state: attempt };
+        setSyncStatus("ready");
+        setSyncMessageKey(tries > 0 ? "conflictMerged" : "changesSaved");
+        showSaveToast("ok", tries > 0 ? "conflictMerged" : "changesSaved", tries > 0 ? 6000 : 2500);
+        return;
+      } catch (error) {
+        if (!(error instanceof StaleWriteError)) {
           setSyncStatus("error");
           setSyncMessageKey("saveFailed");
-        });
+          showSaveToast("error", "saveFailed");
+          return;
+        }
+      }
+
+      try {
+        setSyncStatus("conflict");
+        setSyncMessageKey("conflictReloading");
+        const remote = await loadSupabaseState();
+        if (!remote) {
+          remoteUpdatedAtRef.current = null;
+          continue;
+        }
+        const merged = mergeStates(syncedRef.current?.state ?? remote.state, attempt, remote.state);
+        const previous = attempt;
+        remoteUpdatedAtRef.current = remote.updatedAt;
+        syncedRef.current = { json: JSON.stringify(remote.state), state: remote.state };
+        // Show the merged archive here too, keeping anything typed while this save was running.
+        setState((current) => mergeStates(previous, current, merged));
+        attempt = merged;
+      } catch {
+        setSyncStatus("error");
+        setSyncMessageKey("saveFailed");
+        showSaveToast("error", "saveFailed");
+        return;
+      }
+    }
+
+    setSyncStatus("error");
+    setSyncMessageKey("saveFailed");
+    showSaveToast("error", "saveFailed");
+  }
+
+  useEffect(() => {
+    if (!hydrationDoneRef.current || !supabaseConfigured || !isLoggedIn) return;
+    // Only write when the archive really changed since it was last synced (logging in must not touch the shared row).
+    if (JSON.stringify(state) === syncedRef.current?.json) return;
+
+    const handle = window.setTimeout(() => {
+      // One save at a time, so a slow save is never overtaken by the next one.
+      saveChainRef.current = saveChainRef.current.then(() => persistToSupabase(state));
     }, 600);
 
     return () => window.clearTimeout(handle);
@@ -1493,6 +1545,10 @@ export default function App() {
               : `${t(language, "syncOnPrefix")} ${t(language, syncMessageKey)}`
           : t(language, "localOnlyFooter")}
       </p>
+
+      {isLoggedIn && saveToast ? (
+        <div className={`sync-toast ${saveToast.tone}`} role="status" aria-live="polite">{t(language, saveToast.key)}</div>
+      ) : null}
 
       {memberDraft ? (
         <Modal
