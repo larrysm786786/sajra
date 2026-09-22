@@ -78,8 +78,14 @@ One-time setup in the Supabase dashboard:
 1. **Edge Functions → Deploy a new function → Via Editor**. Name it `admin-users`, paste the file above, keep *Verify JWT* on, and deploy.
 2. **Authentication → Sign In / Providers → turn off "Allow new users to sign up"**, so only admins can create accounts.
 
-Roles live in each account's `app_metadata.role`. `editor` accounts can manage members and the gallery;
-only admins see Users and Backup. Accounts without a role (for example ones created by hand in the dashboard) count as admins.
+Roles live in each account's `app_metadata.role`. `editor` accounts can only add new members and gallery
+photos; `contributor` accounts can also edit members that were already added; only admins can delete and
+see Users, Log History, and Backup. Accounts without a role (for example ones created by hand in the
+dashboard) count as admins.
+
+If `admin-users` was already deployed before the `contributor` role was added, redeploy it from
+[`supabase/functions/admin-users/index.ts`](./supabase/functions/admin-users/index.ts) (same steps as
+above) — otherwise new "Contributor" accounts get silently saved as "Editor".
 
 ## Important files
 

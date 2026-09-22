@@ -1,7 +1,7 @@
 export type Language = "en" | "ur";
 export type Theme = "light" | "dark";
 export type Gender = "male" | "female";
-export type Role = "admin" | "editor";
+export type Role = "admin" | "editor" | "contributor";
 export type ViewKey = "home" | "tree" | "gallery" | "admin" | "member" | "about" | "guide" | "roots";
 
 export interface Member {

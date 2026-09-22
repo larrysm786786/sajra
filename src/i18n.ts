@@ -201,7 +201,7 @@ const STRINGS = {
 
     editUserModalTitle: "Edit user",
     addUserModalTitle: "Add user",
-    userModalSubtitle: "Adding a user here also creates their login (email + password) so they can sign in to the admin panel. Editors can manage members and the gallery; only admins see Users and Backup.",
+    userModalSubtitle: "Adding a user here also creates their login (email + password) so they can sign in to the admin panel. Editors can add new members and photos; contributors can also edit existing ones; only admins can delete and see Users, Log History, and Backup.",
     userPasswordLabel: "Login password",
     userPasswordEditLabel: "New password (leave blank to keep the current one)",
     userLoginRequired: "Email and password are required to create a login.",
@@ -210,6 +210,7 @@ const STRINGS = {
     usernameLabel: "Username",
     roleLabel: "Role",
     editorOption: "Editor",
+    contributorOption: "Contributor (can edit)",
     adminOption: "Admin",
     saveUserButton: "Save user",
 
@@ -457,7 +458,7 @@ const STRINGS = {
 
     editUserModalTitle: "صارف میں ترمیم کریں",
     addUserModalTitle: "صارف شامل کریں",
-    userModalSubtitle: "یہاں صارف بنانے سے اس کا لاگ ان (ای میل اور پاسورڈ) بھی بن جاتا ہے تاکہ وہ ایڈمن پینل میں سائن ان کر سکے۔ ایڈیٹر ارکان اور گیلری سنبھال سکتا ہے؛ صارفین اور بیک اپ صرف ایڈمن کو نظر آتے ہیں۔",
+    userModalSubtitle: "یہاں صارف بنانے سے اس کا لاگ ان (ای میل اور پاسورڈ) بھی بن جاتا ہے تاکہ وہ ایڈمن پینل میں سائن ان کر سکے۔ ایڈیٹر نئے ارکان اور تصاویر شامل کر سکتا ہے؛ کنٹری بیوٹر موجودہ ارکان میں ترمیم بھی کر سکتا ہے؛ حذف کرنا اور صارفین، لاگ ہسٹری، بیک اپ صرف ایڈمن کو نظر آتے ہیں۔",
     userPasswordLabel: "لاگ ان پاسورڈ",
     userPasswordEditLabel: "نیا پاسورڈ (موجودہ رکھنے کے لیے خالی چھوڑیں)",
     userLoginRequired: "لاگ ان بنانے کے لیے ای میل اور پاسورڈ ضروری ہیں۔",
@@ -466,6 +467,7 @@ const STRINGS = {
     usernameLabel: "یوزر نیم",
     roleLabel: "کردار",
     editorOption: "ایڈیٹر",
+    contributorOption: "کنٹری بیوٹر (ترمیم کر سکتا ہے)",
     adminOption: "ایڈمن",
     saveUserButton: "صارف محفوظ کریں",
 

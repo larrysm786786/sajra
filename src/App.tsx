@@ -408,9 +408,12 @@ export default function App() {
   const [saveToast, setSaveToast] = useState<{ tone: "ok" | "error"; key: StringKey } | null>(null);
 
   const isLoggedIn = Boolean(supabaseSession);
-  // Accounts made with the "editor" role can manage members and the gallery but not users or backups.
-  // Accounts without a role (e.g. created by hand in the Supabase dashboard) count as admins.
-  const isAdmin = isLoggedIn && supabaseSession?.user.app_metadata?.role !== "editor";
+  const userRole = supabaseSession?.user.app_metadata?.role as Role | undefined;
+  // Accounts made with the "editor" or "contributor" role can manage members and the gallery but not
+  // users or backups. Accounts without a role (e.g. created by hand in the Supabase dashboard) count as admins.
+  const isAdmin = isLoggedIn && userRole !== "editor" && userRole !== "contributor";
+  // Contributors (and admins) may edit members that were already added; plain editors may only add new ones.
+  const canEditMembers = isAdmin || userRole === "contributor";
   const language = state.language;
   const members = useMemo(() => [...state.members].sort(sortMembers), [state.members]);
   const memberMap = useMemo(() => new Map(state.members.map((member) => [member.id, member])), [state.members]);
@@ -684,9 +687,9 @@ export default function App() {
     setState((current) => next(current));
   }
 
-  // Editors may only add new entries; changing existing ones is admin-only.
+  // Editors may only add new members; contributors and admins may also edit existing ones.
   function openMemberEditor(member?: Member) {
-    if (!isLoggedIn || (member && !isAdmin)) return;
+    if (!isLoggedIn || (member && !canEditMembers)) return;
     setMemberDraft(emptyMemberDraft(member));
     setSpouseSearchQuery("");
     setFatherSearchQuery("");
@@ -1125,7 +1128,7 @@ export default function App() {
                   </p>
                   <div className="profile-meta">
                     <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openTreeButton")}</button>
-                    {isAdmin ? <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editMemberButton")}</button> : null}
+                    {canEditMembers ? <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editMemberButton")}</button> : null}
                   </div>
                   {member.bio ? <p style={{ marginTop: 16, lineHeight: 1.8 }}>{member.bio}</p> : null}
                 </div>
@@ -1297,12 +1300,8 @@ export default function App() {
                     </div>
                     <div className="actions-row">
                       <button className="btn-ghost" type="button" onClick={() => navigate({ page: "member", memberId: member.id })}>{t(language, "openButton")}</button>
-                      {isAdmin ? (
-                        <>
-                          <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editButton")}</button>
-                          <button className="btn-ghost danger" type="button" onClick={() => deleteMember(member.id)}>{t(language, "deleteButton")}</button>
-                        </>
-                      ) : null}
+                      {canEditMembers ? <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editButton")}</button> : null}
+                      {isAdmin ? <button className="btn-ghost danger" type="button" onClick={() => deleteMember(member.id)}>{t(language, "deleteButton")}</button> : null}
                     </div>
                   </div>
                 </div>
@@ -1322,7 +1321,7 @@ export default function App() {
                       {user.username}
                     </button>
                     <div className="tree-sub">
-                      {t(language, "userIdPrefix")}: {user.id} • {user.name || t(language, "noName")} • {user.role}
+                      {t(language, "userIdPrefix")}: {user.id} • {user.name || t(language, "noName")} • {t(language, user.role === "admin" ? "adminOption" : user.role === "contributor" ? "contributorOption" : "editorOption")}
                     </div>
                   </div>
                   <div className="actions-row">
@@ -1906,7 +1905,7 @@ export default function App() {
           <div className="actions-row" style={{ marginTop: 18 }}>
             <button className="btn" type="button" onClick={saveMember}>{t(language, "saveMemberButton")}</button>
             <button className="btn-ghost" type="button" onClick={closeEditors}>{t(language, "cancelButton")}</button>
-            {memberDraft.id ? <button className="btn-ghost danger" type="button" onClick={() => { deleteMember(memberDraft.id!); closeEditors(); }}>{t(language, "deleteButton")}</button> : null}
+            {memberDraft.id && isAdmin ? <button className="btn-ghost danger" type="button" onClick={() => { deleteMember(memberDraft.id!); closeEditors(); }}>{t(language, "deleteButton")}</button> : null}
           </div>
         </Modal>
       ) : null}
@@ -1934,6 +1933,7 @@ export default function App() {
               {t(language, "roleLabel")}
               <select className="select" value={userDraft.role} onChange={(e) => setUserDraft((current) => current ? { ...current, role: e.target.value as Role } : current)}>
                 <option value="editor">{t(language, "editorOption")}</option>
+                <option value="contributor">{t(language, "contributorOption")}</option>
                 <option value="admin">{t(language, "adminOption")}</option>
               </select>
             </label>
