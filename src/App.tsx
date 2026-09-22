@@ -44,7 +44,8 @@ import {
   normalizeProfession,
   PROFESSION_KEYS,
   PROFESSION_OTHER,
-  professionLabel
+  professionLabel,
+  professionShortLabel
 } from "./professions";
 import { t, tGender } from "./i18n";
 import type { StringKey } from "./i18n";
@@ -100,7 +101,7 @@ type GalleryDraft = {
 function fullLabel(member: Member, language: Language): string {
   const name = displayName(member, language);
   const profession = member.profession?.trim();
-  return profession ? `${professionLabel(language, profession)} ${name}` : name;
+  return profession ? `${professionShortLabel(language, profession)} ${name}` : name;
 }
 
 function hasMeaningfulData(state: AppState): boolean {
@@ -1124,7 +1125,7 @@ export default function App() {
                 <div>
                   <span className="eyebrow">{tGender(language, member.gender)}</span>
                   <h1 className="section-title" style={{ marginTop: 12 }}>
-                    {member.profession?.trim() ? `${professionLabel(language, member.profession.trim())} ` : ""}
+                    {member.profession?.trim() ? `${professionShortLabel(language, member.profession.trim())} ` : ""}
                     {displayName(member, language)}
                   </h1>
                   <p className="section-subtitle" style={{ marginTop: 12 }}>
@@ -1717,9 +1718,13 @@ export default function App() {
               <span className="sr-only">{t(language, "professionLabel")}</span>
               <select className="select" aria-label={t(language, "professionLabel")} value={memberDraft.professionChoice} onChange={(e) => setMemberDraft((current) => current ? { ...current, professionChoice: e.target.value } : current)}>
                 <option value="">{t(language, "professionLabel")} — {t(language, "professionNone")}</option>
-                {PROFESSION_KEYS.map((key) => (
-                  <option key={key} value={key}>{professionLabel(language, key)}</option>
-                ))}
+                {PROFESSION_KEYS.map((key) => {
+                  const short = professionShortLabel(language, key);
+                  const full = professionLabel(language, key);
+                  return (
+                    <option key={key} value={key}>{short !== full ? `${short}   ${full}` : full}</option>
+                  );
+                })}
                 <option value={PROFESSION_OTHER}>{t(language, "professionOther")}</option>
               </select>
             </label>

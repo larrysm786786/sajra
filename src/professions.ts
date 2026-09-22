@@ -24,12 +24,27 @@ export const PROFESSION_KEYS = Object.keys(PROFESSION_STRING_KEYS) as Profession
 /** Value of the "Other…" option in the profession dropdown. */
 export const PROFESSION_OTHER = "__other";
 
+/** Presets with a conventional short form (e.g. "Dr."). Others fall back to their full label. */
+const PROFESSION_SHORT_STRING_KEYS: Partial<Record<ProfessionKey, StringKey>> = {
+  doctor: "professionDoctorShort",
+  engineer: "professionEngineerShort",
+  lawyer: "professionLawyerShort",
+  government: "professionGovernmentShort"
+};
+
 export function isProfessionKey(value: string): value is ProfessionKey {
   return Object.prototype.hasOwnProperty.call(PROFESSION_STRING_KEYS, value);
 }
 
 export function professionLabel(language: Language, profession: string): string {
   return isProfessionKey(profession) ? t(language, PROFESSION_STRING_KEYS[profession]) : profession;
+}
+
+/** Short form used as a name prefix (e.g. "Engg. Anisurrahman"); falls back to the full label. */
+export function professionShortLabel(language: Language, profession: string): string {
+  if (!isProfessionKey(profession)) return profession;
+  const shortKey = PROFESSION_SHORT_STRING_KEYS[profession];
+  return t(language, shortKey ?? PROFESSION_STRING_KEYS[profession]);
 }
 
 /** Free text that matches a preset (by key or English name) is stored as that preset, so counts don't split. */

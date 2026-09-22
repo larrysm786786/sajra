@@ -254,6 +254,10 @@ const STRINGS = {
     professionGovernment: "Government employee",
     professionStudent: "Student",
     professionHomemaker: "Homemaker",
+    professionDoctorShort: "Dr.",
+    professionEngineerShort: "Engg.",
+    professionLawyerShort: "Adv.",
+    professionGovernmentShort: "Govt.",
     eyebrowProfessions: "Professions",
     professionsTitle: "Who does what in the family",
     professionsSubtitle: "Tap a profession to see who is in it."
@@ -511,6 +515,10 @@ const STRINGS = {
     professionGovernment: "سرکاری ملازم",
     professionStudent: "طالب علم",
     professionHomemaker: "گھریلو خاتون",
+    professionDoctorShort: "ڈاکٹر",
+    professionEngineerShort: "انجینئر",
+    professionLawyerShort: "وکیل",
+    professionGovernmentShort: "سرکاری",
     eyebrowProfessions: "پیشے",
     professionsTitle: "خاندان میں کون کیا کرتا ہے",
     professionsSubtitle: "کسی پیشے پر کلک کریں تاکہ اس کے ارکان دیکھ سکیں۔"

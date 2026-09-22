@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import * as d3 from "d3";
 import type { Language, Member } from "./types";
 import { buildTree, calculateAge, displayName, photoSrc } from "./lib";
-import { professionLabel } from "./professions";
+import { professionShortLabel } from "./professions";
 import { t } from "./i18n";
 
 type ViewMode = "horizontal" | "vertical" | "boxes";
@@ -12,7 +12,7 @@ type ViewMode = "horizontal" | "vertical" | "boxes";
 function fullLabel(member: Member, language: Language): string {
   const name = displayName(member, language);
   const profession = member.profession?.trim();
-  return profession ? `${professionLabel(language, profession)} ${name}` : name;
+  return profession ? `${professionShortLabel(language, profession)} ${name}` : name;
 }
 
 interface NodeDatum {
