@@ -24,11 +24,17 @@ export const PROFESSION_KEYS = Object.keys(PROFESSION_STRING_KEYS) as Profession
 /** Value of the "Other…" option in the profession dropdown. */
 export const PROFESSION_OTHER = "__other";
 
-/** Presets with a conventional short form (e.g. "Dr."). Others fall back to their full label. */
+/**
+ * Short forms for the name prefix. Hafiz/Maulana are religious titles and are never abbreviated,
+ * and Farmer/Student/Homemaker are already as short as their full label, so those fall through
+ * to professionLabel below instead of getting an invented abbreviation.
+ */
 const PROFESSION_SHORT_STRING_KEYS: Partial<Record<ProfessionKey, StringKey>> = {
   doctor: "professionDoctorShort",
   engineer: "professionEngineerShort",
+  teacher: "professionTeacherShort",
   lawyer: "professionLawyerShort",
+  businessman: "professionBusinessmanShort",
   government: "professionGovernmentShort"
 };
 
