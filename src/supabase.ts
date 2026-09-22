@@ -1,6 +1,6 @@
 import { createClient, type AuthChangeEvent, type Session, type SupabaseClient } from "@supabase/supabase-js";
 import { createEmptyState, importJson } from "./lib";
-import type { AppState } from "./types";
+import type { AppState, Role } from "./types";
 
 const TABLE = "sajra_state";
 const ROW_ID = "main";
@@ -135,7 +135,7 @@ export interface ManageUserRequest {
   action: "create" | "update" | "delete";
   email: string;
   password?: string;
-  role?: "admin" | "editor";
+  role?: Role;
   name?: string;
 }
 
