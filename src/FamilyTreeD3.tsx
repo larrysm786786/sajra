@@ -8,6 +8,13 @@ import { t } from "./i18n";
 
 type ViewMode = "horizontal" | "vertical" | "boxes";
 
+/** Name prefixed with profession, so people who share a name (common in this family) can be told apart. */
+function fullLabel(member: Member, language: Language): string {
+  const name = displayName(member, language);
+  const profession = member.profession?.trim();
+  return profession ? `${professionLabel(language, profession)} ${name}` : name;
+}
+
 interface NodeDatum {
   member: Member | null;
   children?: NodeDatum[];
@@ -60,14 +67,14 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
   onOpenRef.current = onOpenMember;
 
   const suggestions = query.trim()
-    ? members.filter((member) => displayName(member, language).toLowerCase().includes(query.trim().toLowerCase())).slice(0, 8)
+    ? members.filter((member) => fullLabel(member, language).toLowerCase().includes(query.trim().toLowerCase())).slice(0, 8)
     : [];
 
   function selectSuggestion(member: Member) {
-    const name = displayName(member, language);
-    setQuery(name);
+    const label = fullLabel(member, language);
+    setQuery(label);
     setSuggestionsOpen(false);
-    findRef.current(name);
+    findRef.current(label);
   }
 
   useEffect(() => {
@@ -161,10 +168,7 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
     }
 
     function nodeName(d: HNode): string {
-      if (!d.data.member) return t(language, "treeSajraFallback");
-      const name = displayName(d.data.member, language);
-      const profession = d.data.member.profession?.trim();
-      return profession ? `${professionLabel(language, profession)} ${name}` : name;
+      return d.data.member ? fullLabel(d.data.member, language) : t(language, "treeSajraFallback");
     }
     function dobLineFor(d: HNode): string {
       if (!d.data.member) return "";
@@ -464,7 +468,7 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
                   className="autocomplete-item"
                   onMouseDown={(e) => { e.preventDefault(); selectSuggestion(member); }}
                 >
-                  {displayName(member, language)}
+                  {fullLabel(member, language)}
                   {member.uniqueId ? <span className="autocomplete-id">{member.uniqueId}</span> : null}
                 </button>
               ))}

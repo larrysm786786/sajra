@@ -96,6 +96,13 @@ type GalleryDraft = {
   caption: string;
 };
 
+/** Name prefixed with profession, so people who share a name (common in this family) can be told apart in search lists. */
+function fullLabel(member: Member, language: Language): string {
+  const name = displayName(member, language);
+  const profession = member.profession?.trim();
+  return profession ? `${professionLabel(language, profession)} ${name}` : name;
+}
+
 function hasMeaningfulData(state: AppState): boolean {
   return Boolean(
     state.members.length ||
@@ -1753,7 +1760,7 @@ export default function App() {
                         className="member-chip active"
                         onClick={() => setMemberDraft((current) => current ? { ...current, fatherId: "" } : current)}
                       >
-                        {displayName(father, language)} {father.uniqueId ? `(${father.uniqueId})` : ""} ✕
+                        {fullLabel(father, language)} {father.uniqueId ? `(${father.uniqueId})` : ""} ✕
                       </button>
                     </div>
                   );
@@ -1772,7 +1779,7 @@ export default function App() {
                       .filter((member) =>
                         member.gender === "male" &&
                         member.id !== memberDraft.id &&
-                        displayName(member, language).toLowerCase().includes(fatherSearchQuery.trim().toLowerCase())
+                        fullLabel(member, language).toLowerCase().includes(fatherSearchQuery.trim().toLowerCase())
                       )
                       .slice(0, 8)
                       .map((member) => (
@@ -1785,7 +1792,7 @@ export default function App() {
                             setFatherSearchQuery("");
                           }}
                         >
-                          {displayName(member, language)}
+                          {fullLabel(member, language)}
                           {member.uniqueId ? <span className="autocomplete-id">{member.uniqueId}</span> : null}
                         </button>
                       ))}
@@ -1806,7 +1813,7 @@ export default function App() {
                         className="member-chip active"
                         onClick={() => setMemberDraft((current) => current ? { ...current, motherId: "" } : current)}
                       >
-                        {displayName(mother, language)} {mother.uniqueId ? `(${mother.uniqueId})` : ""} ✕
+                        {fullLabel(mother, language)} {mother.uniqueId ? `(${mother.uniqueId})` : ""} ✕
                       </button>
                     </div>
                   );
@@ -1825,7 +1832,7 @@ export default function App() {
                       .filter((member) =>
                         member.gender === "female" &&
                         member.id !== memberDraft.id &&
-                        displayName(member, language).toLowerCase().includes(motherSearchQuery.trim().toLowerCase())
+                        fullLabel(member, language).toLowerCase().includes(motherSearchQuery.trim().toLowerCase())
                       )
                       .slice(0, 8)
                       .map((member) => (
@@ -1838,7 +1845,7 @@ export default function App() {
                             setMotherSearchQuery("");
                           }}
                         >
-                          {displayName(member, language)}
+                          {fullLabel(member, language)}
                           {member.uniqueId ? <span className="autocomplete-id">{member.uniqueId}</span> : null}
                         </button>
                       ))}
@@ -1862,7 +1869,7 @@ export default function App() {
                         spouseIds: current.spouseIds.filter((sid) => sid !== id)
                       } : current)}
                     >
-                      {displayName(member, language)} ✕
+                      {fullLabel(member, language)} ✕
                     </button>
                   );
                 })}
@@ -1880,7 +1887,7 @@ export default function App() {
                       .filter((member) =>
                         member.id !== memberDraft.id &&
                         !memberDraft.spouseIds.includes(member.id) &&
-                        displayName(member, language).toLowerCase().includes(spouseSearchQuery.trim().toLowerCase())
+                        fullLabel(member, language).toLowerCase().includes(spouseSearchQuery.trim().toLowerCase())
                       )
                       .slice(0, 8)
                       .map((member) => (
@@ -1893,7 +1900,7 @@ export default function App() {
                             setSpouseSearchQuery("");
                           }}
                         >
-                          {displayName(member, language)}
+                          {fullLabel(member, language)}
                           {member.uniqueId ? <span className="autocomplete-id">{member.uniqueId}</span> : null}
                         </button>
                       ))}
