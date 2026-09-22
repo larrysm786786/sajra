@@ -14,6 +14,10 @@ export function mergeStates(base: AppState, local: AppState, remote: AppState): 
   const members = mergeById(base.members, local.members, remote.members);
   const users = mergeById(base.users, local.users, remote.users);
   const gallery = mergeById(base.gallery, local.gallery, remote.gallery);
+  const activityLog = mergeById(base.activityLog ?? [], local.activityLog ?? [], remote.activityLog ?? []);
+  // Apply only what this browser actually added to the counter, on top of whatever remote has now,
+  // so a concurrent visit elsewhere isn't overwritten by our (possibly stale) count.
+  const visitorDelta = Math.max(0, (local.visitorCount ?? 0) - (base.visitorCount ?? 0));
 
   return {
     ...remote,
@@ -22,7 +26,9 @@ export function mergeStates(base: AppState, local: AppState, remote: AppState): 
     theme: local.theme !== base.theme ? local.theme : remote.theme,
     members: remapMemberLinks(members.items, members.localIds, members.idMap),
     users: users.items,
-    gallery: gallery.items
+    gallery: gallery.items,
+    activityLog: [...activityLog.items].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 200),
+    visitorCount: (remote.visitorCount ?? 0) + visitorDelta
   };
 }
 

@@ -1,4 +1,4 @@
-import type { AppState, GalleryImage, Member, TreeNode, User } from "./types";
+import type { ActivityAction, ActivityType, AppState, GalleryImage, Member, TreeNode, User } from "./types";
 import { SAJRA_SEED_STATE } from "./seedState";
 
 export const STORAGE_KEY = "sajra-react-state-v1";
@@ -19,24 +19,35 @@ export function createEmptyState(): AppState {
         createdAt: new Date().toISOString()
       }
     ],
-    gallery: []
+    gallery: [],
+    activityLog: [],
+    visitorCount: 0
+  };
+}
+
+function finalizeState(state: AppState): AppState {
+  return {
+    ...state,
+    members: assignMissingUniqueIds(state.members),
+    activityLog: Array.isArray(state.activityLog) ? state.activityLog : [],
+    visitorCount: typeof state.visitorCount === "number" ? state.visitorCount : 0
   };
 }
 
 export function loadState(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return cloneState(SAJRA_SEED_STATE);
+    if (!raw) return finalizeState(cloneState(SAJRA_SEED_STATE));
     const parsed = JSON.parse(raw) as Partial<AppState>;
-    return {
+    return finalizeState({
       ...cloneState(SAJRA_SEED_STATE),
       ...parsed,
       members: Array.isArray(parsed.members) ? parsed.members.map(normalizeMember) : [],
       users: Array.isArray(parsed.users) ? parsed.users.map(normalizeUser) : cloneState(SAJRA_SEED_STATE).users,
       gallery: Array.isArray(parsed.gallery) ? parsed.gallery.map(normalizeGalleryImage) : []
-    };
+    });
   } catch {
-    return cloneState(SAJRA_SEED_STATE);
+    return finalizeState(cloneState(SAJRA_SEED_STATE));
   }
 }
 
@@ -71,6 +82,48 @@ export function displayName(member: Member, language: AppState["language"] = "en
   return member.nameUr?.trim() ? member.nameUr : member.name;
 }
 
+function uniqueIdNumber(uniqueId?: string | null): number {
+  const match = /^S(\d+)$/.exec(uniqueId ?? "");
+  return match ? Number(match[1]) : 0;
+}
+
+export function formatUniqueId(n: number): string {
+  return `S${String(n).padStart(5, "0")}`;
+}
+
+export function nextUniqueId(members: Member[]): string {
+  const max = members.reduce((acc, member) => Math.max(acc, uniqueIdNumber(member.uniqueId)), 0);
+  return formatUniqueId(max + 1);
+}
+
+/** Backfills a stable S00001-style id for any member that doesn't have one yet, in id order. */
+export function assignMissingUniqueIds(members: Member[]): Member[] {
+  let next = members.reduce((acc, member) => Math.max(acc, uniqueIdNumber(member.uniqueId)), 0);
+  const missingIds = [...members]
+    .filter((member) => !member.uniqueId)
+    .sort((a, b) => a.id - b.id)
+    .map((member) => member.id);
+  if (!missingIds.length) return members;
+
+  const assigned = new Map<number, string>();
+  missingIds.forEach((id) => {
+    next += 1;
+    assigned.set(id, formatUniqueId(next));
+  });
+
+  return members.map((member) => (assigned.has(member.id) ? { ...member, uniqueId: assigned.get(member.id) } : member));
+}
+
+/** Appends an entry to the activity log, keeping only the most recent 200. */
+export function pushActivityLog(
+  state: AppState,
+  entry: { type: ActivityType; action: ActivityAction; label: string; actorEmail?: string | null }
+): AppState {
+  const id = nextId(state.activityLog);
+  const activityLog = [{ id, createdAt: new Date().toISOString(), ...entry }, ...state.activityLog].slice(0, 200);
+  return { ...state, activityLog };
+}
+
 export function photoSrc(value?: string | null): string {
   return value?.trim() ? value : "https://placehold.co/240x240?text=Sajra";
 }
@@ -94,17 +147,6 @@ export function getSpouses(members: Member[], member: Member): Member[] {
 
 export function getChildren(members: Member[], memberId: number): Member[] {
   return members.filter((member) => member.fatherId === memberId || member.motherId === memberId);
-}
-
-export function assignUniqueName(members: Member[], name: string, excludeId?: number): string {
-  const base = name.trim().replace(/\s+(II|III|IV|V|VI|VII|VIII|IX|X)$/, "");
-  const roman = ["", " II", " III", " IV", " V", " VI", " VII", " VIII", " IX", " X"];
-  for (const suffix of roman) {
-    const candidate = `${base}${suffix}`;
-    const exists = members.some((member) => member.id !== excludeId && member.name.toLowerCase() === candidate.toLowerCase());
-    if (!exists) return candidate;
-  }
-  return `${base} ${members.length + 1}`;
 }
 
 export function buildTree(members: Member[]): TreeNode[] {
@@ -160,13 +202,13 @@ export function exportJson(state: AppState): string {
 export function importJson(raw: string): AppState {
   const parsed = JSON.parse(raw) as Partial<AppState>;
   const defaults = createEmptyState();
-  return {
+  return finalizeState({
     ...defaults,
     ...parsed,
     members: Array.isArray(parsed.members) ? parsed.members.map(normalizeMember) : [],
     users: Array.isArray(parsed.users) ? parsed.users.map(normalizeUser) : defaults.users,
     gallery: Array.isArray(parsed.gallery) ? parsed.gallery.map(normalizeGalleryImage) : []
-  };
+  });
 }
 
 export async function readFileAsDataUrl(file: File): Promise<string> {

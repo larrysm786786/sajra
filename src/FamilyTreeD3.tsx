@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import * as d3 from "d3";
 import type { Language, Member } from "./types";
 import { buildTree, calculateAge, displayName, photoSrc } from "./lib";
+import { professionLabel } from "./professions";
 import { t } from "./i18n";
 
 type ViewMode = "horizontal" | "vertical" | "boxes";
@@ -160,7 +161,10 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
     }
 
     function nodeName(d: HNode): string {
-      return d.data.member ? displayName(d.data.member, language) : t(language, "treeSajraFallback");
+      if (!d.data.member) return t(language, "treeSajraFallback");
+      const name = displayName(d.data.member, language);
+      const profession = d.data.member.profession?.trim();
+      return profession ? `${professionLabel(language, profession)} ${name}` : name;
     }
     function dobLineFor(d: HNode): string {
       if (!d.data.member) return "";
@@ -461,6 +465,7 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
                   onMouseDown={(e) => { e.preventDefault(); selectSuggestion(member); }}
                 >
                   {displayName(member, language)}
+                  {member.uniqueId ? <span className="autocomplete-id">{member.uniqueId}</span> : null}
                 </button>
               ))}
             </div>

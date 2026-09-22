@@ -1599,6 +1599,57 @@ button {
   color: var(--accent-strong);
 }
 
+.autocomplete-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
+.autocomplete-id {
+  font-family: "Courier New", monospace;
+  font-size: 0.78rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.id-badge {
+  display: inline-block;
+  margin-inline-start: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-family: "Courier New", monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  vertical-align: middle;
+}
+
+.tree-name-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  display: block;
+}
+
+.tree-name-btn:hover {
+  text-decoration: underline;
+  color: var(--accent-strong);
+}
+
+.stat-card-icon {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  color: var(--accent);
+  opacity: 0.85;
+}
+
 #tree-container {
   background: var(--surface-strong);
   border: 1px solid var(--border);

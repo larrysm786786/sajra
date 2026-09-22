@@ -3,7 +3,6 @@ import type { FormEvent, ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { AppState, GalleryImage, Gender, Language, Member, Role, User, ViewKey } from "./types";
 import {
-  assignUniqueName,
   calculateAge,
   createEmptyState,
   displayName,
@@ -16,7 +15,9 @@ import {
   isRoot,
   loadState,
   nextId,
+  nextUniqueId,
   photoSrc,
+  pushActivityLog,
   readFileAsCompressedDataUrl,
   saveState,
   sortMembers
@@ -55,10 +56,13 @@ const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string
 
 type RouteState = { page: ViewKey; memberId?: number };
 
-type AdminSection = "overview" | "members" | "users" | "gallery" | "backup" | "security";
+type AdminSection = "overview" | "members" | "users" | "gallery" | "logs" | "backup" | "security";
 
 // Supabase reports an expired / already-used reset link through the URL hash.
 const STARTED_WITH_EXPIRED_LINK = typeof window !== "undefined" && window.location.hash.includes("error_code=otp_expired");
+
+// Guards the visitor-count bump so a single browser tab only counts as one visit per session.
+const VISIT_SESSION_KEY = "sajra-visit-counted";
 
 type MemberDraft = {
   id?: number;
@@ -227,9 +231,10 @@ function NavLink({
   );
 }
 
-function StatCard({ value, label, hint }: { value: string | number; label: string; hint?: string }) {
+function StatCard({ value, label, hint, icon }: { value: string | number; label: string; hint?: string; icon?: ReactNode }) {
   return (
     <div className="stat-card">
+      {icon ? <div className="stat-card-icon">{icon}</div> : null}
       <span className="stat-value">{value}</span>
       <div className="muted" style={{ fontWeight: 700 }}>{label}</div>
       {hint ? <div className="muted" style={{ marginTop: 8, lineHeight: 1.5 }}>{hint}</div> : null}
@@ -275,9 +280,21 @@ const ADMIN_ICONS: Record<AdminSection, string> = {
   members: "M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0ZM4 21c0-4 3.6-6 8-6s8 2 8 6",
   users: "M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3Z",
   gallery: "M3 5h18v14H3V5Zm0 11 5-5 4 4 3-3 6 6M15.5 9.5h.01",
+  logs: "M12 8v5l3 2M3 12a9 9 0 1 0 3-6.7M3 4v5h5",
   backup: "M12 3v12m0 0-4-4m4 4 4-4M4 17v3h16v-3",
   security: "M6 11V8a6 6 0 1 1 12 0v3M5 11h14v10H5V11Zm7 4v2"
 };
+
+const EYE_ICON_PATH = "M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z";
+
+function EyeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={EYE_ICON_PATH} />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
 
 function AdminIcon({ section }: { section: AdminSection }) {
   return (
@@ -350,6 +367,8 @@ export default function App() {
   const supabaseConfigured = useMemo(() => isSupabaseConfigured(), []);
   const [memberQuery, setMemberQuery] = useState("");
   const [spouseSearchQuery, setSpouseSearchQuery] = useState("");
+  const [fatherSearchQuery, setFatherSearchQuery] = useState("");
+  const [motherSearchQuery, setMotherSearchQuery] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -445,6 +464,11 @@ export default function App() {
         setSyncStatus("ready");
         setSyncMessageKey("localOnlyMode");
         hydrationDoneRef.current = true;
+        // Local-only mode: track visits per device since there's no shared counter to bump.
+        if (!sessionStorage.getItem(VISIT_SESSION_KEY)) {
+          sessionStorage.setItem(VISIT_SESSION_KEY, "1");
+          updateState((current) => ({ ...current, visitorCount: (current.visitorCount ?? 0) + 1 }));
+        }
         return;
       }
 
@@ -472,6 +496,15 @@ export default function App() {
         }
 
         setSyncStatus("ready");
+
+        // Best-effort, once per browser session: bump the shared visitor counter through the
+        // normal save pipeline, so a concurrent save is merged instead of clobbered or lost.
+        if (remote && !sessionStorage.getItem(VISIT_SESSION_KEY)) {
+          sessionStorage.setItem(VISIT_SESSION_KEY, "1");
+          const bumped = { ...remote.state, visitorCount: (remote.state.visitorCount ?? 0) + 1 };
+          setState((current) => ({ ...current, visitorCount: bumped.visitorCount }));
+          void persistToSupabase(bumped);
+        }
       } catch {
         if (cancelled) return;
         setSyncStatus("error");
@@ -656,6 +689,8 @@ export default function App() {
     if (!isLoggedIn || (member && !isAdmin)) return;
     setMemberDraft(emptyMemberDraft(member));
     setSpouseSearchQuery("");
+    setFatherSearchQuery("");
+    setMotherSearchQuery("");
   }
 
   function openUserEditor(user?: User) {
@@ -675,6 +710,8 @@ export default function App() {
     setUserError("");
     setGalleryDraft(null);
     setSpouseSearchQuery("");
+    setFatherSearchQuery("");
+    setMotherSearchQuery("");
   }
 
   function openLightbox(image: GalleryImage) {
@@ -697,12 +734,13 @@ export default function App() {
 
   async function saveMember() {
     if (!memberDraft || !memberDraft.name.trim()) return;
-    const normalizedName = assignUniqueName(state.members, memberDraft.name.trim(), memberDraft.id);
     const id = memberDraft.id ?? nextId(state.members);
+    const existingMember = state.members.find((member) => member.id === id);
     const spouseIds = [...new Set(memberDraft.spouseIds.filter((value) => value !== id))];
     const updated: Member = {
       id,
-      name: normalizedName,
+      uniqueId: existingMember?.uniqueId || nextUniqueId(state.members),
+      name: memberDraft.name.trim(),
       nameUr: memberDraft.nameUr.trim() || null,
       gender: memberDraft.gender,
       dob: memberDraft.dob || null,
@@ -714,8 +752,9 @@ export default function App() {
       fatherId: memberDraft.fatherId ? Number(memberDraft.fatherId) : null,
       motherId: memberDraft.motherId ? Number(memberDraft.motherId) : null,
       spouseIds,
-      createdAt: state.members.find((member) => member.id === id)?.createdAt || new Date().toISOString()
+      createdAt: existingMember?.createdAt || new Date().toISOString()
     };
+    const actorEmail = supabaseSession?.user.email ?? null;
 
     updateState((current) => {
       const exists = current.members.some((member) => member.id === id);
@@ -738,7 +777,10 @@ export default function App() {
         return member;
       });
 
-      return { ...current, members: membersNext };
+      return pushActivityLog(
+        { ...current, members: membersNext },
+        { type: "member", action: exists ? "updated" : "added", label: `${updated.name} (${updated.uniqueId})`, actorEmail }
+      );
     });
 
     closeEditors();
@@ -747,17 +789,28 @@ export default function App() {
   function deleteMember(id: number) {
     if (!isAdmin) return;
     if (!window.confirm(t(language, "confirmDeleteMember"))) return;
-    updateState((current) => ({
-      ...current,
-      members: current.members
-        .filter((member) => member.id !== id)
-        .map((member) => ({
-          ...member,
-          fatherId: member.fatherId === id ? null : member.fatherId,
-          motherId: member.motherId === id ? null : member.motherId,
-          spouseIds: member.spouseIds.filter((sid) => sid !== id)
-        }))
-    }));
+    const target = state.members.find((member) => member.id === id);
+    const actorEmail = supabaseSession?.user.email ?? null;
+    updateState((current) => {
+      const next = {
+        ...current,
+        members: current.members
+          .filter((member) => member.id !== id)
+          .map((member) => ({
+            ...member,
+            fatherId: member.fatherId === id ? null : member.fatherId,
+            motherId: member.motherId === id ? null : member.motherId,
+            spouseIds: member.spouseIds.filter((sid) => sid !== id)
+          }))
+      };
+      if (!target) return next;
+      return pushActivityLog(next, {
+        type: "member",
+        action: "deleted",
+        label: `${target.name}${target.uniqueId ? ` (${target.uniqueId})` : ""}`,
+        actorEmail
+      });
+    });
   }
 
   async function saveUser() {
@@ -816,13 +869,18 @@ export default function App() {
       role: userDraft.role,
       createdAt: existing?.createdAt || new Date().toISOString()
     };
+    const actorEmail = supabaseSession?.user.email ?? null;
 
-    updateState((current) => ({
-      ...current,
-      users: current.users.some((user) => user.id === id)
-        ? current.users.map((user) => (user.id === id ? updated : user))
-        : [...current.users, updated]
-    }));
+    updateState((current) => {
+      const exists = current.users.some((user) => user.id === id);
+      const next = {
+        ...current,
+        users: exists
+          ? current.users.map((user) => (user.id === id ? updated : user))
+          : [...current.users, updated]
+      };
+      return pushActivityLog(next, { type: "user", action: exists ? "updated" : "added", label: updated.username, actorEmail });
+    });
     closeEditors();
   }
 
@@ -838,7 +896,12 @@ export default function App() {
         return;
       }
     }
-    updateState((current) => ({ ...current, users: current.users.filter((user) => user.id !== id) }));
+    const actorEmail = supabaseSession?.user.email ?? null;
+    updateState((current) => {
+      const next = { ...current, users: current.users.filter((user) => user.id !== id) };
+      if (!target) return next;
+      return pushActivityLog(next, { type: "user", action: "deleted", label: target.username, actorEmail });
+    });
   }
 
   async function handleMemberPhoto(file?: File) {
@@ -862,19 +925,40 @@ export default function App() {
       caption: galleryDraft.caption.trim() || null,
       uploadedAt: state.gallery.find((image) => image.id === id)?.uploadedAt || new Date().toISOString()
     };
-    updateState((current) => ({
-      ...current,
-      gallery: current.gallery.some((image) => image.id === id)
-        ? current.gallery.map((image) => (image.id === id ? item : image))
-        : [item, ...current.gallery]
-    }));
+    const actorEmail = supabaseSession?.user.email ?? null;
+    updateState((current) => {
+      const exists = current.gallery.some((image) => image.id === id);
+      const next = {
+        ...current,
+        gallery: exists
+          ? current.gallery.map((image) => (image.id === id ? item : image))
+          : [item, ...current.gallery]
+      };
+      return pushActivityLog(next, {
+        type: "gallery",
+        action: exists ? "updated" : "added",
+        label: item.caption || t(language, "untitledPhoto"),
+        actorEmail
+      });
+    });
     closeEditors();
   }
 
   function deleteGalleryItem(id: number) {
     if (!isAdmin) return;
     if (!window.confirm(t(language, "confirmDeleteGallery"))) return;
-    updateState((current) => ({ ...current, gallery: current.gallery.filter((item) => item.id !== id) }));
+    const target = state.gallery.find((image) => image.id === id);
+    const actorEmail = supabaseSession?.user.email ?? null;
+    updateState((current) => {
+      const next = { ...current, gallery: current.gallery.filter((item) => item.id !== id) };
+      if (!target) return next;
+      return pushActivityLog(next, {
+        type: "gallery",
+        action: "deleted",
+        label: target.caption || t(language, "untitledPhoto"),
+        actorEmail
+      });
+    });
   }
 
   function exportState() {
@@ -925,8 +1009,9 @@ export default function App() {
     members: state.members.length,
     roots: roots.length,
     gallery: state.gallery.length,
-    users: state.users.length
-  }), [roots.length, state.gallery.length, state.members.length, state.users.length]);
+    users: state.users.length,
+    visitors: state.visitorCount ?? 0
+  }), [roots.length, state.gallery.length, state.members.length, state.users.length, state.visitorCount]);
 
   const content = (() => {
     // A recovery link signs the user in with a temporary session, so this must not depend on !isLoggedIn.
@@ -1027,8 +1112,11 @@ export default function App() {
               <div className="profile-layout member-profile-layout">
                 <img className="member-photo hero-photo member-profile-photo" src={photoSrc(member.photo)} alt={displayName(member, language)} />
                 <div>
-                  <span className="eyebrow">{tGender(language, member.gender)}{member.profession?.trim() ? ` • ${professionLabel(language, member.profession.trim())}` : ""}</span>
-                  <h1 className="section-title" style={{ marginTop: 12 }}>{displayName(member, language)}</h1>
+                  <span className="eyebrow">{tGender(language, member.gender)}</span>
+                  <h1 className="section-title" style={{ marginTop: 12 }}>
+                    {member.profession?.trim() ? `${professionLabel(language, member.profession.trim())} ` : ""}
+                    {displayName(member, language)}
+                  </h1>
                   <p className="section-subtitle" style={{ marginTop: 12 }}>
                     {member.birthplace || t(language, "noBirthplace")}
                     {member.dob ? ` • ${t(language, "bornWord")} ${formatDate(member.dob, language)}` : ""}
@@ -1151,6 +1239,7 @@ export default function App() {
         { key: "members", label: t(language, "membersLabel"), subtitle: t(language, "membersCardSubtitle") },
         ...(isAdmin ? [{ key: "users" as const, label: t(language, "usersLabel"), subtitle: t(language, "usersCardSubtitle") }] : []),
         { key: "gallery", label: t(language, "adminNavGallery"), subtitle: t(language, "galleryAdminSubtitle") },
+        ...(isAdmin ? [{ key: "logs" as const, label: t(language, "adminNavLogs"), subtitle: t(language, "logHistorySubtitle") }] : []),
         ...(isAdmin ? [{ key: "backup" as const, label: t(language, "backupCardTitle"), subtitle: t(language, "backupCardSubtitle") }] : []),
         { key: "security", label: t(language, "adminNavSecurity"), subtitle: t(language, "changePasswordSubtitle") }
       ];
@@ -1174,6 +1263,7 @@ export default function App() {
               <StatCard value={stats.roots} label={t(language, "rootsLabel")} />
               <StatCard value={stats.gallery} label={t(language, "galleryItemsLabel")} />
               <StatCard value={stats.users} label={t(language, "usersLabel")} />
+              <StatCard value={stats.visitors} label={t(language, "totalVisitorsLabel")} icon={<EyeIcon />} />
             </div>
             <div style={{ marginTop: 18 }}>
               <Card title={t(language, "quickActionsTitle")} subtitle={t(language, "quickActionsSubtitle")}>
@@ -1196,7 +1286,10 @@ export default function App() {
                 <div key={member.id} className="card" style={{ padding: 14 }}>
                   <div className="tree-head">
                     <div>
-                      <div className="tree-name">{displayName(member, language)}</div>
+                      <div className="tree-name">
+                        {displayName(member, language)}
+                        {member.uniqueId ? <span className="id-badge">{member.uniqueId}</span> : null}
+                      </div>
                       <div className="tree-sub">
                         {member.birthplace || t(language, "noBirthplace")}
                         {member.profession?.trim() ? ` • ${professionLabel(language, member.profession.trim())}` : ""}
@@ -1225,8 +1318,12 @@ export default function App() {
               <div key={user.id} className="card" style={{ padding: 14 }}>
                 <div className="tree-head">
                   <div>
-                    <div className="tree-name">{user.username}</div>
-                    <div className="tree-sub">{user.name || t(language, "noName")} • {user.role}</div>
+                    <button type="button" className="tree-name tree-name-btn" onClick={() => openUserEditor(user)} title={t(language, "clickToEditHint")}>
+                      {user.username}
+                    </button>
+                    <div className="tree-sub">
+                      {t(language, "userIdPrefix")}: {user.id} • {user.name || t(language, "noName")} • {user.role}
+                    </div>
                   </div>
                   <div className="actions-row">
                     <button className="btn-ghost" type="button" onClick={() => openUserEditor(user)}>{t(language, "editButton")}</button>
@@ -1262,6 +1359,29 @@ export default function App() {
           </div>
         ) : (
           <div className="empty">{t(language, "noPhotosYet")}</div>
+        );
+      } else if (activeSection.key === "logs") {
+        const typeLabelKeys = { member: "logTypeMember", user: "logTypeUser", gallery: "logTypeGallery" } as const;
+        const actionLabelKeys = { added: "logActionAdded", updated: "logActionUpdated", deleted: "logActionDeleted" } as const;
+        sectionBody = state.activityLog.length ? (
+          <div className="list">
+            {state.activityLog.map((entry) => (
+              <div key={entry.id} className="card" style={{ padding: 14 }}>
+                <div className="tree-head">
+                  <div>
+                    <div className="tree-name">
+                      {t(language, actionLabelKeys[entry.action])} {t(language, typeLabelKeys[entry.type])}: {entry.label}
+                    </div>
+                    <div className="tree-sub">
+                      {formatDate(entry.createdAt, language)} • {entry.actorEmail || t(language, "systemActor")}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty">{t(language, "noLogEntries")}</div>
         );
       } else if (activeSection.key === "backup") {
         sectionBody = (
@@ -1557,6 +1677,9 @@ export default function App() {
           onClose={closeEditors}
         >
           <div className="form-grid">
+            {memberDraft.id ? (
+              <div className="span-12 muted" style={{ fontWeight: 700 }}>{t(language, "userIdPrefix")}: {state.members.find((m) => m.id === memberDraft.id)?.uniqueId}</div>
+            ) : null}
             <label className="span-6">
               <span className="sr-only">{t(language, "nameLabel")}</span>
               <input className="field" placeholder={t(language, "nameLabel")} value={memberDraft.name} onChange={(e) => setMemberDraft((current) => current ? { ...current, name: e.target.value } : current)} />
@@ -1618,24 +1741,112 @@ export default function App() {
               <span className="sr-only">{t(language, "bioLabel")}</span>
               <textarea className="textarea" placeholder={t(language, "bioLabel")} value={memberDraft.bio} onChange={(e) => setMemberDraft((current) => current ? { ...current, bio: e.target.value } : current)} />
             </label>
-            <label className="span-6">
-              <span className="sr-only">{t(language, "fatherLabel")}</span>
-              <select className="select" aria-label={t(language, "fatherLabel")} value={memberDraft.fatherId} onChange={(e) => setMemberDraft((current) => current ? { ...current, fatherId: e.target.value } : current)}>
-                <option value="">{t(language, "fatherLabel")} — {t(language, "noneOption")}</option>
-                {state.members.filter((member) => member.gender === "male" && member.id !== memberDraft.id).map((member) => (
-                  <option key={member.id} value={member.id}>{displayName(member, language)}</option>
-                ))}
-              </select>
-            </label>
-            <label className="span-6">
-              <span className="sr-only">{t(language, "motherLabel")}</span>
-              <select className="select" aria-label={t(language, "motherLabel")} value={memberDraft.motherId} onChange={(e) => setMemberDraft((current) => current ? { ...current, motherId: e.target.value } : current)}>
-                <option value="">{t(language, "motherLabel")} — {t(language, "noneOption")}</option>
-                {state.members.filter((member) => member.gender === "female" && member.id !== memberDraft.id).map((member) => (
-                  <option key={member.id} value={member.id}>{displayName(member, language)}</option>
-                ))}
-              </select>
-            </label>
+            <div className="span-6">
+              <div className="muted" style={{ marginBottom: 10, fontWeight: 700 }}>{t(language, "fatherLabel")}</div>
+              {memberDraft.fatherId ? (
+                (() => {
+                  const father = state.members.find((candidate) => candidate.id === Number(memberDraft.fatherId));
+                  if (!father) return null;
+                  return (
+                    <div className="member-chip-list" style={{ marginBottom: 10 }}>
+                      <button
+                        type="button"
+                        className="member-chip active"
+                        onClick={() => setMemberDraft((current) => current ? { ...current, fatherId: "" } : current)}
+                      >
+                        {displayName(father, language)} {father.uniqueId ? `(${father.uniqueId})` : ""} ✕
+                      </button>
+                    </div>
+                  );
+                })()
+              ) : null}
+              <div style={{ position: "relative" }}>
+                <input
+                  className="field"
+                  placeholder={t(language, "searchMembersPlaceholder")}
+                  value={fatherSearchQuery}
+                  onChange={(e) => setFatherSearchQuery(e.target.value)}
+                />
+                {fatherSearchQuery.trim() ? (
+                  <div className="autocomplete-list">
+                    {state.members
+                      .filter((member) =>
+                        member.gender === "male" &&
+                        member.id !== memberDraft.id &&
+                        displayName(member, language).toLowerCase().includes(fatherSearchQuery.trim().toLowerCase())
+                      )
+                      .slice(0, 8)
+                      .map((member) => (
+                        <button
+                          key={member.id}
+                          type="button"
+                          className="autocomplete-item"
+                          onClick={() => {
+                            setMemberDraft((current) => current ? { ...current, fatherId: String(member.id) } : current);
+                            setFatherSearchQuery("");
+                          }}
+                        >
+                          {displayName(member, language)}
+                          {member.uniqueId ? <span className="autocomplete-id">{member.uniqueId}</span> : null}
+                        </button>
+                      ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            <div className="span-6">
+              <div className="muted" style={{ marginBottom: 10, fontWeight: 700 }}>{t(language, "motherLabel")}</div>
+              {memberDraft.motherId ? (
+                (() => {
+                  const mother = state.members.find((candidate) => candidate.id === Number(memberDraft.motherId));
+                  if (!mother) return null;
+                  return (
+                    <div className="member-chip-list" style={{ marginBottom: 10 }}>
+                      <button
+                        type="button"
+                        className="member-chip active"
+                        onClick={() => setMemberDraft((current) => current ? { ...current, motherId: "" } : current)}
+                      >
+                        {displayName(mother, language)} {mother.uniqueId ? `(${mother.uniqueId})` : ""} ✕
+                      </button>
+                    </div>
+                  );
+                })()
+              ) : null}
+              <div style={{ position: "relative" }}>
+                <input
+                  className="field"
+                  placeholder={t(language, "searchMembersPlaceholder")}
+                  value={motherSearchQuery}
+                  onChange={(e) => setMotherSearchQuery(e.target.value)}
+                />
+                {motherSearchQuery.trim() ? (
+                  <div className="autocomplete-list">
+                    {state.members
+                      .filter((member) =>
+                        member.gender === "female" &&
+                        member.id !== memberDraft.id &&
+                        displayName(member, language).toLowerCase().includes(motherSearchQuery.trim().toLowerCase())
+                      )
+                      .slice(0, 8)
+                      .map((member) => (
+                        <button
+                          key={member.id}
+                          type="button"
+                          className="autocomplete-item"
+                          onClick={() => {
+                            setMemberDraft((current) => current ? { ...current, motherId: String(member.id) } : current);
+                            setMotherSearchQuery("");
+                          }}
+                        >
+                          {displayName(member, language)}
+                          {member.uniqueId ? <span className="autocomplete-id">{member.uniqueId}</span> : null}
+                        </button>
+                      ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
             <div className="span-12">
               <div className="muted" style={{ marginBottom: 10, fontWeight: 700 }}>{t(language, "spousesFieldLabel")}</div>
               <div className="member-chip-list" style={{ marginBottom: memberDraft.spouseIds.length ? 10 : 0 }}>
@@ -1684,6 +1895,7 @@ export default function App() {
                           }}
                         >
                           {displayName(member, language)}
+                          {member.uniqueId ? <span className="autocomplete-id">{member.uniqueId}</span> : null}
                         </button>
                       ))}
                   </div>

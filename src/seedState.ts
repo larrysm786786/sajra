@@ -2678,5 +2678,7 @@ export const SAJRA_SEED_STATE: AppState = {
       "caption": null,
       "uploadedAt": "2026-07-24 11:31:19"
     }
-  ]
+  ],
+  "activityLog": [],
+  "visitorCount": 0
 } as AppState;

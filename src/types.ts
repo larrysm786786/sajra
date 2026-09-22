@@ -6,6 +6,8 @@ export type ViewKey = "home" | "tree" | "gallery" | "admin" | "member" | "about"
 
 export interface Member {
   id: number;
+  /** Stable, human-shareable identifier (e.g. "S00001"). Assigned once at creation and never reused. */
+  uniqueId?: string | null;
   name: string;
   nameUr?: string | null;
   gender: Gender;
@@ -43,6 +45,18 @@ export interface GalleryImage {
   uploadedAt: string;
 }
 
+export type ActivityType = "member" | "user" | "gallery";
+export type ActivityAction = "added" | "updated" | "deleted";
+
+export interface ActivityLogEntry {
+  id: number;
+  type: ActivityType;
+  action: ActivityAction;
+  label: string;
+  actorEmail?: string | null;
+  createdAt: string;
+}
+
 export interface AppState {
   appName: string;
   language: Language;
@@ -50,6 +64,8 @@ export interface AppState {
   members: Member[];
   users: User[];
   gallery: GalleryImage[];
+  activityLog: ActivityLogEntry[];
+  visitorCount: number;
 }
 
 export interface TreeNode {
