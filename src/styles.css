@@ -1680,8 +1680,11 @@ button {
 .org-card.highlighted { stroke: #ffffff; stroke-width: 3px; }
 .org-card-ring { pointer-events: none; }
 .org-card-photo { pointer-events: none; }
-.org-card-name { font-size: 12px; font-weight: 700; font-family: inherit; fill: #ffffff; pointer-events: none; }
-.org-card-detail { font-size: 10px; font-weight: 500; font-family: inherit; fill: rgba(255, 255, 255, 0.9); pointer-events: none; }
+/* ".node text" above also matches these (same element) and is more specific, so it must be
+   matched here too, otherwise it wins the cascade and overrides fill/font-size with the
+   theme's default (near-black in light mode) instead of white — invisible on the dark card. */
+.node text.org-card-name { font-size: 12px; font-weight: 700; font-family: inherit; fill: #ffffff; pointer-events: none; }
+.node text.org-card-detail { font-size: 10px; font-weight: 500; font-family: inherit; fill: rgba(255, 255, 255, 0.9); pointer-events: none; }
 
 /* ===== RTL (Urdu) support ===== */
 html[dir="rtl"] body { text-align: right; }
