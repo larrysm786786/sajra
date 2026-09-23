@@ -1801,9 +1801,6 @@ export default function App() {
               </div>
             ) : null}
           </div>
-          <div className="hero-kpis">
-            <span className="kpi">{stats.members} {t(language, "kpiMembersSuffix")}</span>
-          </div>
         </section>
 
         {state.members.length ? (
