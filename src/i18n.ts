@@ -200,6 +200,8 @@ const STRINGS = {
     spousesFieldLabel: "Spouses",
     nameAndFatherRequiredHint: "Name and Father are required to add a new member.",
     nameRequiredHint: "Name is required.",
+    duplicateNameConfirmPrefix: "A member named",
+    duplicateNameConfirmSuffix: "already exists. Add this as a different person anyway?",
     saveMemberButton: "Save member",
     cancelButton: "Cancel",
 
@@ -267,7 +269,39 @@ const STRINGS = {
     professionGovernmentShort: "Govt.",
     eyebrowProfessions: "Professions",
     professionsTitle: "Who does what in the family",
-    professionsSubtitle: "Tap a profession to see who is in it."
+    professionsSubtitle: "Tap a profession to see who is in it.",
+
+    eyebrowInsights: "Family insights",
+    insightsTitle: "At a glance",
+    insightsSubtitle: "A quick snapshot of the family archive.",
+    generationsLabel: "Generations",
+    oldestLivingLabel: "Oldest living member",
+
+    findSomeoneTitle: "How are we related?",
+    findSomeoneSubtitle: "Pick two members to see how they're connected.",
+    relativeALabel: "First person",
+    relativeBLabel: "Second person",
+    relationSameLabel: "That's the same person.",
+    relationNoPathLabel: "No connection found in the recorded tree.",
+    relationParentLabel: "is the Parent of",
+    relationChildLabel: "is the Child of",
+    relationSpouseLabel: "is the Spouse of",
+    relationSiblingLabel: "is a Sibling of",
+    relationGrandparentLabel: "is the Grandparent of",
+    relationGrandchildLabel: "is the Grandchild of",
+    relationAuntUncleLabel: "is an Aunt/Uncle of",
+    relationNieceNephewLabel: "is a Niece/Nephew of",
+    relationCousinLabel: "is a Cousin of",
+    relationAncestorLabel: "is an Ancestor of",
+    relationDescendantLabel: "is a Descendant of",
+    relationRelatedLabel: "Related to (via a common ancestor)",
+
+    downloadTreeImageButton: "Download tree as image",
+    downloadTreeImageFailed: "Could not create the image. Try again, or use your browser's print option instead.",
+
+    backupReminderTitle: "It's been a while since the last backup.",
+    backupReminderNever: "You haven't downloaded a backup yet.",
+    backupReminderPrefix: "Last backup:"
   },
   ur: {
     signInEyebrow: "ایڈمن رسائی",
@@ -469,6 +503,8 @@ const STRINGS = {
     spousesFieldLabel: "شریک حیات",
     nameAndFatherRequiredHint: "نیا رکن شامل کرنے کے لیے نام اور والد کا انتخاب ضروری ہے۔",
     nameRequiredHint: "نام درج کرنا ضروری ہے۔",
+    duplicateNameConfirmPrefix: "اس نام کا ایک رکن",
+    duplicateNameConfirmSuffix: "پہلے سے موجود ہے۔ کیا اسے الگ شخص کے طور پر شامل کیا جائے؟",
     saveMemberButton: "رکن محفوظ کریں",
     cancelButton: "منسوخ کریں",
 
@@ -536,7 +572,39 @@ const STRINGS = {
     professionGovernmentShort: "سرکاری",
     eyebrowProfessions: "پیشے",
     professionsTitle: "خاندان میں کون کیا کرتا ہے",
-    professionsSubtitle: "کسی پیشے پر کلک کریں تاکہ اس کے ارکان دیکھ سکیں۔"
+    professionsSubtitle: "کسی پیشے پر کلک کریں تاکہ اس کے ارکان دیکھ سکیں۔",
+
+    eyebrowInsights: "خاندانی جھلک",
+    insightsTitle: "ایک نظر میں",
+    insightsSubtitle: "خاندانی آرکائیو کا مختصر جائزہ۔",
+    generationsLabel: "نسلیں",
+    oldestLivingLabel: "سب سے بزرگ رکن",
+
+    findSomeoneTitle: "ہمارا آپس میں کیا رشتہ ہے؟",
+    findSomeoneSubtitle: "دو ارکان منتخب کریں تاکہ دیکھ سکیں وہ آپس میں کیسے جڑے ہیں۔",
+    relativeALabel: "پہلا شخص",
+    relativeBLabel: "دوسرا شخص",
+    relationSameLabel: "یہ ایک ہی شخص ہے۔",
+    relationNoPathLabel: "درج شدہ شجرے میں کوئی تعلق نہیں ملا۔",
+    relationParentLabel: "کے والدین میں سے",
+    relationChildLabel: "کی اولاد",
+    relationSpouseLabel: "کا شریک حیات",
+    relationSiblingLabel: "کا بہن بھائی",
+    relationGrandparentLabel: "کے دادا/نانا یا دادی/نانی",
+    relationGrandchildLabel: "کے پوتے/نواسے",
+    relationAuntUncleLabel: "کا چچا/ماموں یا خالہ/پھوپھی",
+    relationNieceNephewLabel: "کا بھتیجا/بھانجا یا بھتیجی/بھانجی",
+    relationCousinLabel: "کا کزن",
+    relationAncestorLabel: "کا جدِ امجد",
+    relationDescendantLabel: "کی نسل میں سے",
+    relationRelatedLabel: "رشتہ دار ہے (مشترکہ جدِ امجد کے ذریعے)",
+
+    downloadTreeImageButton: "شجرہ بطور تصویر ڈاؤن لوڈ کریں",
+    downloadTreeImageFailed: "تصویر نہیں بن سکی۔ دوبارہ کوشش کریں، یا براؤزر کے پرنٹ آپشن کا استعمال کریں۔",
+
+    backupReminderTitle: "کافی عرصے سے بیک اپ نہیں لیا گیا۔",
+    backupReminderNever: "آپ نے ابھی تک کوئی بیک اپ ڈاؤن لوڈ نہیں کیا۔",
+    backupReminderPrefix: "آخری بیک اپ:"
   }
 } as const;
 

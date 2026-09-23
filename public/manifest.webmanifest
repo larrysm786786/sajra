@@ -1,0 +1,13 @@
+{
+  "name": "Sajra — Family Tree Archive",
+  "short_name": "Sajra",
+  "description": "A family tree and gallery app for preserving lineage, profiles, and memories.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#f4f2ed",
+  "theme_color": "#2e5185",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

@@ -149,6 +149,73 @@ export function getChildren(members: Member[], memberId: number): Member[] {
   return members.filter((member) => member.fatherId === memberId || member.motherId === memberId);
 }
 
+export type RelationType =
+  | "same"
+  | "spouse"
+  | "parent"
+  | "child"
+  | "sibling"
+  | "grandparent"
+  | "grandchild"
+  | "auntUncle"
+  | "nieceNephew"
+  | "cousin"
+  | "ancestor"
+  | "descendant"
+  | "none";
+
+/**
+ * Blood/marriage relation of `idB` to `idA` (read as "B is <type> of A"), found via their nearest
+ * common ancestor. Only walks father/mother links, so in-law relationships beyond a direct spouse
+ * aren't detected.
+ */
+export function findRelation(members: Member[], idA: number, idB: number): RelationType {
+  if (idA === idB) return "same";
+  const byId = new Map(members.map((member) => [member.id, member]));
+  const a = byId.get(idA);
+  const b = byId.get(idB);
+  if (!a || !b) return "none";
+  if (a.spouseIds.includes(idB) || b.spouseIds.includes(idA)) return "spouse";
+
+  function ancestorDistances(id: number): Map<number, number> {
+    const distances = new Map<number, number>();
+    let frontier = [id];
+    let dist = 0;
+    while (frontier.length) {
+      const next: number[] = [];
+      for (const current of frontier) {
+        if (distances.has(current)) continue;
+        distances.set(current, dist);
+        const member = byId.get(current);
+        if (member?.fatherId) next.push(member.fatherId);
+        if (member?.motherId) next.push(member.motherId);
+      }
+      frontier = next;
+      dist += 1;
+    }
+    return distances;
+  }
+
+  const ancestorsOfA = ancestorDistances(idA);
+  const ancestorsOfB = ancestorDistances(idB);
+
+  let closest: { dA: number; dB: number } | null = null;
+  for (const [id, dA] of ancestorsOfA) {
+    const dB = ancestorsOfB.get(id);
+    if (dB === undefined) continue;
+    if (!closest || dA + dB < closest.dA + closest.dB) closest = { dA, dB };
+  }
+  if (!closest) return "none";
+  const { dA, dB } = closest;
+
+  if (dB === 0) return dA === 1 ? "parent" : dA === 2 ? "grandparent" : "ancestor";
+  if (dA === 0) return dB === 1 ? "child" : dB === 2 ? "grandchild" : "descendant";
+  if (dA === 1 && dB === 1) return "sibling";
+  if (dA === 1 && dB === 2) return "nieceNephew";
+  if (dA === 2 && dB === 1) return "auntUncle";
+  return "cousin";
+}
+
 export function buildTree(members: Member[]): TreeNode[] {
   const byParent = new Map<number, Member[]>();
   const roots: Member[] = [];
@@ -170,6 +237,12 @@ export function buildTree(members: Member[]): TreeNode[] {
   });
 
   return roots.sort(sortMembers).map(walk);
+}
+
+/** Number of generations in the tree (root = 1). */
+export function treeDepth(nodes: TreeNode[]): number {
+  if (!nodes.length) return 0;
+  return 1 + Math.max(...nodes.map((node) => treeDepth(node.children)));
 }
 
 export function sortMembers(a: Member, b: Member): number {

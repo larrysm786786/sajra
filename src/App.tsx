@@ -3,10 +3,12 @@ import type { FormEvent, ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { AppState, GalleryImage, Gender, Language, Member, Role, User, ViewKey } from "./types";
 import {
+  buildTree,
   calculateAge,
   createEmptyState,
   displayName,
   exportJson,
+  findRelation,
   formatDate,
   getChildren,
   getParents,
@@ -20,8 +22,10 @@ import {
   pushActivityLog,
   readFileAsCompressedDataUrl,
   saveState,
-  sortMembers
+  sortMembers,
+  treeDepth
 } from "./lib";
+import type { RelationType } from "./lib";
 import {
   getSupabaseSession,
   isSupabaseConfigured,
@@ -64,6 +68,10 @@ const STARTED_WITH_EXPIRED_LINK = typeof window !== "undefined" && window.locati
 
 // Guards the visitor-count bump so a single browser tab only counts as one visit per session.
 const VISIT_SESSION_KEY = "sajra-visit-counted";
+
+// When this device last downloaded a backup — local only, since "did I back up" is per-device.
+const LAST_BACKUP_KEY = "sajra-last-backup-at";
+const BACKUP_REMINDER_DAYS = 30;
 
 type MemberDraft = {
   id?: number;
@@ -283,6 +291,22 @@ function PasswordField({
   );
 }
 
+const RELATION_LABEL_KEYS: Record<RelationType, StringKey> = {
+  same: "relationSameLabel",
+  none: "relationNoPathLabel",
+  spouse: "relationSpouseLabel",
+  parent: "relationParentLabel",
+  child: "relationChildLabel",
+  sibling: "relationSiblingLabel",
+  grandparent: "relationGrandparentLabel",
+  grandchild: "relationGrandchildLabel",
+  auntUncle: "relationAuntUncleLabel",
+  nieceNephew: "relationNieceNephewLabel",
+  cousin: "relationCousinLabel",
+  ancestor: "relationAncestorLabel",
+  descendant: "relationDescendantLabel"
+};
+
 const ADMIN_ICONS: Record<AdminSection, string> = {
   overview: "M3 3h8v8H3V3Zm10 0h8v5h-8V3ZM3 13h8v8H3v-8Zm10-3h8v11h-8V10Z",
   members: "M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0ZM4 21c0-4 3.6-6 8-6s8 2 8 6",
@@ -374,6 +398,12 @@ export default function App() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const supabaseConfigured = useMemo(() => isSupabaseConfigured(), []);
   const [memberQuery, setMemberQuery] = useState("");
+  const [homeSearchQuery, setHomeSearchQuery] = useState("");
+  const [homeSearchOpen, setHomeSearchOpen] = useState(false);
+  const [relativeAId, setRelativeAId] = useState("");
+  const [relativeBId, setRelativeBId] = useState("");
+  const [relativeASearch, setRelativeASearch] = useState("");
+  const [relativeBSearch, setRelativeBSearch] = useState("");
   const [spouseSearchQuery, setSpouseSearchQuery] = useState("");
   const [fatherSearchQuery, setFatherSearchQuery] = useState("");
   const [motherSearchQuery, setMotherSearchQuery] = useState("");
@@ -406,6 +436,13 @@ export default function App() {
   const [lightboxImage, setLightboxImage] = useState<GalleryImage | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [importError, setImportError] = useState("");
+  const [lastBackupAt, setLastBackupAt] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(LAST_BACKUP_KEY);
+    } catch {
+      return null;
+    }
+  });
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const hydrationDoneRef = useRef(false);
   const remoteUpdatedAtRef = useRef<string | null>(null);
@@ -747,6 +784,17 @@ export default function App() {
     if (!memberDraft || !canSaveMember) return;
     const id = memberDraft.id ?? nextId(state.members);
     const existingMember = state.members.find((member) => member.id === id);
+
+    // Same names recur a lot in this family (see the unique-id feature), so this only warns
+    // instead of blocking — but a genuine duplicate entry is a mistake worth catching early.
+    if (!memberDraft.id) {
+      const duplicate = state.members.find((member) => member.name.trim().toLowerCase() === memberDraft.name.trim().toLowerCase());
+      if (duplicate) {
+        const label = `${duplicate.name}${duplicate.uniqueId ? ` (${duplicate.uniqueId})` : ""}`;
+        if (!window.confirm(`${t(language, "duplicateNameConfirmPrefix")} "${label}" ${t(language, "duplicateNameConfirmSuffix")}`)) return;
+      }
+    }
+
     const spouseIds = [...new Set(memberDraft.spouseIds.filter((value) => value !== id))];
 
     // The age box is a convenience for an unknown exact birth date: keep the original date if the
@@ -993,6 +1041,14 @@ export default function App() {
     a.download = "sajra-backup.json";
     a.click();
     URL.revokeObjectURL(url);
+
+    const now = new Date().toISOString();
+    try {
+      localStorage.setItem(LAST_BACKUP_KEY, now);
+    } catch {
+      // Best-effort only; the reminder just won't persist across sessions if storage is blocked.
+    }
+    setLastBackupAt(now);
   }
 
   function triggerImport() {
@@ -1039,6 +1095,22 @@ export default function App() {
     users: state.users.length,
     visitors: state.visitorCount ?? 0
   }), [roots.length, state.gallery.length, state.members.length, state.users.length, state.visitorCount]);
+
+  const familyInsights = useMemo(() => {
+    const living = state.members.filter((member) => !member.dod);
+    const oldestLiving = living.reduce<Member | null>((oldest, member) => {
+      const age = calculateAge(member.dob, member.dod);
+      if (age === null) return oldest;
+      const oldestAge = oldest ? calculateAge(oldest.dob, oldest.dod) : null;
+      return oldestAge === null || age > oldestAge ? member : oldest;
+    }, null);
+    return {
+      generations: treeDepth(buildTree(state.members)),
+      male: state.members.filter((member) => member.gender === "male").length,
+      female: state.members.filter((member) => member.gender === "female").length,
+      oldestLiving
+    };
+  }, [state.members]);
 
   const content = (() => {
     // A recovery link signs the user in with a temporary session, so this must not depend on !isLoggedIn.
@@ -1424,8 +1496,17 @@ export default function App() {
           <div className="empty">{t(language, "noLogEntries")}</div>
         );
       } else if (activeSection.key === "backup") {
+        const daysSinceBackup = lastBackupAt ? Math.floor((Date.now() - new Date(lastBackupAt).getTime()) / 86400000) : null;
+        const needsBackupReminder = daysSinceBackup === null || daysSinceBackup > BACKUP_REMINDER_DAYS;
         sectionBody = (
           <div className="list backup-actions">
+            {needsBackupReminder ? (
+              <div className="notice">
+                {daysSinceBackup === null
+                  ? t(language, "backupReminderNever")
+                  : `${t(language, "backupReminderTitle")} ${t(language, "backupReminderPrefix")} ${formatDate(lastBackupAt, language)}`}
+              </div>
+            ) : null}
             <button className="btn" type="button" onClick={exportState}>{t(language, "downloadBackupButton")}</button>
             <button className="btn-ghost" type="button" onClick={triggerImport}>{t(language, "importBackupButton")}</button>
             <button className="btn-ghost danger" type="button" onClick={resetToEmpty}>{t(language, "resetArchiveButton")}</button>
@@ -1582,6 +1663,38 @@ export default function App() {
           <div className="hero-actions">
             <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openFamilyTreeButton")}</button>
           </div>
+          <div className="hero-search" style={{ position: "relative" }}>
+            <input
+              className="field"
+              placeholder={t(language, "searchMembersPlaceholder")}
+              value={homeSearchQuery}
+              onChange={(e) => setHomeSearchQuery(e.target.value)}
+              onFocus={() => setHomeSearchOpen(true)}
+              onBlur={() => setHomeSearchOpen(false)}
+            />
+            {homeSearchOpen && homeSearchQuery.trim() ? (
+              <div className="autocomplete-list">
+                {state.members
+                  .filter((member) => fullLabel(member, language).toLowerCase().includes(homeSearchQuery.trim().toLowerCase()))
+                  .slice(0, 8)
+                  .map((member) => (
+                    <button
+                      key={member.id}
+                      type="button"
+                      className="autocomplete-item"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setHomeSearchQuery("");
+                        navigate({ page: "member", memberId: member.id });
+                      }}
+                    >
+                      {fullLabel(member, language)}
+                      {member.uniqueId ? <span className="autocomplete-id">{member.uniqueId}</span> : null}
+                    </button>
+                  ))}
+              </div>
+            ) : null}
+          </div>
           <div className="hero-kpis">
             <span className="kpi">{stats.members} {t(language, "kpiMembersSuffix")}</span>
             <span className="kpi">{stats.roots} {t(language, "kpiRootsSuffix")}</span>
@@ -1589,6 +1702,30 @@ export default function App() {
             <span className="kpi">{stats.users} {t(language, "kpiAccountsSuffix")}</span>
           </div>
         </section>
+
+        {state.members.length ? (
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <span className="eyebrow">{t(language, "eyebrowInsights")}</span>
+                <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "insightsTitle")}</h2>
+                <p className="section-subtitle">{t(language, "insightsSubtitle")}</p>
+              </div>
+            </div>
+            <div className="stat-grid">
+              <StatCard value={familyInsights.generations} label={t(language, "generationsLabel")} />
+              <StatCard value={familyInsights.male} label={t(language, "genderMale")} />
+              <StatCard value={familyInsights.female} label={t(language, "genderFemale")} />
+              {familyInsights.oldestLiving ? (
+                <StatCard
+                  value={calculateAge(familyInsights.oldestLiving.dob, familyInsights.oldestLiving.dod) ?? "—"}
+                  label={t(language, "oldestLivingLabel")}
+                  hint={displayName(familyInsights.oldestLiving, language)}
+                />
+              ) : null}
+            </div>
+          </section>
+        ) : null}
 
         {professionGroups.length ? (
           <section className="section">
@@ -1618,6 +1755,90 @@ export default function App() {
                 {[...activeProfessionGroup.members].sort(sortMembers).map((member) => (
                   <MemberCard key={member.id} member={member} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
                 ))}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
+        {state.members.length > 1 ? (
+          <section className="section">
+            <div className="section-head">
+              <div>
+                <span className="eyebrow">{t(language, "eyebrowFamilyTree")}</span>
+                <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "findSomeoneTitle")}</h2>
+                <p className="section-subtitle">{t(language, "findSomeoneSubtitle")}</p>
+              </div>
+            </div>
+            <div className="card-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+              <div style={{ position: "relative" }}>
+                <div className="muted" style={{ marginBottom: 8, fontWeight: 700 }}>{t(language, "relativeALabel")}</div>
+                <input
+                  className="field"
+                  placeholder={t(language, "searchMembersPlaceholder")}
+                  value={relativeASearch}
+                  onChange={(e) => { setRelativeASearch(e.target.value); setRelativeAId(""); }}
+                />
+                {relativeASearch.trim() && !relativeAId ? (
+                  <div className="autocomplete-list">
+                    {state.members
+                      .filter((member) => fullLabel(member, language).toLowerCase().includes(relativeASearch.trim().toLowerCase()))
+                      .slice(0, 8)
+                      .map((member) => (
+                        <button
+                          key={member.id}
+                          type="button"
+                          className="autocomplete-item"
+                          onMouseDown={(e) => { e.preventDefault(); setRelativeAId(String(member.id)); setRelativeASearch(fullLabel(member, language)); }}
+                        >
+                          {fullLabel(member, language)}
+                          {member.uniqueId ? <span className="autocomplete-id">{member.uniqueId}</span> : null}
+                        </button>
+                      ))}
+                  </div>
+                ) : null}
+              </div>
+              <div style={{ position: "relative" }}>
+                <div className="muted" style={{ marginBottom: 8, fontWeight: 700 }}>{t(language, "relativeBLabel")}</div>
+                <input
+                  className="field"
+                  placeholder={t(language, "searchMembersPlaceholder")}
+                  value={relativeBSearch}
+                  onChange={(e) => { setRelativeBSearch(e.target.value); setRelativeBId(""); }}
+                />
+                {relativeBSearch.trim() && !relativeBId ? (
+                  <div className="autocomplete-list">
+                    {state.members
+                      .filter((member) => fullLabel(member, language).toLowerCase().includes(relativeBSearch.trim().toLowerCase()))
+                      .slice(0, 8)
+                      .map((member) => (
+                        <button
+                          key={member.id}
+                          type="button"
+                          className="autocomplete-item"
+                          onMouseDown={(e) => { e.preventDefault(); setRelativeBId(String(member.id)); setRelativeBSearch(fullLabel(member, language)); }}
+                        >
+                          {fullLabel(member, language)}
+                          {member.uniqueId ? <span className="autocomplete-id">{member.uniqueId}</span> : null}
+                        </button>
+                      ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            {relativeAId && relativeBId ? (
+              <div className="notice" style={{ marginTop: 16 }}>
+                {(() => {
+                  const idA = Number(relativeAId);
+                  const idB = Number(relativeBId);
+                  const memberA = memberMap.get(idA);
+                  const memberB = memberMap.get(idB);
+                  if (!memberA || !memberB) return null;
+                  const relation = findRelation(state.members, idA, idB);
+                  if (relation === "same" || relation === "none") {
+                    return <p>{t(language, RELATION_LABEL_KEYS[relation])}</p>;
+                  }
+                  return <p>{displayName(memberB, language)} {t(language, RELATION_LABEL_KEYS[relation])} {displayName(memberA, language)}.</p>;
+                })()}
               </div>
             ) : null}
           </section>

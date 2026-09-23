@@ -422,6 +422,51 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
     findRef.current(query);
   }
 
+  function downloadTreeImage() {
+    const svgEl = containerRef.current?.querySelector("svg");
+    if (!svgEl) return;
+
+    const bgColor = getComputedStyle(document.documentElement).getPropertyValue("--surface-strong").trim() || "#ffffff";
+    const clone = svgEl.cloneNode(true) as SVGSVGElement;
+    clone.style.background = bgColor;
+    const svgString = new XMLSerializer().serializeToString(clone);
+    const svgUrl = URL.createObjectURL(new Blob([svgString], { type: "image/svg+xml;charset=utf-8" }));
+
+    const img = new Image();
+    img.onload = () => {
+      const scale = 2;
+      const width = svgEl.clientWidth || 1000;
+      const height = svgEl.clientHeight || 700;
+      const canvas = document.createElement("canvas");
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const ctx = canvas.getContext("2d");
+      URL.revokeObjectURL(svgUrl);
+      if (!ctx) return;
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.scale(scale, scale);
+      try {
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (!blob) return;
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = "sajra-family-tree.png";
+          link.click();
+          URL.revokeObjectURL(link.href);
+        }, "image/png");
+      } catch {
+        setMessage(t(language, "downloadTreeImageFailed"));
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(svgUrl);
+      setMessage(t(language, "downloadTreeImageFailed"));
+    };
+    img.src = svgUrl;
+  }
+
   return (
     <div>
       <div className="view-toggle">
@@ -445,6 +490,9 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
           onClick={() => setViewMode("boxes")}
         >
           {t(language, "viewBoxes")}
+        </button>
+        <button type="button" className="view-toggle-btn" onClick={downloadTreeImage}>
+          {t(language, "downloadTreeImageButton")}
         </button>
       </div>
 

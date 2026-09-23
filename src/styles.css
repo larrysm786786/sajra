@@ -356,6 +356,11 @@ button {
   align-items: center;
 }
 
+.hero-search {
+  margin-top: 16px;
+  max-width: 420px;
+}
+
 .section {
   margin-top: 22px;
   padding: 26px;
