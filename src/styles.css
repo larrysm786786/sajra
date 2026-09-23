@@ -479,7 +479,6 @@ button {
   width: 34px;
   height: 34px;
   margin-bottom: 12px;
-  background: linear-gradient(150deg, var(--accent), var(--accent-strong));
   color: var(--ink);
   font-family: "Playfair Display", serif;
   font-weight: 700;
