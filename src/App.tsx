@@ -1297,10 +1297,27 @@ export default function App() {
                   <button className="btn" type="button" onClick={() => openMemberEditor()}>{t(language, "addMemberButton")}</button>
                   {isAdmin ? <button className="btn-ghost" type="button" onClick={() => openUserEditor()}>{t(language, "addUserButton")}</button> : null}
                   <button className="btn-ghost" type="button" onClick={() => openGalleryEditor()}>{t(language, "addGalleryPhotoButton")}</button>
-                  <button className="btn-ghost" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openTreeButton")}</button>
                   {isAdmin ? <button className="btn-ghost" type="button" onClick={exportState}>{t(language, "downloadBackupButton")}</button> : null}
                 </div>
               </Card>
+            </div>
+            <div style={{ marginTop: 18 }}>
+              <div className="section-head">
+                <div>
+                  <span className="eyebrow">{t(language, "eyebrowFamilyTree")}</span>
+                  <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "exploreLineageTitle")}</h2>
+                  <p className="section-subtitle">{t(language, "exploreLineageSubtitle")}</p>
+                </div>
+              </div>
+              {state.members.length ? (
+                <FamilyTreeD3
+                  members={state.members}
+                  language={language}
+                  onOpenMember={(id) => navigate({ page: "member", memberId: id })}
+                />
+              ) : (
+                <div className="empty">{t(language, "noMembersYet")}</div>
+              )}
             </div>
           </>
         );
