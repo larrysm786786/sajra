@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
-import type { AppState, GalleryImage, Gender, Language, Member, Role, User, ViewKey } from "./types";
+import type { AppState, GalleryImage, Gender, Language, Member, Role, Suggestion, User, ViewKey } from "./types";
 import {
   buildTree,
   calculateAge,
@@ -61,7 +61,7 @@ const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string
 
 type RouteState = { page: ViewKey; memberId?: number };
 
-type AdminSection = "overview" | "members" | "users" | "gallery" | "logs" | "backup" | "security";
+type AdminSection = "overview" | "members" | "users" | "gallery" | "suggestions" | "logs" | "backup" | "security";
 
 // Supabase reports an expired / already-used reset link through the URL hash.
 const STARTED_WITH_EXPIRED_LINK = typeof window !== "undefined" && window.location.hash.includes("error_code=otp_expired");
@@ -103,6 +103,13 @@ type GalleryDraft = {
   id?: number;
   src: string;
   caption: string;
+};
+
+type SuggestionDraft = {
+  memberId: string;
+  memberSearch: string;
+  message: string;
+  submitterName: string;
 };
 
 /** Name prefixed with profession, so people who share a name (common in this family) can be told apart in search lists. */
@@ -312,6 +319,7 @@ const ADMIN_ICONS: Record<AdminSection, string> = {
   members: "M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0ZM4 21c0-4 3.6-6 8-6s8 2 8 6",
   users: "M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3Z",
   gallery: "M3 5h18v14H3V5Zm0 11 5-5 4 4 3-3 6 6M15.5 9.5h.01",
+  suggestions: "M12 22s-8-4.5-8-11a8 8 0 0 1 16 0c0 6.5-8 11-8 11ZM12 8v5M12 16h.01",
   logs: "M12 8v5l3 2M3 12a9 9 0 1 0 3-6.7M3 4v5h5",
   backup: "M12 3v12m0 0-4-4m4 4 4-4M4 17v3h16v-3",
   security: "M6 11V8a6 6 0 1 1 12 0v3M5 11h14v10H5V11Zm7 4v2"
@@ -433,6 +441,9 @@ export default function App() {
   const [userBusy, setUserBusy] = useState(false);
   const [userError, setUserError] = useState("");
   const [galleryDraft, setGalleryDraft] = useState<GalleryDraft | null>(null);
+  const [suggestionDraft, setSuggestionDraft] = useState<SuggestionDraft | null>(null);
+  const [suggestionBusy, setSuggestionBusy] = useState(false);
+  const [suggestionSent, setSuggestionSent] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<GalleryImage | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [importError, setImportError] = useState("");
@@ -760,6 +771,66 @@ export default function App() {
     setSpouseSearchQuery("");
     setFatherSearchQuery("");
     setMotherSearchQuery("");
+  }
+
+  // Open to anyone, logged in or not — that's the point of a suggestion box.
+  function openSuggestionEditor(member?: Member) {
+    setSuggestionSent(false);
+    setSuggestionDraft({
+      memberId: member ? String(member.id) : "",
+      memberSearch: member ? fullLabel(member, language) : "",
+      message: "",
+      submitterName: ""
+    });
+  }
+
+  function closeSuggestionEditor() {
+    setSuggestionDraft(null);
+  }
+
+  async function submitSuggestion() {
+    if (!suggestionDraft || !suggestionDraft.message.trim() || suggestionBusy) return;
+    const memberId = suggestionDraft.memberId ? Number(suggestionDraft.memberId) : null;
+    const member = memberId ? state.members.find((candidate) => candidate.id === memberId) : undefined;
+
+    setSuggestionBusy(true);
+    try {
+      let publishedState: AppState | null = null;
+      updateState((current) => {
+        const suggestion: Suggestion = {
+          id: nextId(current.suggestions),
+          memberId,
+          memberName: member ? member.name : null,
+          message: suggestionDraft.message.trim(),
+          submitterName: suggestionDraft.submitterName.trim() || null,
+          status: "pending",
+          createdAt: new Date().toISOString()
+        };
+        const next = { ...current, suggestions: [suggestion, ...current.suggestions].slice(0, 200) };
+        publishedState = next;
+        return next;
+      });
+      // Anonymous visitors never trigger the normal (isLoggedIn-only) autosave, so this one write
+      // is pushed straight to Supabase — the whole point of a suggestion box is that it reaches the admin.
+      if (supabaseConfigured && publishedState) await persistToSupabase(publishedState);
+      setSuggestionSent(true);
+      setSuggestionDraft(null);
+    } finally {
+      setSuggestionBusy(false);
+    }
+  }
+
+  function resolveSuggestion(id: number) {
+    if (!isAdmin) return;
+    updateState((current) => ({
+      ...current,
+      suggestions: current.suggestions.map((suggestion) => (suggestion.id === id ? { ...suggestion, status: "resolved" } : suggestion))
+    }));
+  }
+
+  function deleteSuggestion(id: number) {
+    if (!isAdmin) return;
+    updateState((current) => ({ ...current, suggestions: current.suggestions.filter((suggestion) => suggestion.id !== id) }));
   }
 
   function openLightbox(image: GalleryImage) {
@@ -1221,10 +1292,13 @@ export default function App() {
                     {member.dod ? ` • ${t(language, "diedWord")} ${formatDate(member.dod, language)}` : ""}
                     {calculateAge(member.dob, member.dod) !== null ? ` • ${t(language, "ageWord")} ${calculateAge(member.dob, member.dod)}` : ""}
                   </p>
-                  <div className="profile-meta">
+                  <div className="profile-meta no-print">
                     <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openTreeButton")}</button>
                     {canEditMembers ? <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editMemberButton")}</button> : null}
+                    <button className="btn-ghost" type="button" onClick={() => window.print()}>{t(language, "printProfileButton")}</button>
+                    <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor(member)}>{t(language, "suggestCorrectionButton")}</button>
                   </div>
+                  {suggestionSent ? <p className="hint no-print">{t(language, "suggestionSentMessage")}</p> : null}
                   {member.bio ? <p style={{ marginTop: 16, lineHeight: 1.8 }}>{member.bio}</p> : null}
                 </div>
               </div>
@@ -1337,6 +1411,7 @@ export default function App() {
         { key: "members", label: t(language, "membersLabel"), subtitle: t(language, "membersCardSubtitle") },
         ...(isAdmin ? [{ key: "users" as const, label: t(language, "usersLabel"), subtitle: t(language, "usersCardSubtitle") }] : []),
         { key: "gallery", label: t(language, "adminNavGallery"), subtitle: t(language, "galleryAdminSubtitle") },
+        ...(isAdmin ? [{ key: "suggestions" as const, label: t(language, "adminNavSuggestions"), subtitle: t(language, "suggestionsSubtitle") }] : []),
         ...(isAdmin ? [{ key: "logs" as const, label: t(language, "adminNavLogs"), subtitle: t(language, "logHistorySubtitle") }] : []),
         ...(isAdmin ? [{ key: "backup" as const, label: t(language, "backupCardTitle"), subtitle: t(language, "backupCardSubtitle") }] : []),
         { key: "security", label: t(language, "adminNavSecurity"), subtitle: t(language, "changePasswordSubtitle") }
@@ -1471,6 +1546,35 @@ export default function App() {
           </div>
         ) : (
           <div className="empty">{t(language, "noPhotosYet")}</div>
+        );
+      } else if (activeSection.key === "suggestions") {
+        sectionBody = state.suggestions.length ? (
+          <div className="list">
+            {state.suggestions.map((suggestion) => (
+              <div key={suggestion.id} className="card" style={{ padding: 14, opacity: suggestion.status === "resolved" ? 0.6 : 1 }}>
+                <div className="tree-head">
+                  <div>
+                    <div className="tree-name">
+                      {suggestion.memberName ? `${t(language, "aboutPrefix")} ${suggestion.memberName}` : t(language, "generalSuggestionLabel")}
+                    </div>
+                    <p style={{ marginTop: 6, lineHeight: 1.6 }}>{suggestion.message}</p>
+                    <div className="tree-sub" style={{ marginTop: 6 }}>
+                      {formatDate(suggestion.createdAt, language)} • {suggestion.submitterName || t(language, "anonymousSubmitter")}
+                      {suggestion.status === "resolved" ? ` • ${t(language, "suggestionResolvedLabel")}` : ""}
+                    </div>
+                  </div>
+                  <div className="actions-row">
+                    {suggestion.status === "pending" ? (
+                      <button className="btn-ghost" type="button" onClick={() => resolveSuggestion(suggestion.id)}>{t(language, "markResolvedButton")}</button>
+                    ) : null}
+                    <button className="btn-ghost danger" type="button" onClick={() => deleteSuggestion(suggestion.id)}>{t(language, "deleteButton")}</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty">{t(language, "noSuggestionsYet")}</div>
         );
       } else if (activeSection.key === "logs") {
         const typeLabelKeys = { member: "logTypeMember", user: "logTypeUser", gallery: "logTypeGallery" } as const;
@@ -1662,7 +1766,9 @@ export default function App() {
           </p>
           <div className="hero-actions">
             <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openFamilyTreeButton")}</button>
+            <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor()}>{t(language, "suggestEditButton")}</button>
           </div>
+          {suggestionSent ? <p className="hint">{t(language, "suggestionSentMessage")}</p> : null}
           <div className="hero-search" style={{ position: "relative" }}>
             <input
               className="field"
@@ -2255,6 +2361,64 @@ export default function App() {
           <div className="actions-row" style={{ marginTop: 18 }}>
             <button className="btn" type="button" onClick={saveGallery}>{t(language, "savePhotoButton")}</button>
             <button className="btn-ghost" type="button" onClick={closeEditors}>{t(language, "cancelButton")}</button>
+          </div>
+        </Modal>
+      ) : null}
+
+      {suggestionDraft ? (
+        <Modal title={t(language, "suggestEditModalTitle")} subtitle={t(language, "suggestEditModalSubtitle")} onClose={closeSuggestionEditor}>
+          <div className="form-grid">
+            <div className="span-12" style={{ position: "relative" }}>
+              <div className="muted" style={{ marginBottom: 8, fontWeight: 700 }}>{t(language, "suggestionAboutLabel")}</div>
+              <input
+                className="field"
+                placeholder={t(language, "suggestionAboutPlaceholder")}
+                value={suggestionDraft.memberSearch}
+                onChange={(e) => setSuggestionDraft((current) => current ? { ...current, memberSearch: e.target.value, memberId: "" } : current)}
+              />
+              {suggestionDraft.memberSearch.trim() && !suggestionDraft.memberId ? (
+                <div className="autocomplete-list">
+                  {state.members
+                    .filter((member) => fullLabel(member, language).toLowerCase().includes(suggestionDraft.memberSearch.trim().toLowerCase()))
+                    .slice(0, 8)
+                    .map((member) => (
+                      <button
+                        key={member.id}
+                        type="button"
+                        className="autocomplete-item"
+                        onMouseDown={(e) => { e.preventDefault(); setSuggestionDraft((current) => current ? { ...current, memberId: String(member.id), memberSearch: fullLabel(member, language) } : current); }}
+                      >
+                        {fullLabel(member, language)}
+                        {member.uniqueId ? <span className="autocomplete-id">{member.uniqueId}</span> : null}
+                      </button>
+                    ))}
+                </div>
+              ) : null}
+            </div>
+            <label className="span-12">
+              <span className="sr-only">{t(language, "suggestionMessageLabel")}</span>
+              <textarea
+                className="textarea"
+                placeholder={t(language, "suggestionMessagePlaceholder")}
+                value={suggestionDraft.message}
+                onChange={(e) => setSuggestionDraft((current) => current ? { ...current, message: e.target.value } : current)}
+              />
+            </label>
+            <label className="span-12">
+              <span className="sr-only">{t(language, "suggestionNameLabel")}</span>
+              <input
+                className="field"
+                placeholder={t(language, "suggestionNamePlaceholder")}
+                value={suggestionDraft.submitterName}
+                onChange={(e) => setSuggestionDraft((current) => current ? { ...current, submitterName: e.target.value } : current)}
+              />
+            </label>
+          </div>
+          <div className="actions-row" style={{ marginTop: 18 }}>
+            <button className="btn" type="button" disabled={!suggestionDraft.message.trim() || suggestionBusy} onClick={() => void submitSuggestion()}>
+              {suggestionBusy ? t(language, "sendingSuggestion") : t(language, "sendSuggestionButton")}
+            </button>
+            <button className="btn-ghost" type="button" onClick={closeSuggestionEditor}>{t(language, "cancelButton")}</button>
           </div>
         </Modal>
       ) : null}

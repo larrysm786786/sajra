@@ -1705,3 +1705,41 @@ html[dir="rtl"] .field,
 html[dir="rtl"] .select {
   text-align: right;
 }
+
+/* ===== Print (member profile) ===== */
+@media print {
+  .topbar,
+  .footer-note,
+  .nav-backdrop,
+  .no-print {
+    display: none !important;
+  }
+
+  body,
+  .app-shell {
+    background: #ffffff;
+  }
+
+  .member-profile-section {
+    color: #000000;
+  }
+
+  .member-profile-section .tree-name,
+  .member-profile-section .section-title,
+  .member-profile-section .section-subtitle,
+  .member-profile-section p,
+  .member-profile-section .eyebrow {
+    color: #000000 !important;
+  }
+
+  .member-profile-section .member-photo,
+  .member-profile-section .avatar {
+    filter: none;
+  }
+
+  .member-profile-section .card,
+  .member-profile-section .member-card {
+    border: 1px solid #999999;
+    box-shadow: none;
+  }
+}

@@ -21,7 +21,8 @@ export function createEmptyState(): AppState {
     ],
     gallery: [],
     activityLog: [],
-    visitorCount: 0
+    visitorCount: 0,
+    suggestions: []
   };
 }
 
@@ -30,7 +31,8 @@ function finalizeState(state: AppState): AppState {
     ...state,
     members: assignMissingUniqueIds(state.members),
     activityLog: Array.isArray(state.activityLog) ? state.activityLog : [],
-    visitorCount: typeof state.visitorCount === "number" ? state.visitorCount : 0
+    visitorCount: typeof state.visitorCount === "number" ? state.visitorCount : 0,
+    suggestions: Array.isArray(state.suggestions) ? state.suggestions : []
   };
 }
 

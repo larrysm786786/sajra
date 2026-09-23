@@ -426,8 +426,22 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
     const svgEl = containerRef.current?.querySelector("svg");
     if (!svgEl) return;
 
+    // The SVG's colors/fonts come from styles.css, which a standalone image has no access to —
+    // so every element's *computed* style is baked in as an inline style on the clone first.
+    const STYLE_PROPS = ["fill", "stroke", "stroke-width", "stroke-dasharray", "font-family", "font-size", "font-weight", "text-anchor", "opacity"];
+    function inlineStyles(source: Element, target: Element) {
+      const computed = getComputedStyle(source);
+      target.setAttribute("style", STYLE_PROPS.map((prop) => `${prop}:${computed.getPropertyValue(prop)}`).join(";"));
+      const sourceChildren = source.children;
+      const targetChildren = target.children;
+      for (let i = 0; i < sourceChildren.length; i += 1) {
+        inlineStyles(sourceChildren[i], targetChildren[i]);
+      }
+    }
+
     const bgColor = getComputedStyle(document.documentElement).getPropertyValue("--surface-strong").trim() || "#ffffff";
     const clone = svgEl.cloneNode(true) as SVGSVGElement;
+    inlineStyles(svgEl, clone);
     clone.style.background = bgColor;
     const svgString = new XMLSerializer().serializeToString(clone);
     const svgUrl = URL.createObjectURL(new Blob([svgString], { type: "image/svg+xml;charset=utf-8" }));

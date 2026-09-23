@@ -57,6 +57,18 @@ export interface ActivityLogEntry {
   createdAt: string;
 }
 
+/** A correction or addition proposed by anyone (no login needed), for an admin to review. */
+export interface Suggestion {
+  id: number;
+  memberId?: number | null;
+  /** Snapshot of the member's name at submission time, kept even if the member is later renamed/removed. */
+  memberName?: string | null;
+  message: string;
+  submitterName?: string | null;
+  status: "pending" | "resolved";
+  createdAt: string;
+}
+
 export interface AppState {
   appName: string;
   language: Language;
@@ -66,6 +78,7 @@ export interface AppState {
   gallery: GalleryImage[];
   activityLog: ActivityLogEntry[];
   visitorCount: number;
+  suggestions: Suggestion[];
 }
 
 export interface TreeNode {
