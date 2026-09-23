@@ -1659,11 +1659,6 @@ export default function App() {
           <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
           <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
           <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
-          {isLoggedIn ? (
-            <NavLink onClick={logout}>{t(language, "logoutButton")}</NavLink>
-          ) : (
-            <NavLink active={route.page === "admin"} onClick={() => navigate({ page: "admin" })}>{t(language, "navLoginLabel")}</NavLink>
-          )}
           <div className="topnav-actions-mobile">
             <button
               type="button"
@@ -1677,7 +1672,9 @@ export default function App() {
             </button>
             {isLoggedIn ? (
               <button type="button" className="toggle" onClick={logout}>{t(language, "logoutButton")}</button>
-            ) : null}
+            ) : (
+              <button type="button" className="toggle" onClick={() => navigate({ page: "admin" })}>{t(language, "navLoginLabel")}</button>
+            )}
           </div>
         </nav>
         <div className="header-actions">
@@ -1693,7 +1690,9 @@ export default function App() {
           </button>
           {isLoggedIn ? (
             <button type="button" className="toggle" onClick={logout}>{t(language, "logoutButton")}</button>
-          ) : null}
+          ) : (
+            <button type="button" className="toggle" onClick={() => navigate({ page: "admin" })}>{t(language, "navLoginLabel")}</button>
+          )}
         </div>
       </header>
 
@@ -1752,10 +1751,6 @@ export default function App() {
                 value={memberDraft.age}
                 onChange={(e) => setMemberDraft((current) => current ? { ...current, age: e.target.value } : current)}
               />
-            </label>
-            <label className="span-4">
-              <span className="sr-only">{t(language, "dodLabel")}</span>
-              <input className="field" type="date" aria-label={t(language, "dodLabel")} value={memberDraft.dod} onChange={(e) => setMemberDraft((current) => current ? { ...current, dod: e.target.value } : current)} />
             </label>
             <label className="span-6">
               <span className="sr-only">{t(language, "birthplaceLabel")}</span>
