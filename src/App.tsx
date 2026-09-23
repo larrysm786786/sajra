@@ -50,9 +50,9 @@ import {
 import { t, tGender } from "./i18n";
 import type { StringKey } from "./i18n";
 
-const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string; admin: string; about: string; guide: string; roots: string }> = {
-  en: { home: "Home", tree: "Tree", gallery: "Gallery", admin: "Admin", about: "About", guide: "Guide", roots: "Founding Branches" },
-  ur: { home: "ہوم", tree: "شجرہ", gallery: "گیلری", admin: "ایڈمن", about: "تعارف", guide: "رہنمائی", roots: "بانی شاخیں" }
+const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string; about: string; guide: string; roots: string }> = {
+  en: { home: "Home", tree: "Tree", gallery: "Gallery", about: "About", guide: "Guide", roots: "Founding Branches" },
+  ur: { home: "ہوم", tree: "شجرہ", gallery: "گیلری", about: "تعارف", guide: "رہنمائی", roots: "بانی شاخیں" }
 };
 
 type RouteState = { page: ViewKey; memberId?: number };
@@ -70,7 +70,7 @@ type MemberDraft = {
   name: string;
   nameUr: string;
   gender: Gender;
-  dob: string;
+  age: string;
   dod: string;
   birthplace: string;
   professionChoice: string;
@@ -146,7 +146,7 @@ function emptyMemberDraft(member?: Member): MemberDraft {
         name: member.name,
         nameUr: member.nameUr ?? "",
         gender: member.gender,
-        dob: member.dob ?? "",
+        age: calculateAge(member.dob, member.dod) !== null ? String(calculateAge(member.dob, member.dod)) : "",
         dod: member.dod ?? "",
         birthplace: member.birthplace ?? "",
         ...professionDraftFields(member.profession),
@@ -160,7 +160,7 @@ function emptyMemberDraft(member?: Member): MemberDraft {
         name: "",
         nameUr: "",
         gender: "male",
-        dob: "",
+        age: "",
         dod: "",
         birthplace: "",
         professionChoice: "",
@@ -744,17 +744,30 @@ export default function App() {
   }
 
   async function saveMember() {
-    if (!memberDraft || !memberDraft.name.trim()) return;
+    if (!memberDraft || !canSaveMember) return;
     const id = memberDraft.id ?? nextId(state.members);
     const existingMember = state.members.find((member) => member.id === id);
     const spouseIds = [...new Set(memberDraft.spouseIds.filter((value) => value !== id))];
+
+    // The age box is a convenience for an unknown exact birth date: keep the original date if the
+    // displayed age wasn't touched, otherwise derive an approximate one (Jan 1 of the birth year)
+    // so the rest of the app (which reads dob) keeps working without needing a separate field.
+    const typedAge = memberDraft.age.trim() ? Number(memberDraft.age.trim()) : null;
+    const currentAgeFromDob = existingMember ? calculateAge(existingMember.dob, existingMember.dod) : null;
+    const dob =
+      typedAge === null
+        ? null
+        : existingMember && currentAgeFromDob === typedAge
+        ? existingMember.dob ?? null
+        : `${new Date().getFullYear() - typedAge}-01-01`;
+
     const updated: Member = {
       id,
       uniqueId: existingMember?.uniqueId || nextUniqueId(state.members),
       name: memberDraft.name.trim(),
       nameUr: memberDraft.nameUr.trim() || null,
       gender: memberDraft.gender,
-      dob: memberDraft.dob || null,
+      dob,
       dod: memberDraft.dod || null,
       birthplace: memberDraft.birthplace.trim() || null,
       profession: normalizeProfession(memberDraft.professionChoice === PROFESSION_OTHER ? memberDraft.professionOther : memberDraft.professionChoice),
@@ -1016,6 +1029,9 @@ export default function App() {
   const professionGroups = useMemo(() => groupByProfession(state.members, language), [state.members, language]);
   const activeProfessionGroup = professionGroups.find((group) => group.id === selectedProfession);
 
+  // New members need a father already in the tree; editing an existing (e.g. root) member doesn't.
+  const canSaveMember = Boolean(memberDraft?.name.trim()) && (Boolean(memberDraft?.id) || Boolean(memberDraft?.fatherId));
+
   const stats = useMemo(() => ({
     members: state.members.length,
     roots: roots.length,
@@ -1130,7 +1146,6 @@ export default function App() {
                   </h1>
                   <p className="section-subtitle" style={{ marginTop: 12 }}>
                     {member.birthplace || t(language, "noBirthplace")}
-                    {member.dob ? ` • ${t(language, "bornWord")} ${formatDate(member.dob, language)}` : ""}
                     {member.dod ? ` • ${t(language, "diedWord")} ${formatDate(member.dod, language)}` : ""}
                     {calculateAge(member.dob, member.dod) !== null ? ` • ${t(language, "ageWord")} ${calculateAge(member.dob, member.dod)}` : ""}
                   </p>
@@ -1274,7 +1289,7 @@ export default function App() {
               <StatCard value={stats.roots} label={t(language, "rootsLabel")} />
               <StatCard value={stats.gallery} label={t(language, "galleryItemsLabel")} />
               <StatCard value={stats.users} label={t(language, "usersLabel")} />
-              <StatCard value={stats.visitors} label={t(language, "totalVisitorsLabel")} icon={<EyeIcon />} />
+              {isAdmin ? <StatCard value={stats.visitors} label={t(language, "totalVisitorsLabel")} icon={<EyeIcon />} /> : null}
             </div>
             <div style={{ marginTop: 18 }}>
               <Card title={t(language, "quickActionsTitle")} subtitle={t(language, "quickActionsSubtitle")}>
@@ -1282,6 +1297,7 @@ export default function App() {
                   <button className="btn" type="button" onClick={() => openMemberEditor()}>{t(language, "addMemberButton")}</button>
                   {isAdmin ? <button className="btn-ghost" type="button" onClick={() => openUserEditor()}>{t(language, "addUserButton")}</button> : null}
                   <button className="btn-ghost" type="button" onClick={() => openGalleryEditor()}>{t(language, "addGalleryPhotoButton")}</button>
+                  <button className="btn-ghost" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openTreeButton")}</button>
                   {isAdmin ? <button className="btn-ghost" type="button" onClick={exportState}>{t(language, "downloadBackupButton")}</button> : null}
                 </div>
               </Card>
@@ -1624,7 +1640,7 @@ export default function App() {
           <NavLink active={route.page === "roots"} onClick={() => navigate({ page: "roots" })}>{NAV_LABELS[language].roots}</NavLink>
           <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
           <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
-          <NavLink active={route.page === "admin"} onClick={() => navigate({ page: "admin" })}>{NAV_LABELS[language].admin}</NavLink>
+          <NavLink active={route.page === "admin"} onClick={() => navigate({ page: "admin" })}>{t(language, isLoggedIn ? "navDashboardLabel" : "navLoginLabel")}</NavLink>
           <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
           <div className="topnav-actions-mobile">
             <button
@@ -1703,8 +1719,17 @@ export default function App() {
               </select>
             </label>
             <label className="span-4">
-              <span className="sr-only">{t(language, "dobLabel")}</span>
-              <input className="field" type="date" aria-label={t(language, "dobLabel")} value={memberDraft.dob} onChange={(e) => setMemberDraft((current) => current ? { ...current, dob: e.target.value } : current)} />
+              <span className="sr-only">{t(language, "ageWord")}</span>
+              <input
+                className="field"
+                type="number"
+                min="0"
+                max="130"
+                placeholder={t(language, "ageWord")}
+                aria-label={t(language, "ageWord")}
+                value={memberDraft.age}
+                onChange={(e) => setMemberDraft((current) => current ? { ...current, age: e.target.value } : current)}
+              />
             </label>
             <label className="span-4">
               <span className="sr-only">{t(language, "dodLabel")}</span>
@@ -1914,8 +1939,9 @@ export default function App() {
               </div>
             </div>
           </div>
+          {!canSaveMember ? <p className="hint" style={{ marginTop: 10 }}>{t(language, memberDraft.id ? "nameRequiredHint" : "nameAndFatherRequiredHint")}</p> : null}
           <div className="actions-row" style={{ marginTop: 18 }}>
-            <button className="btn" type="button" onClick={saveMember}>{t(language, "saveMemberButton")}</button>
+            <button className="btn" type="button" disabled={!canSaveMember} onClick={saveMember}>{t(language, "saveMemberButton")}</button>
             <button className="btn-ghost" type="button" onClick={closeEditors}>{t(language, "cancelButton")}</button>
             {memberDraft.id && isAdmin ? <button className="btn-ghost danger" type="button" onClick={() => { deleteMember(memberDraft.id!); closeEditors(); }}>{t(language, "deleteButton")}</button> : null}
           </div>

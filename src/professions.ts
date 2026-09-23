@@ -7,6 +7,7 @@ const PROFESSION_STRING_KEYS = {
   doctor: "professionDoctor",
   engineer: "professionEngineer",
   hafiz: "professionHafiz",
+  haji: "professionHaji",
   maulana: "professionMaulana",
   teacher: "professionTeacher",
   lawyer: "professionLawyer",
