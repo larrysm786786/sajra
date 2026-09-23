@@ -292,17 +292,6 @@ button {
   box-shadow: var(--shadow);
 }
 
-.hero::after {
-  content: "";
-  position: absolute;
-  inset: auto -60px -140px auto;
-  width: 320px;
-  height: 320px;
-  border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in oklab, var(--accent) 22%, transparent), transparent 66%);
-  filter: blur(4px);
-}
-
 .eyebrow {
   display: inline-flex;
   gap: 9px;
@@ -490,7 +479,6 @@ button {
   width: 34px;
   height: 34px;
   margin-bottom: 12px;
-  border-radius: 50%;
   background: linear-gradient(150deg, var(--accent), var(--accent-strong));
   color: var(--ink);
   font-family: "Playfair Display", serif;
@@ -645,7 +633,7 @@ button {
 .stat-value {
   display: block;
   font-family: "Playfair Display", serif;
-  font-size: 1.8rem;
+  font-size: 3rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--ink);

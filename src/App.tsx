@@ -1813,8 +1813,8 @@ export default function App() {
               </div>
             </div>
             <div className="stat-grid">
+              <StatCard value={stats.members} label={t(language, "membersLabel")} />
               <StatCard value={familyInsights.generations} label={t(language, "generationsLabel")} />
-              <StatCard value={familyInsights.male} label={t(language, "genderMale")} />
               <StatCard value={familyInsights.female} label={t(language, "genderFemale")} />
               {familyInsights.oldestLiving ? (
                 <StatCard
