@@ -1652,13 +1652,18 @@ export default function App() {
           <span />
         </button>
         <nav className={`topnav${mobileNavOpen ? " open" : ""}`}>
+          {isLoggedIn ? <NavLink active={route.page === "admin"} onClick={() => navigate({ page: "admin" })}>{t(language, "navDashboardLabel")}</NavLink> : null}
           <NavLink active={route.page === "home"} onClick={() => navigate({ page: "home" })}>{NAV_LABELS[language].home}</NavLink>
           <NavLink active={route.page === "tree"} onClick={() => navigate({ page: "tree" })}>{NAV_LABELS[language].tree}</NavLink>
           <NavLink active={route.page === "roots"} onClick={() => navigate({ page: "roots" })}>{NAV_LABELS[language].roots}</NavLink>
           <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
           <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
-          <NavLink active={route.page === "admin"} onClick={() => navigate({ page: "admin" })}>{t(language, isLoggedIn ? "navDashboardLabel" : "navLoginLabel")}</NavLink>
           <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
+          {isLoggedIn ? (
+            <NavLink onClick={logout}>{t(language, "logoutButton")}</NavLink>
+          ) : (
+            <NavLink active={route.page === "admin"} onClick={() => navigate({ page: "admin" })}>{t(language, "navLoginLabel")}</NavLink>
+          )}
           <div className="topnav-actions-mobile">
             <button
               type="button"
