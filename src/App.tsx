@@ -1803,9 +1803,6 @@ export default function App() {
           </div>
           <div className="hero-kpis">
             <span className="kpi">{stats.members} {t(language, "kpiMembersSuffix")}</span>
-            <span className="kpi">{stats.roots} {t(language, "kpiRootsSuffix")}</span>
-            <span className="kpi">{stats.gallery} {t(language, "kpiPhotosSuffix")}</span>
-            <span className="kpi">{stats.users} {t(language, "kpiAccountsSuffix")}</span>
           </div>
         </section>
 
