@@ -1292,15 +1292,18 @@ export default function App() {
                     {member.dod ? ` • ${t(language, "diedWord")} ${formatDate(member.dod, language)}` : ""}
                     {calculateAge(member.dob, member.dod) !== null ? ` • ${t(language, "ageWord")} ${calculateAge(member.dob, member.dod)}` : ""}
                   </p>
-                  <div className="profile-meta no-print">
-                    <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openTreeButton")}</button>
-                    {canEditMembers ? <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editMemberButton")}</button> : null}
-                    <button className="btn-ghost" type="button" onClick={() => window.print()}>{t(language, "printProfileButton")}</button>
-                    <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor(member)}>{t(language, "suggestCorrectionButton")}</button>
-                  </div>
-                  {suggestionSent ? <p className="hint no-print">{t(language, "suggestionSentMessage")}</p> : null}
-                  {member.bio ? <p style={{ marginTop: 16, lineHeight: 1.8 }}>{member.bio}</p> : null}
                 </div>
+              </div>
+
+              <div className="profile-actions-bio">
+                <div className="profile-meta no-print">
+                  <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openTreeButton")}</button>
+                  {canEditMembers ? <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editMemberButton")}</button> : null}
+                  <button className="btn-ghost" type="button" onClick={() => window.print()}>{t(language, "printProfileButton")}</button>
+                  <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor(member)}>{t(language, "suggestCorrectionButton")}</button>
+                </div>
+                {suggestionSent ? <p className="hint no-print">{t(language, "suggestionSentMessage")}</p> : null}
+                {member.bio ? <p style={{ marginTop: 16, lineHeight: 1.8 }}>{member.bio}</p> : null}
               </div>
 
               <div className="card-grid profile-relations-grid" style={{ marginTop: 20 }}>

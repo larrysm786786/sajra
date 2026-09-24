@@ -1144,6 +1144,11 @@ button {
   margin: 14px 0 0;
 }
 
+/* Sits under the photo/name row; on desktop it lines up with the text column, on phones it spans the full width. */
+.profile-actions-bio {
+  padding-inline-start: 178px;
+}
+
 .tree-head {
   display: flex;
   flex-wrap: wrap;
@@ -1407,6 +1412,24 @@ button {
   .member-photo.hero-photo.member-profile-photo {
     width: 96px;
     border-radius: 12px;
+  }
+
+  .profile-actions-bio {
+    padding-inline-start: 0;
+  }
+
+  .profile-actions-bio .profile-meta {
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+  }
+
+  .profile-actions-bio .profile-meta .btn,
+  .profile-actions-bio .profile-meta .btn-ghost {
+    flex: 0 0 auto;
+    padding: 8px 10px;
+    font-size: 0.78rem;
+    white-space: nowrap;
   }
 
   .stat-grid {
