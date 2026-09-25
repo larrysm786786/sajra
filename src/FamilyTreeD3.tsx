@@ -181,7 +181,7 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
     function truncateToWidth(text: string, maxWidth: number, charWidth = 6.2): string {
       const maxChars = Math.max(1, Math.floor((maxWidth - 16) / charWidth));
       if (text.length <= maxChars) return text;
-      return text.slice(0, Math.max(1, maxChars - 1)) + "…";
+      return text.slice(0, Math.max(1, maxChars - 1)) + "...";
     }
     function cardWidthFor(d: HNode): number {
       const lines = [nodeName(d), dobLineFor(d), addsLineFor(d)];
@@ -426,7 +426,7 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
     const svgEl = containerRef.current?.querySelector("svg");
     if (!svgEl) return;
 
-    // The SVG's colors/fonts come from styles.css, which a standalone image has no access to —
+    // The SVG's colors/fonts come from styles.css, which a standalone image has no access to.
     // so every element's *computed* style is baked in as an inline style on the clone first.
     const STYLE_PROPS = ["fill", "stroke", "stroke-width", "stroke-dasharray", "font-family", "font-size", "font-weight", "text-anchor", "opacity"];
     function inlineStyles(source: Element, target: Element) {

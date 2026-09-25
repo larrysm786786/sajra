@@ -85,7 +85,7 @@ dashboard) count as admins.
 
 If `admin-users` was already deployed before the `contributor` role was added, redeploy it from
 [`supabase/functions/admin-users/index.ts`](./supabase/functions/admin-users/index.ts) (same steps as
-above) — otherwise new "Contributor" accounts get silently saved as "Editor".
+above), otherwise new "Contributor" accounts get silently saved as "Editor".
 
 ## Important files
 

@@ -22,7 +22,7 @@ export type ProfessionKey = keyof typeof PROFESSION_STRING_KEYS;
 
 export const PROFESSION_KEYS = Object.keys(PROFESSION_STRING_KEYS) as ProfessionKey[];
 
-/** Value of the "Other…" option in the profession dropdown. */
+/** Value of the "Other..." option in the profession dropdown. */
 export const PROFESSION_OTHER = "__other";
 
 /**

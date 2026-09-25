@@ -25,7 +25,7 @@ export interface Member {
 }
 
 /**
- * A directory label only — it does NOT grant login access. Real
+ * A directory label only, it does NOT grant login access. Real
  * authentication is handled entirely by Supabase Auth (see supabase.ts).
  * This just records who is considered an admin/editor for display purposes.
  */

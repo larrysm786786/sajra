@@ -69,7 +69,7 @@ const STARTED_WITH_EXPIRED_LINK = typeof window !== "undefined" && window.locati
 // Guards the visitor-count bump so a single browser tab only counts as one visit per session.
 const VISIT_SESSION_KEY = "sajra-visit-counted";
 
-// When this device last downloaded a backup — local only, since "did I back up" is per-device.
+// When this device last downloaded a backup, local only, since "did I back up" is per-device.
 const LAST_BACKUP_KEY = "sajra-last-backup-at";
 const BACKUP_REMINDER_DAYS = 30;
 
@@ -357,10 +357,10 @@ function MemberCard({
     <button type="button" className="member-card" onClick={() => onOpen(member.id)}>
       <img className="avatar" src={photoSrc(member.photo)} alt={displayName(member, language)} />
       <div className="member-card-text">
-        <div className="tree-name">{displayName(member, language)}</div>
+        <div className="tree-name">{fullLabel(member, language)}</div>
         <div className="tree-sub">
           {member.birthplace || t(language, "noBirthplace")}
-          {calculateAge(member.dob, member.dod) !== null ? ` • ${t(language, "ageWord")} ${calculateAge(member.dob, member.dod)}` : ""}
+          {calculateAge(member.dob, member.dod) !== null ? ` | ${t(language, "ageWord")} ${calculateAge(member.dob, member.dod)}` : ""}
         </div>
       </div>
     </button>
@@ -386,7 +386,7 @@ function Modal({
             <h2 className="section-title">{title}</h2>
             {subtitle ? <p className="section-subtitle">{subtitle}</p> : null}
           </div>
-          <button type="button" className="close-btn" onClick={onClose}>✕</button>
+          <button type="button" className="close-btn" onClick={onClose}>x</button>
         </div>
         {children}
       </div>
@@ -773,7 +773,7 @@ export default function App() {
     setMotherSearchQuery("");
   }
 
-  // Open to anyone, logged in or not — that's the point of a suggestion box.
+  // Open to anyone, logged in or not, that's the point of a suggestion box.
   function openSuggestionEditor(member?: Member) {
     setSuggestionSent(false);
     setSuggestionDraft({
@@ -811,7 +811,7 @@ export default function App() {
         return next;
       });
       // Anonymous visitors never trigger the normal (isLoggedIn-only) autosave, so this one write
-      // is pushed straight to Supabase — the whole point of a suggestion box is that it reaches the admin.
+      // is pushed straight to Supabase, the whole point of a suggestion box is that it reaches the admin.
       if (supabaseConfigured && publishedState) await persistToSupabase(publishedState);
       setSuggestionSent(true);
       setSuggestionDraft(null);
@@ -857,7 +857,7 @@ export default function App() {
     const existingMember = state.members.find((member) => member.id === id);
 
     // Same names recur a lot in this family (see the unique-id feature), so this only warns
-    // instead of blocking — but a genuine duplicate entry is a mistake worth catching early.
+    // instead of blocking, but a genuine duplicate entry is a mistake worth catching early.
     if (!memberDraft.id) {
       const duplicate = state.members.find((member) => member.name.trim().toLowerCase() === memberDraft.name.trim().toLowerCase());
       if (duplicate) {
@@ -1289,8 +1289,8 @@ export default function App() {
                   </h1>
                   <p className="section-subtitle" style={{ marginTop: 12 }}>
                     {member.birthplace || t(language, "noBirthplace")}
-                    {member.dod ? ` • ${t(language, "diedWord")} ${formatDate(member.dod, language)}` : ""}
-                    {calculateAge(member.dob, member.dod) !== null ? ` • ${t(language, "ageWord")} ${calculateAge(member.dob, member.dod)}` : ""}
+                    {member.dod ? ` | ${t(language, "diedWord")} ${formatDate(member.dod, language)}` : ""}
+                    {calculateAge(member.dob, member.dod) !== null ? ` | ${t(language, "ageWord")} ${calculateAge(member.dob, member.dod)}` : ""}
                   </p>
                 </div>
               </div>
@@ -1481,12 +1481,11 @@ export default function App() {
                   <div className="tree-head">
                     <div>
                       <div className="tree-name">
-                        {displayName(member, language)}
+                        {fullLabel(member, language)}
                         {member.uniqueId ? <span className="id-badge">{member.uniqueId}</span> : null}
                       </div>
                       <div className="tree-sub">
                         {member.birthplace || t(language, "noBirthplace")}
-                        {member.profession?.trim() ? ` • ${professionLabel(language, member.profession.trim())}` : ""}
                       </div>
                     </div>
                     <div className="actions-row">
@@ -1512,7 +1511,7 @@ export default function App() {
                       {user.username}
                     </button>
                     <div className="tree-sub">
-                      {t(language, "userIdPrefix")}: {user.id} • {user.name || t(language, "noName")} • {t(language, user.role === "admin" ? "adminOption" : user.role === "contributor" ? "contributorOption" : "editorOption")}
+                      {t(language, "userIdPrefix")}: {user.id} | {user.name || t(language, "noName")} | {t(language, user.role === "admin" ? "adminOption" : user.role === "contributor" ? "contributorOption" : "editorOption")}
                     </div>
                   </div>
                   <div className="actions-row">
@@ -1562,8 +1561,8 @@ export default function App() {
                     </div>
                     <p style={{ marginTop: 6, lineHeight: 1.6 }}>{suggestion.message}</p>
                     <div className="tree-sub" style={{ marginTop: 6 }}>
-                      {formatDate(suggestion.createdAt, language)} • {suggestion.submitterName || t(language, "anonymousSubmitter")}
-                      {suggestion.status === "resolved" ? ` • ${t(language, "suggestionResolvedLabel")}` : ""}
+                      {formatDate(suggestion.createdAt, language)} | {suggestion.submitterName || t(language, "anonymousSubmitter")}
+                      {suggestion.status === "resolved" ? ` | ${t(language, "suggestionResolvedLabel")}` : ""}
                     </div>
                   </div>
                   <div className="actions-row">
@@ -1592,7 +1591,7 @@ export default function App() {
                       {t(language, actionLabelKeys[entry.action])} {t(language, typeLabelKeys[entry.type])}: {entry.label}
                     </div>
                     <div className="tree-sub">
-                      {formatDate(entry.createdAt, language)} • {entry.actorEmail || t(language, "systemActor")}
+                      {formatDate(entry.createdAt, language)} | {entry.actorEmail || t(language, "systemActor")}
                     </div>
                   </div>
                 </div>
@@ -1821,9 +1820,9 @@ export default function App() {
               <StatCard value={familyInsights.female} label={t(language, "genderFemale")} />
               {familyInsights.oldestLiving ? (
                 <StatCard
-                  value={calculateAge(familyInsights.oldestLiving.dob, familyInsights.oldestLiving.dod) ?? "—"}
+                  value={calculateAge(familyInsights.oldestLiving.dob, familyInsights.oldestLiving.dod) ?? "-"}
                   label={t(language, "oldestLivingLabel")}
-                  hint={displayName(familyInsights.oldestLiving, language)}
+                  hint={fullLabel(familyInsights.oldestLiving, language)}
                 />
               ) : null}
             </div>
@@ -1940,7 +1939,7 @@ export default function App() {
                   if (relation === "same" || relation === "none") {
                     return <p>{t(language, RELATION_LABEL_KEYS[relation])}</p>;
                   }
-                  return <p>{displayName(memberB, language)} {t(language, RELATION_LABEL_KEYS[relation])} {displayName(memberA, language)}.</p>;
+                  return <p>{fullLabel(memberB, language)} {t(language, RELATION_LABEL_KEYS[relation])} {fullLabel(memberA, language)}.</p>;
                 })()}
               </div>
             ) : null}
@@ -2083,7 +2082,7 @@ export default function App() {
             <label className="span-6">
               <span className="sr-only">{t(language, "professionLabel")}</span>
               <select className="select" aria-label={t(language, "professionLabel")} value={memberDraft.professionChoice} onChange={(e) => setMemberDraft((current) => current ? { ...current, professionChoice: e.target.value } : current)}>
-                <option value="">{t(language, "professionLabel")} — {t(language, "professionNone")}</option>
+                <option value="">{t(language, "professionLabel")}, {t(language, "professionNone")}</option>
                 {PROFESSION_KEYS.map((key) => {
                   const short = professionShortLabel(language, key);
                   const full = professionLabel(language, key);
@@ -2131,7 +2130,7 @@ export default function App() {
                         className="member-chip active"
                         onClick={() => setMemberDraft((current) => current ? { ...current, fatherId: "" } : current)}
                       >
-                        {fullLabel(father, language)} {father.uniqueId ? `(${father.uniqueId})` : ""} ✕
+                        {fullLabel(father, language)} {father.uniqueId ? `(${father.uniqueId})` : ""} x
                       </button>
                     </div>
                   );
@@ -2184,7 +2183,7 @@ export default function App() {
                         className="member-chip active"
                         onClick={() => setMemberDraft((current) => current ? { ...current, motherId: "" } : current)}
                       >
-                        {fullLabel(mother, language)} {mother.uniqueId ? `(${mother.uniqueId})` : ""} ✕
+                        {fullLabel(mother, language)} {mother.uniqueId ? `(${mother.uniqueId})` : ""} x
                       </button>
                     </div>
                   );
@@ -2240,7 +2239,7 @@ export default function App() {
                         spouseIds: current.spouseIds.filter((sid) => sid !== id)
                       } : current)}
                     >
-                      {fullLabel(member, language)} ✕
+                      {fullLabel(member, language)} x
                     </button>
                   );
                 })}
@@ -2426,7 +2425,7 @@ export default function App() {
             <button type="button" className="icon-btn" aria-label={t(language, "zoomOutLabel")} onClick={zoomOutLightbox}>−</button>
             <button type="button" className="icon-btn" onClick={() => setZoomLevel(1)}>{Math.round(zoomLevel * 100)}%</button>
             <button type="button" className="icon-btn" aria-label={t(language, "zoomInLabel")} onClick={zoomInLightbox}>+</button>
-            <button type="button" className="close-btn" aria-label={t(language, "closeLabel")} onClick={closeLightbox}>✕</button>
+            <button type="button" className="close-btn" aria-label={t(language, "closeLabel")} onClick={closeLightbox}>x</button>
           </div>
           <div
             className="lightbox-viewport"

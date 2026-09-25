@@ -62,7 +62,7 @@ export function nextId<T extends { id: number }>(items: T[]): number {
 }
 
 export function formatDate(value?: string | null, language: AppState["language"] = "en"): string {
-  if (!value) return "—";
+  if (!value) return "-";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString(language === "ur" ? "ur" : "en-IN", { day: "2-digit", month: "short", year: "numeric" });

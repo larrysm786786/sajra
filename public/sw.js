@@ -1,7 +1,7 @@
 // App-shell cache: makes Sajra open even with no signal (rural/low-network use), on top of the
 // app's own local-only fallback (see loadState in src/lib.ts) once it has the data cached locally.
 // Strategy: network-first, falling back to whatever was cached from the last successful visit.
-// Only same-origin GET requests are cached — Supabase calls always go straight to the network.
+// Only same-origin GET requests are cached, Supabase calls always go straight to the network.
 const CACHE_NAME = "sajra-shell-v2";
 
 self.addEventListener("install", () => {
