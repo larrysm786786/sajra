@@ -232,6 +232,24 @@ button {
   gap: 8px;
 }
 
+.visitor-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.visitor-counter svg {
+  width: 16px;
+  height: 16px;
+}
+
 .topnav-actions-mobile {
   display: none;
 }
