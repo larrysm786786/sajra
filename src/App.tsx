@@ -357,7 +357,7 @@ function MemberCard({
     <button type="button" className="member-card" onClick={() => onOpen(member.id)}>
       <img className="avatar" src={photoSrc(member.photo)} alt={displayName(member, language)} />
       <div className="member-card-text">
-        <div className="tree-name">{fullLabel(member, language)}</div>
+        <div className="tree-name">{displayName(member, language)}</div>
         <div className="tree-sub">
           {member.birthplace || t(language, "noBirthplace")}
           {calculateAge(member.dob, member.dod) !== null ? ` | ${t(language, "ageWord")} ${calculateAge(member.dob, member.dod)}` : ""}
@@ -1481,11 +1481,12 @@ export default function App() {
                   <div className="tree-head">
                     <div>
                       <div className="tree-name">
-                        {fullLabel(member, language)}
+                        {displayName(member, language)}
                         {member.uniqueId ? <span className="id-badge">{member.uniqueId}</span> : null}
                       </div>
                       <div className="tree-sub">
                         {member.birthplace || t(language, "noBirthplace")}
+                        {member.profession?.trim() ? ` | ${professionLabel(language, member.profession.trim())}` : ""}
                       </div>
                     </div>
                     <div className="actions-row">
@@ -1822,7 +1823,7 @@ export default function App() {
                 <StatCard
                   value={calculateAge(familyInsights.oldestLiving.dob, familyInsights.oldestLiving.dod) ?? "-"}
                   label={t(language, "oldestLivingLabel")}
-                  hint={fullLabel(familyInsights.oldestLiving, language)}
+                  hint={displayName(familyInsights.oldestLiving, language)}
                 />
               ) : null}
             </div>
@@ -1939,7 +1940,7 @@ export default function App() {
                   if (relation === "same" || relation === "none") {
                     return <p>{t(language, RELATION_LABEL_KEYS[relation])}</p>;
                   }
-                  return <p>{fullLabel(memberB, language)} {t(language, RELATION_LABEL_KEYS[relation])} {fullLabel(memberA, language)}.</p>;
+                  return <p>{displayName(memberB, language)} {t(language, RELATION_LABEL_KEYS[relation])} {displayName(memberA, language)}.</p>;
                 })()}
               </div>
             ) : null}
