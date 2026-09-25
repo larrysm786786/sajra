@@ -1964,6 +1964,10 @@ export default function App() {
             <span>{t(language, "brandSubtitle")}</span>
           </div>
         </a>
+        <span className="visitor-counter visitor-counter-mobile" title={t(language, "totalVisitorsLabel")} aria-label={`${t(language, "totalVisitorsLabel")}: ${state.visitorCount ?? 0}`}>
+          <EyeIcon />
+          {state.visitorCount ?? 0}
+        </span>
         <button
           type="button"
           className={`hamburger-btn${mobileNavOpen ? " open" : ""}`}
@@ -1984,10 +1988,6 @@ export default function App() {
           <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
           <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
           <div className="topnav-actions-mobile">
-            <span className="visitor-counter" title={t(language, "totalVisitorsLabel")} aria-label={`${t(language, "totalVisitorsLabel")}: ${state.visitorCount ?? 0}`}>
-              <EyeIcon />
-              {state.visitorCount ?? 0}
-            </span>
             <button
               type="button"
               className="icon-btn"

@@ -250,6 +250,10 @@ button {
   height: 16px;
 }
 
+.visitor-counter-mobile {
+  display: none;
+}
+
 .topnav-actions-mobile {
   display: none;
 }
@@ -1338,6 +1342,12 @@ button {
 }
 
 @media (max-width: 860px) {
+  .visitor-counter-mobile {
+    display: inline-flex;
+    margin-inline-start: auto;
+    padding: 6px 10px;
+  }
+
   .hamburger-btn {
     display: flex;
   }
