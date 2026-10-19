@@ -1826,3 +1826,16 @@ html[dir="rtl"] .select {
 .sajra-chat-feedback button { padding: 3px 7px; border: 1px solid var(--border); border-radius: 7px; color: var(--text); background: var(--bg-soft); font-size: 11px; }
 .sajra-chat-feedback button[aria-pressed="true"] { border-color: #2e5185; color: #2e5185; }
 .sajra-chat-feedback small { color: #2e7d55; }
+.hero-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; padding: 18px 24px; }
+.hero-tools .hero-actions { margin: 0; }
+.hero-tools .hero-search { flex: 1 1 300px; max-width: 480px; margin: 0; }
+.profession-photo-slider { display: grid; grid-template-columns: 176px 1fr auto; align-items: center; gap: 16px; max-width: 700px; margin-top: 26px; padding: 12px; border: 1px solid var(--border); border-radius: 18px; background: color-mix(in oklab, var(--surface-strong) 88%, transparent); }
+.profession-photo-image { display: block; width: 176px; height: 176px; overflow: hidden; padding: 0; border: 0; border-radius: 14px; background: var(--bg-soft); cursor: pointer; }
+.profession-photo-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.profession-photo-caption { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.profession-photo-caption span { color: var(--accent-strong); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.profession-photo-caption strong { color: var(--ink); font-family: "Playfair Display", serif; font-size: clamp(1.2rem, 2.5vw, 1.8rem); overflow-wrap: anywhere; }
+.profession-photo-caption small, .profession-photo-controls span { color: var(--muted); font-size: 13px; }
+.profession-photo-controls { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.profession-photo-controls button { padding: 7px 9px; border: 1px solid var(--border); border-radius: 9px; color: var(--text); background: var(--surface); font-size: 12px; cursor: pointer; }
+@media (max-width: 600px) { .hero-tools { align-items: stretch; padding: 16px; }.profession-photo-slider { grid-template-columns: 112px 1fr; gap: 12px; }.profession-photo-image { width: 112px; height: 132px; }.profession-photo-controls { grid-column: 1 / -1; flex-direction: row; justify-content: center; }.profession-photo-controls button { min-width: 90px; } }

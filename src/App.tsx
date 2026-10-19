@@ -395,6 +395,27 @@ function Modal({
   );
 }
 
+function ProfessionPhotoSlider({ members, language, onOpen }: { members: Member[]; language: Language; onOpen: (memberId: number) => void }) {
+  const photoMembers = useMemo(() => members.filter((member) => {
+    const profession = member.profession ? professionLabel("en", member.profession) : "";
+    return Boolean(member.photo?.trim()) && /hafiz|haafiz|hafez|maulana|moulana|molana|engineer|engineering|engg|engr|master|teacher|ustad/i.test(profession);
+  }).sort(sortMembers), [members]);
+  const [slideIndex, setSlideIndex] = useState(0);
+  useEffect(() => {
+    if (photoMembers.length < 2) return;
+    const timer = window.setInterval(() => setSlideIndex((index) => (index + 1) % photoMembers.length), 4500);
+    return () => window.clearInterval(timer);
+  }, [photoMembers.length]);
+  if (!photoMembers.length) return null;
+  const member = photoMembers[slideIndex % photoMembers.length];
+  return <div className="profession-photo-slider" aria-label="Family members with professional roles">
+    <button type="button" className="profession-photo-image" onClick={() => onOpen(member.id)} aria-label={`Open ${displayName(member, language)} profile`}>
+      <img src={photoSrc(member.photo)} alt={displayName(member, language)} />
+    </button>
+    <div className="profession-photo-caption"><span>{professionLabel(language, member.profession ?? "")}</span><strong>{displayName(member, language)}</strong>{member.uniqueId ? <small>{member.uniqueId}</small> : null}</div>
+    {photoMembers.length > 1 ? <div className="profession-photo-controls"><button type="button" aria-label="Previous professional profile" onClick={() => setSlideIndex((index) => (index - 1 + photoMembers.length) % photoMembers.length)}>Previous</button><span>{slideIndex + 1} / {photoMembers.length}</span><button type="button" aria-label="Next professional profile" onClick={() => setSlideIndex((index) => (index + 1) % photoMembers.length)}>Next</button></div> : null}
+  </div>;
+}
 export default function App() {
   const initialStateRef = useRef<AppState | null>(null);
   const [state, setState] = useState<AppState>(() => {
@@ -1786,40 +1807,24 @@ export default function App() {
           <p>
             {t(language, "heroParagraph")}
           </p>
+          <ProfessionPhotoSlider members={state.members} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
+        </section>
+
+        <section className="hero-tools section">
           <div className="hero-actions">
             <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openFamilyTreeButton")}</button>
             <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor()}>{t(language, "suggestEditButton")}</button>
           </div>
           {suggestionSent ? <p className="hint">{t(language, "suggestionSentMessage")}</p> : null}
           <div className="hero-search" style={{ position: "relative" }}>
-            <input
-              className="field"
-              placeholder={t(language, "searchMembersPlaceholder")}
-              value={homeSearchQuery}
-              onChange={(e) => setHomeSearchQuery(e.target.value)}
-              onFocus={() => setHomeSearchOpen(true)}
-              onBlur={() => setHomeSearchOpen(false)}
-            />
+            <input className="field" placeholder={t(language, "searchMembersPlaceholder")} value={homeSearchQuery} onChange={(e) => setHomeSearchQuery(e.target.value)} onFocus={() => setHomeSearchOpen(true)} onBlur={() => setHomeSearchOpen(false)} />
             {homeSearchOpen && homeSearchQuery.trim() ? (
               <div className="autocomplete-list">
-                {state.members
-                  .filter((member) => fullLabel(member, language).toLowerCase().includes(homeSearchQuery.trim().toLowerCase()))
-                  .slice(0, 8)
-                  .map((member) => (
-                    <button
-                      key={member.id}
-                      type="button"
-                      className="autocomplete-item"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        setHomeSearchQuery("");
-                        navigate({ page: "member", memberId: member.id });
-                      }}
-                    >
-                      {fullLabel(member, language)}
-                      {member.uniqueId ? <span className="autocomplete-id">{member.uniqueId}</span> : null}
-                    </button>
-                  ))}
+                {state.members.filter((member) => fullLabel(member, language).toLowerCase().includes(homeSearchQuery.trim().toLowerCase())).slice(0, 8).map((member) => (
+                  <button key={member.id} type="button" className="autocomplete-item" onMouseDown={(e) => { e.preventDefault(); setHomeSearchQuery(""); navigate({ page: "member", memberId: member.id }); }}>
+                    {fullLabel(member, language)}{member.uniqueId ? <span className="autocomplete-id">{member.uniqueId}</span> : null}
+                  </button>
+                ))}
               </div>
             ) : null}
           </div>
