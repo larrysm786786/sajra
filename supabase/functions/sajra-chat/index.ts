@@ -29,12 +29,21 @@ Deno.serve(async (req) => {
       ] })
     });
     if (!response.ok) {
-      const detail = await response.text(); console.error("Grok API error", response.status, detail.slice(0, 500));
-      return reply({ error: response.status === 429 ? "Chat abhi busy hai. Thodi der baad dobara koshish karein." : "Grok se jawab nahin mil saka. Baad mein dobara koshish karein." }, response.status === 429 ? 429 : 502);
+      const detail = await response.text();
+      console.error("Grok API error", response.status, detail.slice(0, 500));
+      const message = response.status === 401
+        ? "xAI rejected the API key. GROK_API_KEY must be an active xAI key from console.x.ai (not a Groq key)."
+        : response.status === 403
+          ? "xAI denied API access. Check that the xAI account and API key have inference access and available credits."
+          : response.status === 429
+            ? "Chat abhi busy hai ya xAI API quota khatam hai. Thodi der baad dobara koshish karein."
+            : `xAI API request failed (HTTP ${response.status}). Check the xAI API settings and try again.`;
+      return reply({ error: message }, response.status === 429 ? 429 : 502);
     }
     const result = await response.json(); const content = result?.choices?.[0]?.message?.content;
     if (typeof content !== "string" || !content.trim()) return reply({ error: "Grok returned an empty response." }, 502);
     return reply({ reply: content.trim() });
   } catch (error) { console.error("sajra-chat error", error); return reply({ error: "Chat request process nahin ho saki." }, 500); }
 });
+
 

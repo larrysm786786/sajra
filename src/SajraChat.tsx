@@ -1,5 +1,6 @@
 ﻿import { useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabase";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -26,7 +27,16 @@ export default function SajraChat({ appName }: { appName: string }) {
       if (invokeError) throw invokeError;
       if (typeof data?.reply !== "string") throw new Error("Jawab nahin mil saka. Dobara koshish karein.");
       setMessages((current) => [...current, { role: "assistant", content: data.reply }]);
-    } catch (err) { setError(err instanceof Error ? err.message : "Chat service se rabta nahin ho saka."); }
+    } catch (err) {
+      if (err instanceof FunctionsHttpError) {
+        try {
+          const body = await err.context.clone().json();
+          setError(typeof body?.error === "string" ? body.error : err.message);
+        } catch { setError(err.message); }
+      } else {
+        setError(err instanceof Error ? err.message : "Chat service se rabta nahin ho saka.");
+      }
+    }
     finally { setBusy(false); setTimeout(scrollToBottom, 20); }
   }
 
@@ -43,6 +53,7 @@ export default function SajraChat({ appName }: { appName: string }) {
     <button type="button" className={`sajra-chat-launcher${open ? " active" : ""}`} aria-label={open ? "Close AI chat" : "Open AI chat"} onClick={() => setOpen((value) => !value)}>{open ? "×" : <><span>✦</span><span className="sajra-chat-launcher-label">Ask Sajra AI</span></>}</button>
   </div>;
 }
+
 
 
 
