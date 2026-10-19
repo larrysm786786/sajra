@@ -1844,3 +1844,7 @@ html[dir="rtl"] .select {
 .hero-slider-admin-toggle span { display: flex; flex-direction: column; gap: 4px; }
 .hero-slider-admin-toggle strong { color: var(--text); font-size: 14px; }
 .hero-slider-admin-toggle small { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.hero-tools { position: relative; z-index: 4; overflow: visible; }
+.hero-tools:focus-within { z-index: 8; }
+.hero-tools .hero-search { position: relative; z-index: 1; }
+.hero-tools .autocomplete-list { z-index: 10; }
