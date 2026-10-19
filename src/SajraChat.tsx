@@ -1,4 +1,4 @@
-﻿import { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabase";
@@ -42,7 +42,7 @@ export default function SajraChat({ appName }: { appName: string }) {
 
   return <div className="sajra-chat-widget">
     {open ? <section className="sajra-chat-panel" aria-label={`${appName} AI assistant`}>
-      <header className="sajra-chat-header"><span className="sajra-chat-avatar">✦</span><div><strong>{appName} AI</strong><small>Family guide · Grok</small></div><button type="button" className="sajra-chat-close" aria-label="Close chat" onClick={() => setOpen(false)}>×</button></header>
+      <header className="sajra-chat-header"><span className="sajra-chat-avatar">✦</span><div><strong>{appName} AI</strong><small>Family guide · Groq</small></div><button type="button" className="sajra-chat-close" aria-label="Close chat" onClick={() => setOpen(false)}>×</button></header>
       <div className="sajra-chat-messages" aria-live="polite">
         {!messages.length ? <div className="sajra-chat-welcome"><span>✦</span><h3>Assalamu alaikum!</h3><p>Main {appName} family tree explore karne mein aapki madad kar sakta hoon. Kya jaan’na chahenge?</p><div className="sajra-chat-chips"><button type="button" onClick={() => setDraft("Family tree mein kaise search karoon?")}>Tree mein search</button><button type="button" onClick={() => setDraft("Sajra ke baare mein batao")}>Sajra ke baare mein</button></div></div> : messages.map((message, index) => <div key={index} className={`sajra-chat-message ${message.role}`}>{message.content}</div>)}
         {busy ? <div className="sajra-chat-message assistant sajra-chat-typing"><i/><i/><i/></div> : null}{error ? <p className="sajra-chat-error">{error}</p> : null}<div ref={bottomRef}/>
@@ -53,7 +53,3 @@ export default function SajraChat({ appName }: { appName: string }) {
     <button type="button" className={`sajra-chat-launcher${open ? " active" : ""}`} aria-label={open ? "Close AI chat" : "Open AI chat"} onClick={() => setOpen((value) => !value)}>{open ? "×" : <><span>✦</span><span className="sajra-chat-launcher-label">Ask Sajra AI</span></>}</button>
   </div>;
 }
-
-
-
-
