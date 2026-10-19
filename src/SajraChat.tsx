@@ -32,7 +32,7 @@ export default function SajraChat({ appName, members, onOpenMember }: { appName:
     const next = [...messages, { role: "user" as const, content: text }];
     setMessages(next); setDraft(""); setBusy(true); setError("");
     try {
-      const familyMembers = members.map(({ id, uniqueId, name, nameUr, gender, fatherId, motherId, spouseIds }) => ({ id, uniqueId, name, nameUr, gender, fatherId, motherId, spouseIds }));
+      const familyMembers = members.map(({ id, uniqueId, name, nameUr, gender, profession, fatherId, motherId, spouseIds }) => ({ id, uniqueId, name, nameUr, gender, profession, fatherId, motherId, spouseIds }));
       const { data, error: invokeError } = await supabase.functions.invoke("sajra-chat", { body: { messages: next.slice(-6), appName, familyMembers } });
       if (invokeError) throw invokeError;
       if (typeof data?.reply !== "string") throw new Error("Jawab nahin mil saka. Dobara koshish karein.");
