@@ -52,6 +52,7 @@ import {
   professionShortLabel
 } from "./professions";
 import { t, tGender } from "./i18n";
+import SajraChat from "./SajraChat";
 import type { StringKey } from "./i18n";
 
 const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string; about: string; guide: string; roots: string }> = {
@@ -2032,6 +2033,7 @@ export default function App() {
       {mobileNavOpen ? <div className="nav-backdrop" onClick={() => setMobileNavOpen(false)} /> : null}
 
       {content}
+      <SajraChat appName={state.appName} />
 
       <p className="footer-note">
         {supabaseConfigured
@@ -2459,3 +2461,4 @@ export default function App() {
     </div>
   );
 }
+

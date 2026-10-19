@@ -93,3 +93,8 @@ above), otherwise new "Contributor" accounts get silently saved as "Editor".
 - [`src/lib.ts`](./src/lib.ts) contains storage, tree, and auth helpers.
 - [`src/supabase.ts`](./src/supabase.ts) contains the Supabase REST sync helper.
 - [`src/styles.css`](./src/styles.css) contains the UI styling.
+
+## Sajra AI chatbot
+
+The floating Sajra AI chat uses the Grok API through the `sajra-chat` Supabase Edge Function. Deploy `supabase/functions/sajra-chat/index.ts` as an Edge Function named `sajra-chat`, then set the `GROK_API_KEY` function secret in Supabase (Edge Functions → Secrets). Keep the xAI key out of browser/Vite environment variables. The chat requires the existing Supabase URL and anon key configuration.
+
