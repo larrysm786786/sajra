@@ -821,6 +821,24 @@ export default function App() {
     }
   }
 
+  async function submitChatFeedback(answer: string, helpful: boolean): Promise<void> {
+    let publishedState: AppState | null = null;
+    setState((current) => {
+      const suggestion: Suggestion = {
+        id: nextId(current.suggestions),
+        memberId: null,
+        memberName: null,
+        message: `Chatbot feedback (${helpful ? "helpful" : "not helpful"}): ${answer.slice(0, 280)}`,
+        submitterName: "Anis AI visitor feedback",
+        status: "pending",
+        createdAt: new Date().toISOString()
+      };
+      const next = { ...current, suggestions: [suggestion, ...current.suggestions].slice(0, 200) };
+      publishedState = next;
+      return next;
+    });
+    if (supabaseConfigured && publishedState) await persistToSupabase(publishedState);
+  }
   function resolveSuggestion(id: number) {
     if (!isAdmin) return;
     updateState((current) => ({
@@ -2033,7 +2051,7 @@ export default function App() {
       {mobileNavOpen ? <div className="nav-backdrop" onClick={() => setMobileNavOpen(false)} /> : null}
 
       {content}
-      <SajraChat appName={state.appName} members={state.members} onOpenMember={(id) => navigate({ page: "member", memberId: id })} />
+      <SajraChat appName={state.appName} members={state.members} onOpenMember={(id) => navigate({ page: "member", memberId: id })} onFeedback={submitChatFeedback} />
 
       <p className="footer-note">
         {supabaseConfigured
