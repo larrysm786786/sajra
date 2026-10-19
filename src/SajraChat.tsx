@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabase";
@@ -6,12 +6,29 @@ import type { Member } from "./types";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
-function renderAssistantMessage(content: string) {
+function renderInlineAssistantText(content: string, keyPrefix: string) {
   return content.split(/(\*\*[^*]+\*\*)/g).map((part, index) =>
     part.startsWith("**") && part.endsWith("**")
-      ? <strong key={index}>{part.slice(2, -2)}</strong>
+      ? <strong key={keyPrefix + "-" + index}>{part.slice(2, -2)}</strong>
       : part
   );
+}
+
+function renderAssistantMessage(content: string) {
+  const cleaned = content
+    .split(/\r?\n/)
+    .filter((line) => !line.trim().startsWith(String.fromCharCode(96).repeat(3)))
+    .join("\n")
+    .replace(/^#{1,6}\s+/gm, "")
+    .trim();
+  return cleaned.split(/\n{2,}/).map((block, blockIndex) => {
+    const lines = block.split(/\r?\n/);
+    const listItems = lines.map((line) => /^\s*(?:[-*•]|\d+[.)])\s+(.+)$/.exec(line));
+    if (listItems.every(Boolean)) {
+      return <ul key={blockIndex}>{listItems.map((match, index) => <li key={index}>{renderInlineAssistantText(match![1], blockIndex + "-" + index)}</li>)}</ul>;
+    }
+    return <p key={blockIndex}>{lines.map((line, index) => <React.Fragment key={index}>{renderInlineAssistantText(line, blockIndex + "-" + index)}{index < lines.length - 1 ? <br /> : null}</React.Fragment>)}</p>;
+  });
 }
 
 export default function SajraChat({ appName, members, onOpenMember }: { appName: string; members: Member[]; onOpenMember: (memberId: number) => void }) {
@@ -28,14 +45,14 @@ export default function SajraChat({ appName, members, onOpenMember }: { appName:
     const text = draft.trim();
     const supabase = getSupabaseClient();
     if (!text || busy) return;
-    if (!supabase) { setError("Chat ke liye Supabase configure karna zaroori hai."); return; }
+    if (!supabase) { setError("Chat is not configured yet. Please contact the site administrator."); return; }
     const next = [...messages, { role: "user" as const, content: text }];
     setMessages(next); setDraft(""); setBusy(true); setError("");
     try {
       const familyMembers = members.map(({ id, uniqueId, name, nameUr, gender, profession, fatherId, motherId, spouseIds }) => ({ id, uniqueId, name, nameUr, gender, profession, fatherId, motherId, spouseIds }));
       const { data, error: invokeError } = await supabase.functions.invoke("sajra-chat", { body: { messages: next.slice(-6), appName, familyMembers } });
       if (invokeError) throw invokeError;
-      if (typeof data?.reply !== "string") throw new Error("Jawab nahin mil saka. Dobara koshish karein.");
+      if (typeof data?.reply !== "string") throw new Error("I could not get an answer. Please try again.");
       setMessages((current) => [...current, { role: "assistant", content: data.reply }]);
     } catch (err) {
       if (err instanceof FunctionsHttpError) {
@@ -44,7 +61,7 @@ export default function SajraChat({ appName, members, onOpenMember }: { appName:
           setError(typeof body?.error === "string" ? body.error : err.message);
         } catch { setError(err.message); }
       } else {
-        setError(err instanceof Error ? err.message : "Chat service se rabta nahin ho saka.");
+        setError(err instanceof Error ? err.message : "Could not reach the chat service. Please try again.");
       }
     }
     finally { setBusy(false); setTimeout(scrollToBottom, 20); }
