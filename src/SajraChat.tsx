@@ -50,6 +50,6 @@ export default function SajraChat({ appName }: { appName: string }) {
       <form className="sajra-chat-form" onSubmit={(event) => void send(event)}><textarea aria-label="Your message" placeholder="Ask me anything…" rows={1} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(event); } }} /><button type="submit" aria-label="Send message" disabled={!draft.trim() || busy}>↑</button></form>
       <div className="sajra-chat-footnote">AI can make mistakes. Avoid sharing private information.</div>
     </section> : null}
-    <button type="button" className={`sajra-chat-launcher${open ? " active" : ""}`} aria-label={open ? "Close AI chat" : "Open AI chat"} onClick={() => setOpen((value) => !value)}>{open ? "×" : <><span>✦</span><span className="sajra-chat-launcher-label">Ask Sajra AI</span></>}</button>
+    <button type="button" className={`sajra-chat-launcher${open ? " active" : ""}`} aria-label={open ? "Close AI chat" : "Open AI chat"} onClick={() => setOpen((value) => !value)}>{open ? "×" : <><span>✦</span><span className="sajra-chat-launcher-label">Ask Anis AI</span></>}</button>
   </div>;
 }
