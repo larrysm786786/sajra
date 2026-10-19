@@ -14,7 +14,7 @@ function renderAssistantMessage(content: string) {
   );
 }
 
-export default function SajraChat({ appName, members }: { appName: string; members: Member[] }) {
+export default function SajraChat({ appName, members, onOpenMember }: { appName: string; members: Member[]; onOpenMember: (memberId: number) => void }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -54,7 +54,7 @@ export default function SajraChat({ appName, members }: { appName: string; membe
     {open ? <section className="sajra-chat-panel" aria-label="Anis AI assistant">
       <header className="sajra-chat-header"><span className="sajra-chat-avatar">✦</span><div><strong>Anis AI</strong></div><button type="button" className="sajra-chat-close" aria-label="Close chat" onClick={() => setOpen(false)}>×</button></header>
       <div className="sajra-chat-messages" aria-live="polite">
-        {!messages.length ? <div className="sajra-chat-welcome"><span>✦</span><h3>Assalamo Alaikum</h3><p>I can help you explore the {appName} family tree. What would you like to know?</p><div className="sajra-chat-chips"><button type="button" onClick={() => setDraft("How do I search the family tree?")}>Search the tree</button><button type="button" onClick={() => setDraft("Tell me about Sajra")}>About Sajra</button></div></div> : messages.map((message, index) => <div key={index} className={`sajra-chat-message ${message.role}`}>{message.role === "assistant" ? renderAssistantMessage(message.content) : message.content}</div>)}
+        {!messages.length ? <div className="sajra-chat-welcome"><span>✦</span><h3>Assalamo Alaikum</h3><p>I can help you explore the {appName} family tree. What would you like to know?</p><div className="sajra-chat-chips"><button type="button" onClick={() => setDraft("How do I search the family tree?")}>Search the tree</button><button type="button" onClick={() => setDraft("Tell me about Sajra")}>About Sajra</button></div></div> : messages.map((message, index) => <div key={index} className={`sajra-chat-message ${message.role}`}>{message.role === "assistant" ? <>{renderAssistantMessage(message.content)}{members.filter((member) => member.uniqueId && message.content.includes(member.uniqueId)).map((member) => <button key={member.id} type="button" className="sajra-chat-profile-link" onClick={() => { setOpen(false); onOpenMember(member.id); }}>View profile · {member.uniqueId}</button>)}</> : message.content}</div>)}
         {busy ? <div className="sajra-chat-message assistant sajra-chat-typing"><i/><i/><i/></div> : null}{error ? <p className="sajra-chat-error">{error}</p> : null}<div ref={bottomRef}/>
       </div>
       <form className="sajra-chat-form" onSubmit={(event) => void send(event)}><textarea aria-label="Your message" placeholder="Ask me anything…" rows={1} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(event); } }} /><button type="submit" aria-label="Send message" disabled={!draft.trim() || busy}>↑</button></form>
