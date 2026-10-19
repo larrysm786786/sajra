@@ -2033,7 +2033,7 @@ export default function App() {
       {mobileNavOpen ? <div className="nav-backdrop" onClick={() => setMobileNavOpen(false)} /> : null}
 
       {content}
-      <SajraChat appName={state.appName} />
+      <SajraChat appName={state.appName} members={state.members} />
 
       <p className="footer-note">
         {supabaseConfigured

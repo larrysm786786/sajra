@@ -2,10 +2,19 @@ import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabase";
+import type { Member } from "./types";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
-export default function SajraChat({ appName }: { appName: string }) {
+function renderAssistantMessage(content: string) {
+  return content.split(/(\*\*[^*]+\*\*)/g).map((part, index) =>
+    part.startsWith("**") && part.endsWith("**")
+      ? <strong key={index}>{part.slice(2, -2)}</strong>
+      : part
+  );
+}
+
+export default function SajraChat({ appName, members }: { appName: string; members: Member[] }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -23,7 +32,8 @@ export default function SajraChat({ appName }: { appName: string }) {
     const next = [...messages, { role: "user" as const, content: text }];
     setMessages(next); setDraft(""); setBusy(true); setError("");
     try {
-      const { data, error: invokeError } = await supabase.functions.invoke("sajra-chat", { body: { messages: next.slice(-12), appName } });
+      const familyMembers = members.map(({ id, uniqueId, name, nameUr, gender, fatherId, motherId, spouseIds }) => ({ id, uniqueId, name, nameUr, gender, fatherId, motherId, spouseIds }));
+      const { data, error: invokeError } = await supabase.functions.invoke("sajra-chat", { body: { messages: next.slice(-12), appName, familyMembers } });
       if (invokeError) throw invokeError;
       if (typeof data?.reply !== "string") throw new Error("Jawab nahin mil saka. Dobara koshish karein.");
       setMessages((current) => [...current, { role: "assistant", content: data.reply }]);
@@ -42,9 +52,9 @@ export default function SajraChat({ appName }: { appName: string }) {
 
   return <div className="sajra-chat-widget">
     {open ? <section className="sajra-chat-panel" aria-label="Anis AI assistant">
-      <header className="sajra-chat-header"><span className="sajra-chat-avatar">✦</span><div><strong>Anis AI</strong><small>Family guide · Groq</small></div><button type="button" className="sajra-chat-close" aria-label="Close chat" onClick={() => setOpen(false)}>×</button></header>
+      <header className="sajra-chat-header"><span className="sajra-chat-avatar">✦</span><div><strong>Anis AI</strong></div><button type="button" className="sajra-chat-close" aria-label="Close chat" onClick={() => setOpen(false)}>×</button></header>
       <div className="sajra-chat-messages" aria-live="polite">
-        {!messages.length ? <div className="sajra-chat-welcome"><span>✦</span><h3>Hello!</h3><p>I can help you explore the {appName} family tree. What would you like to know?</p><div className="sajra-chat-chips"><button type="button" onClick={() => setDraft("How do I search the family tree?")}>Search the tree</button><button type="button" onClick={() => setDraft("Tell me about Sajra")}>About Sajra</button></div></div> : messages.map((message, index) => <div key={index} className={`sajra-chat-message ${message.role}`}>{message.content}</div>)}
+        {!messages.length ? <div className="sajra-chat-welcome"><span>✦</span><h3>Hello!</h3><p>I can help you explore the {appName} family tree. What would you like to know?</p><div className="sajra-chat-chips"><button type="button" onClick={() => setDraft("How do I search the family tree?")}>Search the tree</button><button type="button" onClick={() => setDraft("Tell me about Sajra")}>About Sajra</button></div></div> : messages.map((message, index) => <div key={index} className={`sajra-chat-message ${message.role}`}>{message.role === "assistant" ? renderAssistantMessage(message.content) : message.content}</div>)}
         {busy ? <div className="sajra-chat-message assistant sajra-chat-typing"><i/><i/><i/></div> : null}{error ? <p className="sajra-chat-error">{error}</p> : null}<div ref={bottomRef}/>
       </div>
       <form className="sajra-chat-form" onSubmit={(event) => void send(event)}><textarea aria-label="Your message" placeholder="Ask me anything…" rows={1} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(event); } }} /><button type="submit" aria-label="Send message" disabled={!draft.trim() || busy}>↑</button></form>
