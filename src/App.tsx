@@ -84,6 +84,7 @@ type MemberDraft = {
   birthplace: string;
   professionChoice: string;
   professionOther: string;
+  showInHeroSlider: boolean;
   photo: string;
   bio: string;
   fatherId: string;
@@ -166,6 +167,7 @@ function emptyMemberDraft(member?: Member): MemberDraft {
         dod: member.dod ?? "",
         birthplace: member.birthplace ?? "",
         ...professionDraftFields(member.profession),
+        showInHeroSlider: member.showInHeroSlider === true,
         photo: member.photo ?? "",
         bio: member.bio ?? "",
         fatherId: member.fatherId ? String(member.fatherId) : "",
@@ -181,6 +183,7 @@ function emptyMemberDraft(member?: Member): MemberDraft {
         birthplace: "",
         professionChoice: "",
         professionOther: "",
+        showInHeroSlider: false,
         photo: "",
         bio: "",
         fatherId: "",
@@ -395,10 +398,14 @@ function Modal({
   );
 }
 
+function isSliderProfession(profession?: string | null) {
+  const label = profession ? professionLabel("en", profession) : "";
+  return /hafiz|haafiz|hafez|maulana|moulana|molana|engineer|engineering|engg|engr|master|teacher|ustad/i.test(label);
+}
+
 function ProfessionPhotoSlider({ members, language, onOpen }: { members: Member[]; language: Language; onOpen: (memberId: number) => void }) {
   const photoMembers = useMemo(() => members.filter((member) => {
-    const profession = member.profession ? professionLabel("en", member.profession) : "";
-    return Boolean(member.photo?.trim()) && /hafiz|haafiz|hafez|maulana|moulana|molana|engineer|engineering|engg|engr|master|teacher|ustad/i.test(profession);
+    return member.showInHeroSlider === true && Boolean(member.photo?.trim()) && isSliderProfession(member.profession);
   }).sort(sortMembers), [members]);
   const [slideIndex, setSlideIndex] = useState(0);
   useEffect(() => {
@@ -930,6 +937,7 @@ export default function App() {
       dod: memberDraft.dod || null,
       birthplace: memberDraft.birthplace.trim() || null,
       profession: normalizeProfession(memberDraft.professionChoice === PROFESSION_OTHER ? memberDraft.professionOther : memberDraft.professionChoice),
+      showInHeroSlider: isAdmin ? memberDraft.showInHeroSlider : Boolean(existingMember?.showInHeroSlider),
       photo: memberDraft.photo.trim() || null,
       bio: memberDraft.bio.trim() || null,
       fatherId: memberDraft.fatherId ? Number(memberDraft.fatherId) : null,
@@ -2148,6 +2156,7 @@ export default function App() {
                 onChange={(e) => handleMemberPhoto(e.target.files?.[0])}
               />
             </label>
+            {isAdmin ? <label className="span-12 hero-slider-admin-toggle"><input type="checkbox" checked={memberDraft.showInHeroSlider} disabled={!memberDraft.showInHeroSlider && !(Boolean(memberDraft.photo.trim()) && isSliderProfession(normalizeProfession(memberDraft.professionChoice === PROFESSION_OTHER ? memberDraft.professionOther : memberDraft.professionChoice)))} onChange={(event) => setMemberDraft((current) => current ? { ...current, showInHeroSlider: event.target.checked } : current)} /><span><strong>Show in homepage professional slider</strong><small>Select this member for the home page. A profile photo and a supported profession are required.</small></span></label> : null}
             <label className="span-12">
               <span className="sr-only">{t(language, "bioLabel")}</span>
               <textarea className="textarea" placeholder={t(language, "bioLabel")} value={memberDraft.bio} onChange={(e) => setMemberDraft((current) => current ? { ...current, bio: e.target.value } : current)} />
