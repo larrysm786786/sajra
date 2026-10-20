@@ -1811,10 +1811,6 @@ export default function App() {
       <>
         <section className="hero">
           <span className="eyebrow">{t(language, "eyebrowHero")}</span>
-          <h1>{t(language, "heroTitle")}</h1>
-          <p>
-            {t(language, "heroParagraph")}
-          </p>
           <ProfessionPhotoSlider members={state.members} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
         </section>
 
