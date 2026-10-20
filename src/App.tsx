@@ -885,7 +885,7 @@ export default function App() {
         memberId: null,
         memberName: null,
         message: `Chatbot feedback (${helpful ? "helpful" : "not helpful"}): ${answer.slice(0, 280)}`,
-        submitterName: "Anis AI visitor feedback",
+        submitterName: "Anis Ai visitor feedback",
         status: "pending",
         createdAt: new Date().toISOString()
       };
