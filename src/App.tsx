@@ -1649,7 +1649,7 @@ export default function App() {
                       {t(language, actionLabelKeys[entry.action])} {t(language, typeLabelKeys[entry.type])}: {entry.label}
                     </div>
                     <div className="tree-sub">
-                      {formatDate(entry.createdAt, language)} | {state.users.find((user) => user.email?.trim().toLowerCase() === entry.actorEmail?.trim().toLowerCase())?.name || state.users.find((user) => user.email?.trim().toLowerCase() === entry.actorEmail?.trim().toLowerCase())?.username || entry.actorEmail || t(language, "systemActor")}
+                      {formatDate(entry.createdAt, language)} | {entry.actorEmail ? (state.users.find((user) => user.email?.trim().toLowerCase() === entry.actorEmail?.trim().toLowerCase())?.name || state.users.find((user) => user.email?.trim().toLowerCase() === entry.actorEmail?.trim().toLowerCase())?.username || entry.actorEmail) : t(language, "systemActor")}
                     </div>
                   </div>
                 </div>
