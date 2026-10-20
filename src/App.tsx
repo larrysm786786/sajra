@@ -56,7 +56,7 @@ import {
 } from "./professions";
 import { t, tGender } from "./i18n";
 import SajraChat from "./SajraChat";
-import { BranchPage, MemberQrCard } from "./FamilyTools";
+import { BranchPage } from "./FamilyTools";
 import type { StringKey } from "./i18n";
 
 const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string; about: string; guide: string; roots: string }> = {
@@ -1406,7 +1406,6 @@ export default function App() {
                 {member.bio ? <p style={{ marginTop: 16, lineHeight: 1.8 }}>{member.bio}</p> : null}
               </div>
 
-              <MemberQrCard member={member} language={language} />
               <div className="card-grid profile-relations-grid" style={{ marginTop: 20 }}>
                 <Card title={t(language, "parentsTitle")} subtitle={t(language, "parentsSubtitle")}>
                   {getParents(state.members, member).length ? (
