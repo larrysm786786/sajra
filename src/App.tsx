@@ -408,6 +408,7 @@ function ProfessionPhotoSlider({ members, language, onOpen }: { members: Member[
     return member.showInHeroSlider === true && Boolean(member.photo?.trim()) && isSliderProfession(member.profession);
   }).sort(sortMembers), [members]);
   const [slideIndex, setSlideIndex] = useState(0);
+  const [expandedBioMemberId, setExpandedBioMemberId] = useState<number | null>(null);
   useEffect(() => {
     if (photoMembers.length < 2) return;
     const timer = window.setInterval(() => setSlideIndex((index) => (index + 1) % photoMembers.length), 4500);
@@ -415,12 +416,25 @@ function ProfessionPhotoSlider({ members, language, onOpen }: { members: Member[
   }, [photoMembers.length]);
   if (!photoMembers.length) return null;
   const member = photoMembers[slideIndex % photoMembers.length];
+  const bio = member.bio?.trim() ?? "";
+  const bioIsLong = bio.length > 180;
+  const bioIsExpanded = expandedBioMemberId === member.id;
   return <div className="profession-photo-slider" aria-label="Family members with professional roles">
-    <button type="button" className="profession-photo-image" onClick={() => onOpen(member.id)} aria-label={`Open ${displayName(member, language)} profile`}>
-      <img src={photoSrc(member.photo)} alt={displayName(member, language)} />
+    <button type="button" className="profession-photo-image" onClick={() => onOpen(member.id)} aria-label={"Open " + displayName(member, language) + " profile"}>
+      <img src={photoSrc(member.photo)} alt={displayName(member, language)} decoding="async" />
     </button>
-    <div className="profession-photo-caption"><span>{professionLabel(language, member.profession ?? "")}</span><strong>{displayName(member, language)}</strong>{member.uniqueId ? <small>{member.uniqueId}</small> : null}</div>
-    {photoMembers.length > 1 ? <div className="profession-photo-controls"><button type="button" aria-label="Previous professional profile" onClick={() => setSlideIndex((index) => (index - 1 + photoMembers.length) % photoMembers.length)}>Previous</button><span>{slideIndex + 1} / {photoMembers.length}</span><button type="button" aria-label="Next professional profile" onClick={() => setSlideIndex((index) => (index + 1) % photoMembers.length)}>Next</button></div> : null}
+    <div className="profession-photo-content">
+      <div className="profession-photo-caption">
+        <span>{professionLabel(language, member.profession ?? "")}</span>
+        <strong>{displayName(member, language)}</strong>
+        {member.uniqueId ? <small>{member.uniqueId}</small> : null}
+      </div>
+      {bio ? <div className="profession-photo-bio">
+        <p className={bioIsLong && !bioIsExpanded ? "is-collapsed" : undefined}>{bio}</p>
+        {bioIsLong ? <button type="button" className="profession-photo-read-more" aria-expanded={bioIsExpanded} onClick={() => setExpandedBioMemberId(bioIsExpanded ? null : member.id)}>{t(language, bioIsExpanded ? "readLessLabel" : "readMoreLabel")}</button> : null}
+      </div> : null}
+      {photoMembers.length > 1 ? <div className="profession-photo-controls"><button type="button" aria-label="Previous professional profile" onClick={() => setSlideIndex((index) => (index - 1 + photoMembers.length) % photoMembers.length)}>Previous</button><span>{slideIndex + 1} / {photoMembers.length}</span><button type="button" aria-label="Next professional profile" onClick={() => setSlideIndex((index) => (index + 1) % photoMembers.length)}>Next</button></div> : null}
+    </div>
   </div>;
 }
 export default function App() {

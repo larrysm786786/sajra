@@ -141,6 +141,8 @@ const STRINGS = {
     eyebrowHero: "Sajra family archive",
     heroTitle: "Keep our family's roots, stories and memories safe.",
     heroParagraph: "Sajra keeps our family tree, profiles and old photographs in one place, so every branch of the family stays connected.",
+    readMoreLabel: "Read more",
+    readLessLabel: "Read less",
     openFamilyTreeButton: "Open Family Tree",
 
     guideEyebrow: "Getting started",
@@ -466,6 +468,8 @@ const STRINGS = {
     eyebrowHero: "شجرہ خاندانی آرکائیو",
     heroTitle: "نسب، کہانیاں اور مشترکہ یادیں محفوظ رکھیں۔",
     heroParagraph: "شجرہ ہمارے خاندانی شجرے، ارکان کے پروفائلز، اور قیمتی تصاویر کو ایک زندہ آرکائیو میں یکجا کرتا ہے، تاکہ خاندان کی ہر شاخ نسلوں تک جڑی رہے۔",
+    readMoreLabel: "مزید پڑھیں",
+    readLessLabel: "کم دکھائیں",
     openFamilyTreeButton: "شجرہ نسب کھولیں",
 
     guideEyebrow: "شروع کیسے کریں",
