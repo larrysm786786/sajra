@@ -408,33 +408,27 @@ function ProfessionPhotoSlider({ members, language, onOpen }: { members: Member[
     return member.showInHeroSlider === true && Boolean(member.photo?.trim()) && isSliderProfession(member.profession);
   }).sort(sortMembers), [members]);
   const [slideIndex, setSlideIndex] = useState(0);
-  const [expandedBioMemberId, setExpandedBioMemberId] = useState<number | null>(null);
   useEffect(() => {
     if (photoMembers.length < 2) return;
-    const timer = window.setInterval(() => setSlideIndex((index) => (index + 1) % photoMembers.length), 4500);
+    const timer = window.setInterval(() => setSlideIndex((index) => (index + 1) % photoMembers.length), 6500);
     return () => window.clearInterval(timer);
   }, [photoMembers.length]);
   if (!photoMembers.length) return null;
   const member = photoMembers[slideIndex % photoMembers.length];
   const bio = member.bio?.trim() ?? "";
-  const bioIsLong = bio.length > 180;
-  const bioIsExpanded = expandedBioMemberId === member.id;
   return <div className="profession-photo-slider" aria-label="Family members with professional roles">
-    <button type="button" className="profession-photo-image" onClick={() => onOpen(member.id)} aria-label={"Open " + displayName(member, language) + " profile"}>
+    <button key={`photo-${member.id}`} type="button" className="profession-photo-image" onClick={() => onOpen(member.id)} aria-label={"Open " + displayName(member, language) + " profile"}>
       <img src={photoSrc(member.photo)} alt={displayName(member, language)} decoding="async" />
     </button>
-    <div className="profession-photo-content">
+    <div key={`details-${member.id}`} className="profession-photo-content">
       <div className="profession-photo-caption">
         <span>{professionLabel(language, member.profession ?? "")}</span>
         <strong>{displayName(member, language)}</strong>
         {member.uniqueId ? <small>{member.uniqueId}</small> : null}
       </div>
-      {bio ? <div className="profession-photo-bio">
-        <p className={bioIsLong && !bioIsExpanded ? "is-collapsed" : undefined}>{bio}</p>
-        {bioIsLong ? <button type="button" className="profession-photo-read-more" aria-expanded={bioIsExpanded} onClick={() => setExpandedBioMemberId(bioIsExpanded ? null : member.id)}>{t(language, bioIsExpanded ? "readLessLabel" : "readMoreLabel")}</button> : null}
-      </div> : null}
-      {photoMembers.length > 1 ? <div className="profession-photo-controls"><button type="button" aria-label="Previous professional profile" onClick={() => setSlideIndex((index) => (index - 1 + photoMembers.length) % photoMembers.length)}>Previous</button><span>{slideIndex + 1} / {photoMembers.length}</span><button type="button" aria-label="Next professional profile" onClick={() => setSlideIndex((index) => (index + 1) % photoMembers.length)}>Next</button></div> : null}
+      {bio ? <div className="profession-photo-bio"><p>{bio}</p></div> : null}
     </div>
+    {photoMembers.length > 1 ? <div className="profession-photo-controls"><button type="button" aria-label="Previous professional profile" onClick={() => setSlideIndex((index) => (index - 1 + photoMembers.length) % photoMembers.length)}>Previous</button><span>{slideIndex + 1} / {photoMembers.length}</span><button type="button" aria-label="Next professional profile" onClick={() => setSlideIndex((index) => (index + 1) % photoMembers.length)}>Next</button></div> : null}
   </div>;
 }
 export default function App() {
@@ -1209,11 +1203,12 @@ export default function App() {
 
   const memberSearchResults = useMemo(() => {
     const q = memberQuery.trim().toLowerCase();
-    if (!q) return members.slice(0, 12);
-    return members.filter((member) =>
+    const newestFirst = [...state.members].sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
+    const matches = q ? newestFirst.filter((member) =>
       [member.name, member.nameUr, member.birthplace].some((value) => value?.toLowerCase().includes(q))
-    ).slice(0, 24);
-  }, [memberQuery, members]);
+    ) : newestFirst;
+    return matches.slice(0, 12);
+  }, [memberQuery, state.members]);
 
   const professionGroups = useMemo(() => groupByProfession(state.members, language), [state.members, language]);
   const activeProfessionGroup = professionGroups.find((group) => group.id === selectedProfession);
@@ -1616,25 +1611,25 @@ export default function App() {
         sectionBody = state.suggestions.length ? (
           <div className="list">
             {state.suggestions.map((suggestion) => (
-              <div key={suggestion.id} className="card" style={{ padding: 14, opacity: suggestion.status === "resolved" ? 0.6 : 1 }}>
-                <div className="tree-head">
-                  <div>
-                    <div className="tree-name">
-                      {suggestion.memberName ? `${t(language, "aboutPrefix")} ${suggestion.memberName}` : t(language, "generalSuggestionLabel")}
-                    </div>
-                    <p style={{ marginTop: 6, lineHeight: 1.6 }}>{suggestion.message}</p>
-                    <div className="tree-sub" style={{ marginTop: 6 }}>
-                      {formatDate(suggestion.createdAt, language)} | {suggestion.submitterName || t(language, "anonymousSubmitter")}
-                      {suggestion.status === "resolved" ? ` | ${t(language, "suggestionResolvedLabel")}` : ""}
-                    </div>
+              <div key={suggestion.id} className="card admin-suggestion-card" style={{ opacity: suggestion.status === "resolved" ? 0.6 : 1 }}>
+                <div className="admin-suggestion-content">
+                  <div className="tree-name">
+                    {suggestion.memberName ? `${t(language, "aboutPrefix")} ${suggestion.memberName}` : t(language, "generalSuggestionLabel")}
                   </div>
-                  <div className="actions-row">
+                  {suggestion.message.startsWith("Chatbot feedback (helpful): ") ? <span className="admin-suggestion-kind is-helpful">Chatbot feedback · Helpful</span> : null}
+                  {suggestion.message.startsWith("Chatbot feedback (not helpful): ") ? <span className="admin-suggestion-kind is-unhelpful">Chatbot feedback · Not helpful</span> : null}
+                  <p className="admin-suggestion-message">{suggestion.message.startsWith("Chatbot feedback (helpful): ") ? suggestion.message.slice("Chatbot feedback (helpful): ".length) : suggestion.message.startsWith("Chatbot feedback (not helpful): ") ? suggestion.message.slice("Chatbot feedback (not helpful): ".length) : suggestion.message}</p>
+                  <div className="tree-sub admin-suggestion-meta">
+                    {formatDate(suggestion.createdAt, language)} | {suggestion.submitterName || t(language, "anonymousSubmitter")}
+                    {suggestion.status === "resolved" ? ` | ${t(language, "suggestionResolvedLabel")}` : ""}
+                  </div>
+                </div>
+                <div className="actions-row admin-suggestion-actions">
                     {suggestion.status === "pending" ? (
                       <button className="btn-ghost" type="button" onClick={() => resolveSuggestion(suggestion.id)}>{t(language, "markResolvedButton")}</button>
                     ) : null}
                     <button className="btn-ghost danger" type="button" onClick={() => deleteSuggestion(suggestion.id)}>{t(language, "deleteButton")}</button>
                   </div>
-                </div>
               </div>
             ))}
           </div>
@@ -1654,7 +1649,7 @@ export default function App() {
                       {t(language, actionLabelKeys[entry.action])} {t(language, typeLabelKeys[entry.type])}: {entry.label}
                     </div>
                     <div className="tree-sub">
-                      {formatDate(entry.createdAt, language)} | {entry.actorEmail || t(language, "systemActor")}
+                      {formatDate(entry.createdAt, language)} | {state.users.find((user) => user.email?.trim().toLowerCase() === entry.actorEmail?.trim().toLowerCase())?.name || state.users.find((user) => user.email?.trim().toLowerCase() === entry.actorEmail?.trim().toLowerCase())?.username || entry.actorEmail || t(language, "systemActor")}
                     </div>
                   </div>
                 </div>
