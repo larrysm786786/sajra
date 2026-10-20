@@ -403,6 +403,26 @@ function isSliderProfession(profession?: string | null) {
   return /hafiz|haafiz|hafez|maulana|moulana|molana|engineer|engineering|engg|engr|master|teacher|ustad/i.test(label);
 }
 
+function cleanSuggestionMessage(message: string): string {
+  const prefixes = ["Chatbot feedback (helpful): ", "Chatbot feedback (not helpful): "];
+  let text = message;
+  for (const prefix of prefixes) {
+    if (text.startsWith(prefix)) {
+      text = text.slice(prefix.length);
+      break;
+    }
+  }
+  return text
+    .replace(/\\\*\\\*/g, "")
+    .replace(/\*\*/g, "")
+    .replace(/&#x20;|&#32;|&nbsp;/gi, " ")
+    .replace(/&#xA0;/gi, " ")
+    .replace(/\\-/g, "• ")
+    .replace(/^\s*-\s+/gm, "• ")
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 function ProfessionPhotoSlider({ members, language, onOpen }: { members: Member[]; language: Language; onOpen: (memberId: number) => void }) {
   const photoMembers = useMemo(() => members.filter((member) => {
     return member.showInHeroSlider === true && Boolean(member.photo?.trim()) && isSliderProfession(member.profession);
@@ -1618,7 +1638,7 @@ export default function App() {
                   </div>
                   {suggestion.message.startsWith("Chatbot feedback (helpful): ") ? <span className="admin-suggestion-kind is-helpful">Chatbot feedback · Helpful</span> : null}
                   {suggestion.message.startsWith("Chatbot feedback (not helpful): ") ? <span className="admin-suggestion-kind is-unhelpful">Chatbot feedback · Not helpful</span> : null}
-                  <p className="admin-suggestion-message">{suggestion.message.startsWith("Chatbot feedback (helpful): ") ? suggestion.message.slice("Chatbot feedback (helpful): ".length) : suggestion.message.startsWith("Chatbot feedback (not helpful): ") ? suggestion.message.slice("Chatbot feedback (not helpful): ".length) : suggestion.message}</p>
+                  <p className="admin-suggestion-message">{cleanSuggestionMessage(suggestion.message)}</p>
                   <div className="tree-sub admin-suggestion-meta">
                     {formatDate(suggestion.createdAt, language)} | {suggestion.submitterName || t(language, "anonymousSubmitter")}
                     {suggestion.status === "resolved" ? ` | ${t(language, "suggestionResolvedLabel")}` : ""}
