@@ -218,22 +218,18 @@ export function findRelation(members: Member[], idA: number, idB: number): Relat
   return "cousin";
 }
 
-export type DataIssueKind = "duplicate-name" | "duplicate-id" | "missing-parent" | "self-parent" | "same-parent" | "missing-spouse" | "self-spouse" | "invalid-dates" | "parent-cycle";
+export type DataIssueKind = "duplicate-id" | "missing-parent" | "self-parent" | "same-parent" | "missing-spouse" | "self-spouse" | "invalid-dates" | "parent-cycle";
 export interface DataQualityIssue { id: string; memberId: number; kind: DataIssueKind; detail: string; }
 
 export function findDataQualityIssues(members: Member[]): DataQualityIssue[] {
   const issues: DataQualityIssue[] = [];
   const add = (member: Member, kind: DataIssueKind, detail: string) => issues.push({ id: `${kind}-${member.id}-${issues.length}`, memberId: member.id, kind, detail });
-  const names = new Map<string, Member[]>();
   const ids = new Map<string, Member[]>();
   const byId = new Map(members.map((member) => [member.id, member]));
   for (const member of members) {
-    const nameKey = member.name.trim().toLocaleLowerCase();
-    if (nameKey) names.set(nameKey, [...(names.get(nameKey) ?? []), member]);
     const uniqueId = member.uniqueId?.trim().toUpperCase();
     if (uniqueId) ids.set(uniqueId, [...(ids.get(uniqueId) ?? []), member]);
   }
-  for (const group of names.values()) if (group.length > 1) for (const member of group) add(member, "duplicate-name", `Name "${member.name}" appears ${group.length} times.`);
   for (const group of ids.values()) if (group.length > 1) for (const member of group) add(member, "duplicate-id", `Unique ID ${member.uniqueId} is shared by ${group.length} members.`);
   for (const member of members) {
     for (const [label, parentId] of [["father", member.fatherId], ["mother", member.motherId]] as const) {
