@@ -11,6 +11,9 @@ import {
   findRelation,
   formatDate,
   getChildren,
+  findDataQualityIssues,
+  getFamilyCalendarEvents,
+  getTodayFamilyMemories,
   getParents,
   getSpouses,
   importJson,
@@ -53,6 +56,7 @@ import {
 } from "./professions";
 import { t, tGender } from "./i18n";
 import SajraChat from "./SajraChat";
+import { BranchPage, MemberQrCard } from "./FamilyTools";
 import type { StringKey } from "./i18n";
 
 const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string; about: string; guide: string; roots: string }> = {
@@ -62,7 +66,7 @@ const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string
 
 type RouteState = { page: ViewKey; memberId?: number };
 
-type AdminSection = "overview" | "members" | "users" | "gallery" | "suggestions" | "logs" | "backup" | "security";
+type AdminSection = "overview" | "members" | "users" | "gallery" | "suggestions" | "logs" | "backup" | "security" | "quality";
 
 // Supabase reports an expired / already-used reset link through the URL hash.
 const STARTED_WITH_EXPIRED_LINK = typeof window !== "undefined" && window.location.hash.includes("error_code=otp_expired");
@@ -136,15 +140,15 @@ function parseRoute(): RouteState {
   const raw = window.location.hash.replace(/^#/, "");
   if (!raw || raw === "/") return { page: "home" };
   const [page, id] = raw.split("/").filter(Boolean);
-  if (page === "member" && id) return { page: "member", memberId: Number(id) || undefined };
-  if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots") {
+  if ((page === "member" || page === "branch") && id) return { page, memberId: Number(id) || undefined };
+  if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots" || page === "calendar") {
     return { page };
   }
   return { page: "home" };
 }
 
 function routeHash(route: RouteState): string {
-  if (route.page === "member" && route.memberId) return `#/member/${route.memberId}`;
+  if ((route.page === "member" || route.page === "branch") && route.memberId) return `#/${route.page}/${route.memberId}`;
   return `#/${route.page}`;
 }
 
@@ -326,7 +330,8 @@ const ADMIN_ICONS: Record<AdminSection, string> = {
   suggestions: "M12 22s-8-4.5-8-11a8 8 0 0 1 16 0c0 6.5-8 11-8 11ZM12 8v5M12 16h.01",
   logs: "M12 8v5l3 2M3 12a9 9 0 1 0 3-6.7M3 4v5h5",
   backup: "M12 3v12m0 0-4-4m4 4 4-4M4 17v3h16v-3",
-  security: "M6 11V8a6 6 0 1 1 12 0v3M5 11h14v10H5V11Zm7 4v2"
+  security: "M6 11V8a6 6 0 1 1 12 0v3M5 11h14v10H5V11Zm7 4v2",
+  quality: "M12 3 3 20h18L12 3Zm0 6v5m0 3h.01"
 };
 
 const EYE_ICON_PATH = "M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z";
@@ -531,7 +536,10 @@ export default function App() {
   const members = useMemo(() => [...state.members].sort(sortMembers), [state.members]);
   const memberMap = useMemo(() => new Map(state.members.map((member) => [member.id, member])), [state.members]);
   const roots = useMemo(() => state.members.filter(isRoot).sort(sortMembers), [state.members]);
-  const selectedMember = route.page === "member" && route.memberId ? memberMap.get(route.memberId) : undefined;
+  const selectedMember = (route.page === "member" || route.page === "branch") && route.memberId ? memberMap.get(route.memberId) : undefined;
+  const qualityIssues = useMemo(() => findDataQualityIssues(state.members), [state.members]);
+  const familyCalendarEvents = useMemo(() => getFamilyCalendarEvents(state.members), [state.members]);
+  const todayMemories = useMemo(() => getTodayFamilyMemories(state.members, state.gallery), [state.members, state.gallery]);
 
   useEffect(() => {
     const onHashChange = () => {
@@ -716,7 +724,7 @@ export default function App() {
   }, [state, supabaseConfigured, isLoggedIn]);
 
   useEffect(() => {
-    if (route.page === "member" && route.memberId && !memberMap.has(route.memberId)) {
+    if ((route.page === "member" || route.page === "branch") && route.memberId && !memberMap.has(route.memberId)) {
       window.location.hash = "#/home";
     }
   }, [memberMap, route]);
@@ -998,7 +1006,7 @@ export default function App() {
 
       return pushActivityLog(
         { ...current, members: membersNext },
-        { type: "member", action: exists ? "updated" : "added", label: `${updated.name} (${updated.uniqueId})`, actorEmail }
+        { type: "member", action: exists ? "updated" : "added", label: `${updated.name} (${updated.uniqueId})`, actorEmail, memberBefore: existingMember ?? null, memberAfter: updated, memberRelatedBefore: current.members.filter((member) => member.id !== id && (member.spouseIds.includes(id) || spouseIds.includes(member.id))) }
       );
     });
 
@@ -1027,7 +1035,9 @@ export default function App() {
         type: "member",
         action: "deleted",
         label: `${target.name}${target.uniqueId ? ` (${target.uniqueId})` : ""}`,
-        actorEmail
+        actorEmail,
+        memberBefore: target,
+        memberRelatedBefore: current.members.filter((member) => member.id !== id && (member.fatherId === id || member.motherId === id || member.spouseIds.includes(id)))
       });
     });
   }
@@ -1177,6 +1187,17 @@ export default function App() {
         label: target.caption || t(language, "untitledPhoto"),
         actorEmail
       });
+    });
+  }
+
+  function restoreMemberVersion(entry: AppState["activityLog"][number]) {
+    if (!isAdmin || !entry.memberBefore) return;
+    if (!window.confirm(`Restore ${entry.memberBefore.name} to the saved version from ${formatDate(entry.createdAt, language)}?`)) return;
+    updateState((current) => {
+      const restoredIds = new Set([entry.memberBefore!.id, ...(entry.memberRelatedBefore ?? []).map((member) => member.id)]);
+      const members = current.members.filter((member) => !restoredIds.has(member.id));
+      members.push(entry.memberBefore!, ...(entry.memberRelatedBefore ?? []));
+      return pushActivityLog({ ...current, members }, { type: "member", action: "updated", label: `Restored ${entry.memberBefore!.name}`, actorEmail: supabaseSession?.user.email ?? null, memberBefore: current.members.find((member) => member.id === entry.memberBefore!.id) ?? null, memberAfter: entry.memberBefore! });
     });
   }
 
@@ -1350,6 +1371,8 @@ export default function App() {
       );
     }
 
+    if (route.page === "branch" && selectedMember) return <BranchPage member={selectedMember} members={state.members} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />;
+    if (route.page === "calendar") return <section className="section"><div className="section-head"><div><span className="eyebrow">Family dates</span><h1 className="section-title">Family calendar</h1><p className="section-subtitle">Upcoming birthdays and remembrance dates.</p></div></div><div className="family-calendar-list">{familyCalendarEvents.map((event) => <button className="family-calendar-event card" key={event.id} onClick={() => navigate({ page: "member", memberId: event.member.id })}><span className={`calendar-event-icon ${event.kind}`}>{event.kind === "birthday" ? "??" : "?"}</span><span className="calendar-event-person"><strong>{displayName(event.member, language)}</strong><small>{event.member.uniqueId || ""}</small></span><span className="calendar-event-type">{event.kind === "birthday" ? "Birthday" : "Remembrance"}</span><time>{event.date.toLocaleDateString(language === "ur" ? "ur-PK" : "en", { day: "numeric", month: "short", year: "numeric" })}</time></button>)}</div></section>;
     if (route.page === "member") {
       const member = selectedMember;
       return (
@@ -1377,12 +1400,13 @@ export default function App() {
                   <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openTreeButton")}</button>
                   {canEditMembers ? <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editMemberButton")}</button> : null}
                   <button className="btn-ghost" type="button" onClick={() => window.print()}>{t(language, "printProfileButton")}</button>
-                  <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor(member)}>{t(language, "suggestCorrectionButton")}</button>
+                  <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor(member)}>{t(language, "suggestCorrectionButton")}</button><button className="btn-ghost" type="button" onClick={() => navigate({ page: "branch", memberId: member.id })}>Share family branch</button>
                 </div>
                 {suggestionSent ? <p className="hint no-print">{t(language, "suggestionSentMessage")}</p> : null}
                 {member.bio ? <p style={{ marginTop: 16, lineHeight: 1.8 }}>{member.bio}</p> : null}
               </div>
 
+              <MemberQrCard member={member} language={language} />
               <div className="card-grid profile-relations-grid" style={{ marginTop: 20 }}>
                 <Card title={t(language, "parentsTitle")} subtitle={t(language, "parentsSubtitle")}>
                   {getParents(state.members, member).length ? (
@@ -1492,7 +1516,7 @@ export default function App() {
         ...(isAdmin ? [{ key: "users" as const, label: t(language, "usersLabel"), subtitle: t(language, "usersCardSubtitle") }] : []),
         { key: "gallery", label: t(language, "adminNavGallery"), subtitle: t(language, "galleryAdminSubtitle") },
         ...(isAdmin ? [{ key: "suggestions" as const, label: t(language, "adminNavSuggestions"), subtitle: t(language, "suggestionsSubtitle") }] : []),
-        ...(isAdmin ? [{ key: "logs" as const, label: t(language, "adminNavLogs"), subtitle: t(language, "logHistorySubtitle") }] : []),
+        ...(isAdmin ? [{ key: "logs" as const, label: t(language, "adminNavLogs"), subtitle: t(language, "logHistorySubtitle") }, { key: "quality" as const, label: "Data quality", subtitle: "Review possible family-tree data issues" }] : []),
         ...(isAdmin ? [{ key: "backup" as const, label: t(language, "backupCardTitle"), subtitle: t(language, "backupCardSubtitle") }] : []),
         { key: "security", label: t(language, "adminNavSecurity"), subtitle: t(language, "changePasswordSubtitle") }
       ];
@@ -1548,6 +1572,8 @@ export default function App() {
             </div>
           </>
         );
+      } else if (activeSection.key === "quality") {
+        sectionBody = qualityIssues.length ? <div className="list">{qualityIssues.map((issue) => <div className="card data-quality-item" key={issue.id}><div><strong>{issue.kind.replace(/-/g, " ")}</strong><p>{issue.detail}</p></div><button className="btn-ghost" type="button" onClick={() => navigate({ page: "member", memberId: issue.memberId })}>Open member</button></div>)}</div> : <div className="empty">No possible data issues found.</div>;
       } else if (activeSection.key === "members") {
         sectionBody = (
           <>
@@ -1671,6 +1697,7 @@ export default function App() {
                     <div className="tree-sub">
                       {formatDate(entry.createdAt, language)} | {entry.actorEmail ? (state.users.find((user) => user.email?.trim().toLowerCase() === entry.actorEmail?.trim().toLowerCase())?.name || state.users.find((user) => user.email?.trim().toLowerCase() === entry.actorEmail?.trim().toLowerCase())?.username || entry.actorEmail) : t(language, "systemActor")}
                     </div>
+                    {entry.type === "member" && entry.memberBefore ? <details className="activity-change-details"><summary>Saved version: {entry.memberBefore.name}</summary><ul>{["name", "profession", "birthplace", "dob", "dod", "fatherId", "motherId"].map((field) => { const before = String((entry.memberBefore as unknown as Record<string, unknown>)[field] ?? "-"); const after = String((entry.memberAfter as unknown as Record<string, unknown> | null)?.[field] ?? "-"); return before !== after ? <li key={field}><strong>{field}</strong>: {before} -&gt; {after}</li> : null; })}</ul><button className="btn-ghost" type="button" onClick={() => restoreMemberVersion(entry)}>Restore this version</button></details> : null}
                   </div>
                 </div>
               </div>
@@ -1843,6 +1870,7 @@ export default function App() {
           <ProfessionPhotoSlider members={state.members} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
         </section>
 
+        {todayMemories.length ? <section className="section today-memories-section"><div className="section-head"><div><span className="eyebrow">Family memories</span><h2 className="section-title">On this day</h2></div><button className="btn-ghost" onClick={() => navigate({ page: "calendar" })}>Open family calendar</button></div><div className="today-memory-grid">{todayMemories.map((memory) => <button className="card today-memory-card" key={memory.id} onClick={() => memory.member ? navigate({ page: "member", memberId: memory.member.id }) : navigate({ page: "gallery" })}>{memory.image ? <img src={photoSrc(memory.image.src)} alt="" /> : null}<span><strong>{memory.title}</strong><small>{memory.kind.replace(/-/g, " ")}</small></span></button>)}</div></section> : null}
         <section className="hero-tools section">
           <div className="hero-actions">
             <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openFamilyTreeButton")}</button>
@@ -2043,6 +2071,7 @@ export default function App() {
           <NavLink active={route.page === "tree"} onClick={() => navigate({ page: "tree" })}>{NAV_LABELS[language].tree}</NavLink>
           <NavLink active={route.page === "roots"} onClick={() => navigate({ page: "roots" })}>{NAV_LABELS[language].roots}</NavLink>
           <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
+          <NavLink active={route.page === "calendar"} onClick={() => navigate({ page: "calendar" })}>Calendar</NavLink>
           <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
           <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
           <div className="topnav-actions-mobile">
@@ -2518,4 +2547,3 @@ export default function App() {
     </div>
   );
 }
-

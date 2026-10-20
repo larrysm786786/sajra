@@ -2,7 +2,7 @@ export type Language = "en" | "ur";
 export type Theme = "light" | "dark";
 export type Gender = "male" | "female";
 export type Role = "admin" | "editor" | "contributor";
-export type ViewKey = "home" | "tree" | "gallery" | "admin" | "member" | "about" | "guide" | "roots";
+export type ViewKey = "home" | "tree" | "gallery" | "admin" | "member" | "branch" | "calendar" | "about" | "guide" | "roots";
 
 export interface Member {
   id: number;
@@ -56,6 +56,9 @@ export interface ActivityLogEntry {
   action: ActivityAction;
   label: string;
   actorEmail?: string | null;
+  memberBefore?: Member | null;
+  memberAfter?: Member | null;
+  memberRelatedBefore?: Member[];
   createdAt: string;
 }
 

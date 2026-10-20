@@ -119,7 +119,7 @@ export function assignMissingUniqueIds(members: Member[]): Member[] {
 /** Appends an entry to the activity log, keeping only the most recent 200. */
 export function pushActivityLog(
   state: AppState,
-  entry: { type: ActivityType; action: ActivityAction; label: string; actorEmail?: string | null }
+  entry: { type: ActivityType; action: ActivityAction; label: string; actorEmail?: string | null; memberBefore?: Member | null; memberAfter?: Member | null; memberRelatedBefore?: Member[] }
 ): AppState {
   const id = nextId(state.activityLog);
   const activityLog = [{ id, createdAt: new Date().toISOString(), ...entry }, ...state.activityLog].slice(0, 200);
@@ -218,6 +218,93 @@ export function findRelation(members: Member[], idA: number, idB: number): Relat
   return "cousin";
 }
 
+export type DataIssueKind = "duplicate-name" | "duplicate-id" | "missing-parent" | "self-parent" | "same-parent" | "missing-spouse" | "self-spouse" | "invalid-dates" | "parent-cycle";
+export interface DataQualityIssue { id: string; memberId: number; kind: DataIssueKind; detail: string; }
+
+export function findDataQualityIssues(members: Member[]): DataQualityIssue[] {
+  const issues: DataQualityIssue[] = [];
+  const add = (member: Member, kind: DataIssueKind, detail: string) => issues.push({ id: `${kind}-${member.id}-${issues.length}`, memberId: member.id, kind, detail });
+  const names = new Map<string, Member[]>();
+  const ids = new Map<string, Member[]>();
+  const byId = new Map(members.map((member) => [member.id, member]));
+  for (const member of members) {
+    const nameKey = member.name.trim().toLocaleLowerCase();
+    if (nameKey) names.set(nameKey, [...(names.get(nameKey) ?? []), member]);
+    const uniqueId = member.uniqueId?.trim().toUpperCase();
+    if (uniqueId) ids.set(uniqueId, [...(ids.get(uniqueId) ?? []), member]);
+  }
+  for (const group of names.values()) if (group.length > 1) for (const member of group) add(member, "duplicate-name", `Name "${member.name}" appears ${group.length} times.`);
+  for (const group of ids.values()) if (group.length > 1) for (const member of group) add(member, "duplicate-id", `Unique ID ${member.uniqueId} is shared by ${group.length} members.`);
+  for (const member of members) {
+    for (const [label, parentId] of [["father", member.fatherId], ["mother", member.motherId]] as const) {
+      if (parentId && !byId.has(parentId)) add(member, "missing-parent", `${label === "father" ? "Father" : "Mother"} link points to a member that no longer exists.`);
+      else if (parentId === member.id) add(member, "self-parent", `${label === "father" ? "Father" : "Mother"} cannot be the member themself.`);
+    }
+    if (member.fatherId && member.fatherId === member.motherId) add(member, "same-parent", "Father and mother link to the same person.");
+    for (const spouseId of member.spouseIds ?? []) {
+      if (spouseId === member.id) add(member, "self-spouse", "Member is linked as their own spouse.");
+      else if (!byId.has(spouseId)) add(member, "missing-spouse", "Spouse link points to a member that no longer exists.");
+    }
+    if (member.dob && member.dod && member.dob > member.dod) add(member, "invalid-dates", "Date of birth is after date of death.");
+    const seen = new Set<number>([member.id]);
+    let frontier = [member.id];
+    let cycleFound = false;
+    while (frontier.length && !cycleFound) {
+      const next: number[] = [];
+      for (const currentId of frontier) {
+        const current = byId.get(currentId);
+        for (const parentId of [current?.fatherId, current?.motherId]) {
+          if (!parentId || !byId.has(parentId)) continue;
+          if (parentId === member.id) { add(member, "parent-cycle", "Parent links create a circular family-tree path."); cycleFound = true; break; }
+          if (!seen.has(parentId)) { seen.add(parentId); next.push(parentId); }
+        }
+        if (cycleFound) break;
+      }
+      frontier = next;
+    }
+  }
+  return issues;
+}
+
+export type FamilyEventKind = "birthday" | "death-anniversary";
+export interface FamilyCalendarEvent { id: string; member: Member; kind: FamilyEventKind; date: Date; }
+function nextAnnualDate(value: string, now: Date): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return null;
+  const month = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const makeDate = (year: number) => new Date(year, month, Math.min(day, new Date(year, month + 1, 0).getDate()));
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let date = makeDate(now.getFullYear());
+  if (date < today) date = makeDate(now.getFullYear() + 1);
+  return date;
+}
+export function getFamilyCalendarEvents(members: Member[], now = new Date(), days = 365): FamilyCalendarEvent[] {
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days);
+  const events: FamilyCalendarEvent[] = [];
+  for (const member of members) {
+    for (const [kind, value] of [["birthday", member.dob], ["death-anniversary", member.dod]] as const) {
+      if (!value) continue;
+      const date = nextAnnualDate(value, now);
+      if (date && date <= end) events.push({ id: `${kind}-${member.id}`, member, kind, date });
+    }
+  }
+  return events.sort((a, b) => a.date.getTime() - b.date.getTime() || a.member.name.localeCompare(b.member.name));
+}
+export function getTodayFamilyMemories(members: Member[], gallery: GalleryImage[], now = new Date()): Array<{ id: string; title: string; member?: Member; image?: GalleryImage; kind: FamilyEventKind | "photo-anniversary" }> {
+  const month = now.getMonth();
+  const day = now.getDate();
+  const memories: Array<{ id: string; title: string; member?: Member; image?: GalleryImage; kind: FamilyEventKind | "photo-anniversary" }> = [];
+  for (const member of members) {
+    if (member.dob) { const date = nextAnnualDate(member.dob, now); if (date?.getMonth() === month && date.getDate() === day) memories.push({ id: `birthday-${member.id}`, title: `${member.name} - birthday`, member, kind: "birthday" }); }
+    if (member.dod) { const date = nextAnnualDate(member.dod, now); if (date?.getMonth() === month && date.getDate() === day) memories.push({ id: `death-${member.id}`, title: `${member.name} - remembrance day`, member, kind: "death-anniversary" }); }
+  }
+  for (const image of gallery) {
+    const date = new Date(image.uploadedAt);
+    if (!Number.isNaN(date.getTime()) && date.getMonth() === month && date.getDate() === day) memories.push({ id: `photo-${image.id}`, title: image.caption || "Family photograph", image, kind: "photo-anniversary" });
+  }
+  return memories;
+}
 export function buildTree(members: Member[]): TreeNode[] {
   const byParent = new Map<number, Member[]>();
   const roots: Member[] = [];
