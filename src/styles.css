@@ -1829,16 +1829,16 @@ html[dir="rtl"] .select {
 .hero-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; padding: 18px 24px; }
 .hero-tools .hero-actions { margin: 0; }
 .hero-tools .hero-search { flex: 1 1 300px; max-width: 480px; margin: 0; }
-.profession-photo-slider { display: grid; grid-template-columns: 176px 1fr auto; align-items: center; gap: 16px; max-width: 700px; margin-top: 26px; padding: 12px; border: 1px solid var(--border); border-radius: 18px; background: color-mix(in oklab, var(--surface-strong) 88%, transparent); }
-.profession-photo-image { display: block; width: 176px; height: 176px; overflow: hidden; padding: 0; border: 0; border-radius: 14px; background: var(--bg-soft); cursor: pointer; }
-.profession-photo-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.profession-photo-caption { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
-.profession-photo-caption span { color: var(--accent-strong); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
-.profession-photo-caption strong { color: var(--ink); font-family: "Playfair Display", serif; font-size: clamp(1.2rem, 2.5vw, 1.8rem); overflow-wrap: anywhere; }
-.profession-photo-caption small, .profession-photo-controls span { color: var(--muted); font-size: 13px; }
-.profession-photo-controls { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.profession-photo-slider { position: relative; width: 100%; max-width: none; aspect-ratio: 16 / 7; overflow: hidden; margin-top: 26px; padding: 0; border: 1px solid var(--border); border-radius: 18px; background: #17231d; isolation: isolate; }
+.profession-photo-image { position: absolute; inset: 0; display: block; width: 100%; height: 100%; overflow: hidden; padding: 0; border: 0; border-radius: 0; background: var(--bg-soft); cursor: pointer; z-index: -1; }
+.profession-photo-image img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 35%; }
+.profession-photo-caption { position: absolute; right: 180px; bottom: 20px; left: 22px; display: flex; flex-direction: column; gap: 7px; min-width: 0; padding: 20px 24px 18px; border-radius: 14px; color: #fff; background: linear-gradient(90deg, rgba(10, 17, 13, .82), rgba(10, 17, 13, .42)); backdrop-filter: blur(5px); }
+.profession-photo-caption span { color: #d5f2dc; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.profession-photo-caption strong { color: #fff; font-family: "Playfair Display", serif; font-size: clamp(1.2rem, 2.5vw, 1.8rem); overflow-wrap: anywhere; }
+.profession-photo-caption small, .profession-photo-controls span { color: rgba(255,255,255,.86); font-size: 13px; }
+.profession-photo-controls { position: absolute; right: 20px; bottom: 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px; border: 1px solid rgba(255,255,255,.28); border-radius: 14px; color: #fff; background: rgba(10,17,13,.58); backdrop-filter: blur(8px); }
 .profession-photo-controls button { padding: 7px 9px; border: 1px solid var(--border); border-radius: 9px; color: var(--text); background: var(--surface); font-size: 12px; cursor: pointer; }
-@media (max-width: 600px) { .hero-tools { align-items: stretch; padding: 16px; }.profession-photo-slider { grid-template-columns: 112px 1fr; gap: 12px; }.profession-photo-image { width: 112px; height: 132px; }.profession-photo-controls { grid-column: 1 / -1; flex-direction: row; justify-content: center; }.profession-photo-controls button { min-width: 90px; } }
+@media (max-width: 600px) { .hero-tools { align-items: stretch; padding: 16px; }.profession-photo-slider { aspect-ratio: 4 / 3; border-radius: 15px; }.profession-photo-image { width: 100%; height: 100%; }.profession-photo-caption { right: 12px; bottom: 12px; left: 12px; padding: 14px 15px; }.profession-photo-controls { top: 12px; right: 12px; bottom: auto; flex-direction: row; justify-content: center; gap: 6px; padding: 7px; }.profession-photo-controls button { min-width: 66px; padding: 7px; } }
 .hero-slider-admin-toggle { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-soft); }
 .hero-slider-admin-toggle input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--accent-strong); }
 .hero-slider-admin-toggle span { display: flex; flex-direction: column; gap: 4px; }
