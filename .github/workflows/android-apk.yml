@@ -6,6 +6,9 @@ on:
       - main
     paths:
       - 'src/**'
+      - 'public/**'
+      - 'assets/**'
+      - 'index.html'
       - 'android/**'
       - 'capacitor.config.ts'
       - 'package.json'
