@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import type { Language, Member } from "./types";
 import { displayName, getChildren, photoSrc } from "./lib";
 
 function currentUrl(page: "member" | "branch", id: number): string {
-  return `${window.location.origin}${window.location.pathname}#/${page}/${id}`;
+  const base = Capacitor.isNativePlatform() ? "https://larrysm786786.github.io/sajra/" : `${window.location.origin}${window.location.pathname}`;
+  return `${base}#/${page}/${id}`;
 }
 
 function BranchNode({ member, members, language, onOpen, seen }: { member: Member; members: Member[]; language: Language; onOpen: (id: number) => void; seen: Set<number> }) {

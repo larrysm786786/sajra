@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Sajra</string>
+    <string name="title_activity_main">Sajra</string>
+    <string name="package_name">com.sajra.familytree</string>
+    <string name="custom_url_scheme">com.sajra.familytree</string>
+</resources>
