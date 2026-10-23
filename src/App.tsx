@@ -1866,6 +1866,8 @@ export default function App() {
       <>
         <section className="hero">
           <span className="eyebrow">{t(language, "eyebrowHero")}</span>
+          <h1 className="hero-legacy-title">Nine Generations. One Legacy.</h1>
+          <p className="hero-legacy-copy">A family bound by heritage, strengthened by unity, and carried forward through generations.</p>
           <ProfessionPhotoSlider members={state.members} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
         </section>
 
