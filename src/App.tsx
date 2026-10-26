@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { trackWebPageView } from "./analytics";
 import type { FormEvent, ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { AppState, GalleryImage, Gender, Language, Member, Role, Suggestion, User, ViewKey } from "./types";
@@ -539,6 +540,10 @@ export default function App() {
   const qualityIssues = useMemo(() => findDataQualityIssues(state.members), [state.members]);
   const familyCalendarEvents = useMemo(() => getFamilyCalendarEvents(state.members), [state.members]);
   const todayMemories = useMemo(() => getTodayFamilyMemories(state.members, state.gallery), [state.members, state.gallery]);
+
+  useEffect(() => {
+    trackWebPageView(route.page);
+  }, [route.page, route.memberId]);
 
   useEffect(() => {
     const onHashChange = () => {
