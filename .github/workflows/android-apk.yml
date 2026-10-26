@@ -29,6 +29,7 @@ jobs:
       SAJRA_RELEASE_STORE_PASSWORD: ${{ secrets.SAJRA_RELEASE_STORE_PASSWORD }}
       SAJRA_RELEASE_KEY_ALIAS: ${{ secrets.SAJRA_RELEASE_KEY_ALIAS }}
       SAJRA_RELEASE_KEY_PASSWORD: ${{ secrets.SAJRA_RELEASE_KEY_PASSWORD }}
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -75,14 +76,14 @@ jobs:
           files: ${{ runner.temp }}/Sajra.apk
           make_latest: true
       - name: Authenticate to Firebase for update notification
-        if: ${{ env.SAJRA_RELEASE_KEYSTORE_BASE64 != '' && secrets.FIREBASE_SERVICE_ACCOUNT_JSON != '' }}
+        if: ${{ env.SAJRA_RELEASE_KEYSTORE_BASE64 != '' && env.FIREBASE_SERVICE_ACCOUNT_JSON != '' }}
         id: firebase-auth
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          credentials_json: ${{ env.FIREBASE_SERVICE_ACCOUNT_JSON }}
           token_format: access_token
       - name: Notify Sajra users about the new release
-        if: ${{ env.SAJRA_RELEASE_KEYSTORE_BASE64 != '' && secrets.FIREBASE_SERVICE_ACCOUNT_JSON != '' }}
+        if: ${{ env.SAJRA_RELEASE_KEYSTORE_BASE64 != '' && env.FIREBASE_SERVICE_ACCOUNT_JSON != '' }}
         env:
           FIREBASE_ACCESS_TOKEN: ${{ steps.firebase-auth.outputs.access_token }}
           SAJRA_VERSION: 1.0.${{ github.run_number }}
