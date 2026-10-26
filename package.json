@@ -10,6 +10,7 @@
     "build:android": "tsc --noEmit -p tsconfig.app.json && vite build --base=./"
   },
   "dependencies": {
+    "@capacitor-community/firebase-analytics": "^8.0.0",
     "@capacitor/android": "^8.5.3",
     "@capacitor/core": "^8.5.3",
     "@supabase/supabase-js": "^2.111.0",

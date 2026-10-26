@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "628410386809",
+    "project_id": "sajra-9774e",
+    "storage_bucket": "sajra-9774e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:628410386809:android:ce01f62f0b0041729ac7a8",
+        "android_client_info": {
+          "package_name": "com.sajra.familytree"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDM4EnsQIAOptrhykSIOAKTh6uptEi_z7M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { FirebaseAnalytics } from "@capacitor-community/firebase-analytics";
 
 const MEASUREMENT_ID = "G-X1D6FER0H3";
 
@@ -31,17 +32,29 @@ const PAGE_TITLES: Record<string, string> = {
   guide: "Guide",
   roots: "Founding branches",
   calendar: "Family calendar",
-  admin: "Admin"
+  admin: "Admin",
+  member: "Member profile",
+  branch: "Family branch"
 };
 
 export function trackWebPageView(page: string): void {
   if (Capacitor.isNativePlatform() || !window.gtag) return;
 
-  const safePage = page === "member" || page === "branch" ? page : (PAGE_TITLES[page] ? page : "home");
+  const safePage = PAGE_TITLES[page] ? page : "home";
   const pagePath = `/${safePage}`;
   window.gtag("event", "page_view", {
-    page_title: safePage === "member" ? "Member profile" : safePage === "branch" ? "Family branch" : PAGE_TITLES[safePage],
+    page_title: PAGE_TITLES[safePage],
     page_location: `${window.location.origin}${window.location.pathname}#${pagePath}`,
     page_path: pagePath
   });
+}
+
+export function trackNativeScreenView(page: string): void {
+  if (!Capacitor.isNativePlatform()) return;
+
+  const safePage = PAGE_TITLES[page] ? page : "home";
+  void FirebaseAnalytics.setScreenName({
+    screenName: PAGE_TITLES[safePage],
+    nameOverride: "Sajra"
+  }).catch(() => {});
 }

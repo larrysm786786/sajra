@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { trackWebPageView } from "./analytics";
+import { trackNativeScreenView, trackWebPageView } from "./analytics";
 import type { FormEvent, ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { AppState, GalleryImage, Gender, Language, Member, Role, Suggestion, User, ViewKey } from "./types";
@@ -543,6 +543,7 @@ export default function App() {
 
   useEffect(() => {
     trackWebPageView(route.page);
+    trackNativeScreenView(route.page);
   }, [route.page, route.memberId]);
 
   useEffect(() => {
