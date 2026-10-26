@@ -57,6 +57,7 @@ import {
 } from "./professions";
 import { t, tGender } from "./i18n";
 import SajraChat from "./SajraChat";
+import AppUpdaterCard from "./AppUpdater";
 import { BranchPage } from "./FamilyTools";
 import type { StringKey } from "./i18n";
 
@@ -1803,6 +1804,7 @@ export default function App() {
           <div className="notice" style={{ marginTop: 18 }}>
             {t(language, "aboutNotice")}
           </div>
+          <AppUpdaterCard language={language} />
         </section>
       );
     }
