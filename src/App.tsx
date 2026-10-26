@@ -404,8 +404,7 @@ function Modal({
 }
 
 function isSliderProfession(profession?: string | null) {
-  const label = profession ? professionLabel("en", profession) : "";
-  return /hafiz|haafiz|hafez|maulana|moulana|molana|engineer|engineering|engg|engr|master|teacher|ustad/i.test(label);
+  return Boolean(profession?.trim());
 }
 
 function cleanSuggestionMessage(message: string): string {
@@ -2207,7 +2206,7 @@ export default function App() {
                 onChange={(e) => handleMemberPhoto(e.target.files?.[0])}
               />
             </label>
-            {isAdmin ? <label className="span-12 hero-slider-admin-toggle"><input type="checkbox" checked={memberDraft.showInHeroSlider} disabled={!memberDraft.showInHeroSlider && !(Boolean(memberDraft.photo.trim()) && isSliderProfession(normalizeProfession(memberDraft.professionChoice === PROFESSION_OTHER ? memberDraft.professionOther : memberDraft.professionChoice)))} onChange={(event) => setMemberDraft((current) => current ? { ...current, showInHeroSlider: event.target.checked } : current)} /><span><strong>Show in homepage professional slider</strong><small>Select this member for the home page. A profile photo and a supported profession are required.</small></span></label> : null}
+            {isAdmin ? <label className="span-12 hero-slider-admin-toggle"><input type="checkbox" checked={memberDraft.showInHeroSlider} disabled={!memberDraft.showInHeroSlider && !(Boolean(memberDraft.photo.trim()) && isSliderProfession(normalizeProfession(memberDraft.professionChoice === PROFESSION_OTHER ? memberDraft.professionOther : memberDraft.professionChoice)))} onChange={(event) => setMemberDraft((current) => current ? { ...current, showInHeroSlider: event.target.checked } : current)} /><span><strong>Show in homepage professional slider</strong><small>Select this member for the home page. A profile photo and a profession are required.</small></span></label> : null}
             <label className="span-12">
               <span className="sr-only">{t(language, "bioLabel")}</span>
               <textarea className="textarea" placeholder={t(language, "bioLabel")} value={memberDraft.bio} onChange={(e) => setMemberDraft((current) => current ? { ...current, bio: e.target.value } : current)} />
