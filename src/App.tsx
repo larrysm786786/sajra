@@ -930,8 +930,9 @@ export default function App() {
     updateState((current) => ({ ...current, suggestions: current.suggestions.filter((suggestion) => suggestion.id !== id) }));
   }
 
-  // Anyone, admin or any visitor, can post one. That's the point: a shared notice board, not an admin-only memo.
+  // Admin-only: everyone can read announcements, but only the family admin posts them.
   function openAnnouncementEditor() {
+    if (!isAdmin) return;
     setAnnouncementDraft({ message: "", authorName: "", expiresAt: "" });
   }
 
@@ -940,7 +941,7 @@ export default function App() {
   }
 
   async function submitAnnouncement() {
-    if (!announcementDraft || !announcementDraft.message.trim() || announcementBusy) return;
+    if (!isAdmin || !announcementDraft || !announcementDraft.message.trim() || announcementBusy) return;
     setAnnouncementBusy(true);
     try {
       let publishedState: AppState | null = null;
@@ -957,8 +958,8 @@ export default function App() {
         publishedState = next;
         return next;
       });
-      // Same reasoning as submitSuggestion: a visitor who isn't logged in never triggers the normal
-      // autosave, so this write is pushed to Supabase directly or nobody else would ever see it.
+      // Push immediately rather than waiting for the normal debounced autosave, so the
+      // announcement reaches everyone else's browser right away instead of after ~600ms.
       if (supabaseConfigured && publishedState) await persistToSupabase(publishedState);
       closeAnnouncementEditor();
     } finally {
@@ -1432,7 +1433,61 @@ export default function App() {
     }
 
     if (route.page === "branch" && selectedMember) return <BranchPage member={selectedMember} members={state.members} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />;
-    if (route.page === "calendar") return <section className="section"><div className="section-head"><div><span className="eyebrow">Family dates</span><h1 className="section-title">Family calendar</h1><p className="section-subtitle">Upcoming birthdays and remembrance dates.</p></div></div><div className="family-calendar-list">{familyCalendarEvents.map((event) => <button className="family-calendar-event card" key={event.id} onClick={() => navigate({ page: "member", memberId: event.member.id })}><span className={`calendar-event-icon ${event.kind}`}>{event.kind === "birthday" ? "??" : "?"}</span><span className="calendar-event-person"><strong>{displayName(event.member, language)}</strong><small>{event.member.uniqueId || ""}</small></span><span className="calendar-event-type">{event.kind === "birthday" ? "Birthday" : "Remembrance"}</span><time>{event.date.toLocaleDateString(language === "ur" ? "ur-PK" : "en", { day: "numeric", month: "short", year: "numeric" })}</time></button>)}</div></section>;
+    if (route.page === "calendar") {
+      return (
+        <section className="section">
+          <div className="section-head">
+            <div>
+              <span className="eyebrow">{t(language, "eyebrowAnnouncements")}</span>
+              <h1 className="section-title">{t(language, "announcementsTitle")}</h1>
+              <p className="section-subtitle">{t(language, "announcementsSubtitle")}</p>
+            </div>
+            {isAdmin ? <button className="btn-ghost" type="button" onClick={openAnnouncementEditor}>{t(language, "postAnnouncementButton")}</button> : null}
+          </div>
+          {activeAnnouncements.length ? (
+            <div className="list">
+              {activeAnnouncements.map((announcement) => (
+                <div key={announcement.id} className="card announcement-card">
+                  <div className="announcement-card-body">
+                    {announcement.fromAdmin ? <span className="chip announcement-admin-badge">{t(language, "adminOption")}</span> : null}
+                    <p className="announcement-message">{announcement.message}</p>
+                    <div className="tree-sub">
+                      {formatDate(announcement.createdAt, language)} | {announcement.authorName || t(language, "anonymousSubmitter")}
+                    </div>
+                  </div>
+                  {isAdmin ? (
+                    <button className="btn-ghost danger" type="button" onClick={() => deleteAnnouncement(announcement.id)}>{t(language, "deleteButton")}</button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty">{t(language, "noAnnouncementsYet")}</div>
+          )}
+
+          <div className="section-head" style={{ marginTop: 28 }}>
+            <div>
+              <span className="eyebrow">Family dates</span>
+              <h2 className="section-title">Family calendar</h2>
+              <p className="section-subtitle">Upcoming birthdays and remembrance dates.</p>
+            </div>
+          </div>
+          <div className="family-calendar-list">
+            {familyCalendarEvents.map((event) => (
+              <button className="family-calendar-event card" key={event.id} onClick={() => navigate({ page: "member", memberId: event.member.id })}>
+                <span className={`calendar-event-icon ${event.kind}`}>{event.kind === "birthday" ? "??" : "?"}</span>
+                <span className="calendar-event-person">
+                  <strong>{displayName(event.member, language)}</strong>
+                  <small>{event.member.uniqueId || ""}</small>
+                </span>
+                <span className="calendar-event-type">{event.kind === "birthday" ? "Birthday" : "Remembrance"}</span>
+                <time>{event.date.toLocaleDateString(language === "ur" ? "ur-PK" : "en", { day: "numeric", month: "short", year: "numeric" })}</time>
+              </button>
+            ))}
+          </div>
+        </section>
+      );
+    }
     if (route.page === "member") {
       const member = selectedMember;
       return (
@@ -1925,37 +1980,6 @@ export default function App() {
 
     return (
       <>
-        <section className="section announcements-section">
-          <div className="section-head">
-            <div>
-              <span className="eyebrow">{t(language, "eyebrowAnnouncements")}</span>
-              <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "announcementsTitle")}</h2>
-              <p className="section-subtitle">{t(language, "announcementsSubtitle")}</p>
-            </div>
-            <button className="btn-ghost" type="button" onClick={openAnnouncementEditor}>{t(language, "postAnnouncementButton")}</button>
-          </div>
-          {activeAnnouncements.length ? (
-            <div className="list">
-              {activeAnnouncements.map((announcement) => (
-                <div key={announcement.id} className="card announcement-card">
-                  <div className="announcement-card-body">
-                    {announcement.fromAdmin ? <span className="chip announcement-admin-badge">{t(language, "adminOption")}</span> : null}
-                    <p className="announcement-message">{announcement.message}</p>
-                    <div className="tree-sub">
-                      {formatDate(announcement.createdAt, language)} | {announcement.authorName || t(language, "anonymousSubmitter")}
-                    </div>
-                  </div>
-                  {isAdmin ? (
-                    <button className="btn-ghost danger" type="button" onClick={() => deleteAnnouncement(announcement.id)}>{t(language, "deleteButton")}</button>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="empty">{t(language, "noAnnouncementsYet")}</div>
-          )}
-        </section>
-
         <section className="hero">
           <span className="eyebrow">{t(language, "eyebrowHero")}</span>
           <h1 className="hero-legacy-title">Nine Generations. One Legacy.</h1>
@@ -2160,7 +2184,7 @@ export default function App() {
           <NavLink active={route.page === "tree"} onClick={() => navigate({ page: "tree" })}>{NAV_LABELS[language].tree}</NavLink>
           <NavLink active={route.page === "roots"} onClick={() => navigate({ page: "roots" })}>{NAV_LABELS[language].roots}</NavLink>
           <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
-          <NavLink active={route.page === "calendar"} onClick={() => navigate({ page: "calendar" })}>Calendar</NavLink>
+          <NavLink active={route.page === "calendar"} onClick={() => navigate({ page: "calendar" })}>Notifications</NavLink>
           <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
           <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
           <div className="topnav-actions-mobile">

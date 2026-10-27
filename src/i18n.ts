@@ -54,7 +54,7 @@ const STRINGS = {
 
     eyebrowAnnouncements: "Announcements",
     announcementsTitle: "Family notice board",
-    announcementsSubtitle: "Anyone can post a notice here. Everyone sees it, no login needed to read.",
+    announcementsSubtitle: "Notices from the family admin. No login needed to read them.",
     postAnnouncementButton: "Post an announcement",
     noAnnouncementsYet: "No announcements right now.",
     postAnnouncementModalTitle: "Post an announcement",
@@ -394,7 +394,7 @@ const STRINGS = {
 
     eyebrowAnnouncements: "اعلانات",
     announcementsTitle: "خاندانی اعلانات",
-    announcementsSubtitle: "یہاں کوئی بھی اعلان پوسٹ کر سکتا ہے۔ سب دیکھ سکتے ہیں، پڑھنے کے لیے لاگ ان ضروری نہیں۔",
+    announcementsSubtitle: "فیملی ایڈمن کے اعلانات۔ پڑھنے کے لیے لاگ ان ضروری نہیں۔",
     postAnnouncementButton: "اعلان پوسٹ کریں",
     noAnnouncementsYet: "ابھی کوئی اعلان نہیں ہے۔",
     postAnnouncementModalTitle: "اعلان پوسٹ کریں",
