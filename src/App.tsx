@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
+import { App as CapacitorApp } from "@capacitor/app";
 import { PushNotifications } from "@capacitor/push-notifications";
+import { Share } from "@capacitor/share";
 import { Badge } from "@capawesome/capacitor-badge";
 import { trackNativeScreenView, trackWebPageView } from "./analytics";
 import type { FormEvent, ReactNode, TouchEvent as ReactTouchEvent } from "react";
@@ -34,10 +36,14 @@ import {
 } from "./lib";
 import type { RelationType } from "./lib";
 import {
+  confirmMfaEnrollment,
+  enrollMfa,
   getSupabaseSession,
   isSupabaseConfigured,
+  listMfaFactors,
   loadSupabaseState,
   manageAuthUser,
+  mfaStepUpRequired,
   onSupabaseAuthChange,
   publishInitialState,
   saveSupabaseState,
@@ -46,8 +52,11 @@ import {
   signInWithPassword,
   signOutSupabase,
   StaleWriteError,
-  updatePassword
+  unenrollMfa,
+  updatePassword,
+  verifyMfaChallenge
 } from "./supabase";
+import type { MfaFactor } from "./supabase";
 import FamilyTreeD3 from "./FamilyTreeD3";
 import { mergeStates } from "./merge";
 import {
@@ -492,6 +501,16 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
+  const [mfaPending, setMfaPending] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaError, setMfaError] = useState("");
+  const [mfaBusy, setMfaBusy] = useState(false);
+  const [mfaFactors, setMfaFactors] = useState<MfaFactor[]>([]);
+  const [mfaEnrollment, setMfaEnrollment] = useState<{ factorId: string; qrCode: string; secret: string } | null>(null);
+  const [mfaSetupCode, setMfaSetupCode] = useState("");
+  const [mfaSetupError, setMfaSetupError] = useState("");
+  const [mfaSetupBusy, setMfaSetupBusy] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(STARTED_WITH_EXPIRED_LINK);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotBusy, setForgotBusy] = useState(false);
@@ -520,6 +539,7 @@ export default function App() {
   const [announcementDraft, setAnnouncementDraft] = useState<AnnouncementDraft | null>(null);
   const [announcementBusy, setAnnouncementBusy] = useState(false);
   const [announcementNotice, setAnnouncementNotice] = useState("");
+  const [shareNotice, setShareNotice] = useState("");
   const [lightboxImage, setLightboxImage] = useState<GalleryImage | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [importError, setImportError] = useState("");
@@ -539,8 +559,13 @@ export default function App() {
   const toastTimerRef = useRef<number | undefined>(undefined);
   const [saveToast, setSaveToast] = useState<{ tone: "ok" | "error"; key: StringKey } | null>(null);
   const lightboxTouchRef = useRef<{ mode: "pinch" | "swipe"; startDistance: number; startZoom: number; startX: number } | null>(null);
+  const pullStartYRef = useRef<number | null>(null);
+  const pullReadyRef = useRef(false);
+  const [pullRefreshing, setPullRefreshing] = useState(false);
 
-  const isLoggedIn = Boolean(supabaseSession);
+  // mfaPending keeps the admin area locked while a 2-step verification code is still owed,
+  // even though signInWithPassword already issued a session (just one not yet at aal2).
+  const isLoggedIn = Boolean(supabaseSession) && !mfaPending;
   const userRole = supabaseSession?.user.app_metadata?.role as Role | undefined;
   // Accounts made with the "editor" or "contributor" role can manage members and the gallery but not
   // users or backups. Accounts without a role (e.g. created by hand in the Supabase dashboard) count as admins.
@@ -731,6 +756,42 @@ export default function App() {
     showSaveToast("error", "saveFailed");
   }
 
+  /** Pull-to-refresh: re-fetches the shared archive and merges it the same way a save conflict does, so anything typed locally but not yet saved isn't lost. */
+  async function refreshFromSupabase() {
+    if (!supabaseConfigured || pullRefreshing) return;
+    setPullRefreshing(true);
+    showSaveToast("ok", "refreshingData");
+    try {
+      const remote = await loadSupabaseState();
+      if (remote) {
+        const merged = mergeStates(syncedRef.current?.state ?? remote.state, state, remote.state);
+        remoteUpdatedAtRef.current = remote.updatedAt;
+        syncedRef.current = { json: JSON.stringify(remote.state), state: remote.state };
+        setState(merged);
+        showSaveToast("ok", "dataRefreshed", 2000);
+      }
+    } catch {
+      showSaveToast("error", "saveFailed");
+    } finally {
+      setPullRefreshing(false);
+    }
+  }
+
+  function handlePullTouchStart(e: ReactTouchEvent) {
+    pullStartYRef.current = window.scrollY <= 0 && e.touches.length === 1 ? e.touches[0].clientY : null;
+  }
+
+  function handlePullTouchMove(e: ReactTouchEvent) {
+    if (pullStartYRef.current === null || pullRefreshing) return;
+    if (e.touches[0].clientY - pullStartYRef.current > 70) pullReadyRef.current = true;
+  }
+
+  function handlePullTouchEnd() {
+    if (pullReadyRef.current && !pullRefreshing) void refreshFromSupabase();
+    pullStartYRef.current = null;
+    pullReadyRef.current = false;
+  }
+
   useEffect(() => {
     if (!hydrationDoneRef.current || !supabaseConfigured || !isLoggedIn) return;
     // Only write when the archive really changed since it was last synced (logging in must not touch the shared row).
@@ -750,6 +811,23 @@ export default function App() {
     }
   }, [memberMap, route]);
 
+  // Android's hardware/gesture back button otherwise just exits the app from any page. This
+  // steps back through the app's own hash history instead, only exiting once there's nowhere
+  // left to go back to (same as the Home page having no "back").
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listenerPromise = CapacitorApp.addListener("backButton", () => {
+      if (route.page !== "home" && window.history.length > 1) {
+        window.history.back();
+      } else {
+        void CapacitorApp.exitApp();
+      }
+    });
+    return () => {
+      void listenerPromise.then((listener) => listener.remove());
+    };
+  }, [route.page]);
+
   // Asks for the Android notification permission up front (the system's own one-time prompt),
   // instead of only when the user later finds the "Turn on notifications" toggle in About.
   useEffect(() => {
@@ -765,6 +843,11 @@ export default function App() {
   // announcement push arrives, since that has to work even if the app is closed in the
   // background - a JS-side pushNotificationReceived listener only fires while the app is open.
   // This just clears it once the user actually reads the Notifications page.
+  useEffect(() => {
+    if (!isLoggedIn || route.page !== "admin" || adminSection !== "security") return;
+    void listMfaFactors().then(setMfaFactors).catch(() => {});
+  }, [isLoggedIn, route.page, adminSection]);
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform() || route.page !== "calendar") return;
     void Badge.clear().catch(() => {});
@@ -784,7 +867,20 @@ export default function App() {
     setLoginError("");
     try {
       await signInWithPassword(loginEmail.trim(), loginPassword);
-      navigate({ page: "admin" });
+      if (await mfaStepUpRequired()) {
+        const factors = await listMfaFactors();
+        const factor = factors.find((f) => f.status === "verified");
+        if (factor) {
+          setMfaFactorId(factor.id);
+          setMfaPending(true);
+          setMfaError("");
+          setMfaCode("");
+        } else {
+          navigate({ page: "admin" });
+        }
+      } else {
+        navigate({ page: "admin" });
+      }
       setLoginEmail("");
       setLoginPassword("");
     } catch (error) {
@@ -794,8 +890,27 @@ export default function App() {
     }
   }
 
+  async function handleMfaChallengeSubmit(event: FormEvent) {
+    event.preventDefault();
+    setMfaBusy(true);
+    setMfaError("");
+    try {
+      await verifyMfaChallenge(mfaFactorId, mfaCode.trim());
+      setMfaPending(false);
+      setMfaFactorId("");
+      setMfaCode("");
+      navigate({ page: "admin" });
+    } catch (error) {
+      setMfaError(error instanceof Error ? error.message : t(language, "mfaInvalidCode"));
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
   function logout() {
     void signOutSupabase();
+    setMfaPending(false);
+    setMfaFactorId("");
     navigate({ page: "home" });
   }
 
@@ -847,6 +962,51 @@ export default function App() {
 
   function updateState(next: (current: AppState) => AppState) {
     setState((current) => next(current));
+  }
+
+  async function startMfaEnrollment() {
+    setMfaSetupError("");
+    setMfaSetupCode("");
+    try {
+      setMfaEnrollment(await enrollMfa());
+    } catch (error) {
+      setMfaSetupError(error instanceof Error ? error.message : t(language, "mfaInvalidCode"));
+    }
+  }
+
+  function cancelMfaSetup() {
+    setMfaEnrollment(null);
+    setMfaSetupCode("");
+    setMfaSetupError("");
+  }
+
+  async function confirmMfaSetup() {
+    if (!mfaEnrollment) return;
+    setMfaSetupBusy(true);
+    setMfaSetupError("");
+    try {
+      await confirmMfaEnrollment(mfaEnrollment.factorId, mfaSetupCode.trim());
+      setMfaEnrollment(null);
+      setMfaSetupCode("");
+      setMfaFactors(await listMfaFactors());
+    } catch (error) {
+      setMfaSetupError(error instanceof Error ? error.message : t(language, "mfaInvalidCode"));
+    } finally {
+      setMfaSetupBusy(false);
+    }
+  }
+
+  async function disableMfa(factorId: string) {
+    setMfaSetupBusy(true);
+    setMfaSetupError("");
+    try {
+      await unenrollMfa(factorId);
+      setMfaFactors(await listMfaFactors());
+    } catch (error) {
+      setMfaSetupError(error instanceof Error ? error.message : t(language, "mfaInvalidCode"));
+    } finally {
+      setMfaSetupBusy(false);
+    }
   }
 
   // Editors may only add new members; contributors and admins may also edit existing ones.
@@ -1010,6 +1170,24 @@ export default function App() {
   function deleteAnnouncement(id: number) {
     if (!isAdmin) return;
     updateState((current) => ({ ...current, announcements: current.announcements.filter((announcement) => announcement.id !== id) }));
+  }
+
+  async function shareMember(member: Member) {
+    setShareNotice("");
+    const url = `${window.location.origin}${import.meta.env.BASE_URL}#/member/${member.id}`;
+    const title = displayName(member, language);
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Share.share({ title, url });
+      } else if (navigator.share) {
+        await navigator.share({ title, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setShareNotice(t(language, "profileLinkCopied"));
+      }
+    } catch {
+      // User cancelled the native share sheet - not an error worth showing.
+    }
   }
 
   function openLightbox(image: GalleryImage) {
@@ -1462,12 +1640,33 @@ export default function App() {
           <div className="section-head">
             <div>
               <span className="eyebrow">{t(language, "signInEyebrow")}</span>
-              <h2 className="section-title" style={{ marginTop: 12 }}>{forgotPasswordOpen ? t(language, "forgotPasswordTitle") : t(language, "signInTitle")}</h2>
-              <p className="section-subtitle">{forgotPasswordOpen ? t(language, "forgotPasswordSubtitle") : t(language, "signInSubtitle")}</p>
+              <h2 className="section-title" style={{ marginTop: 12 }}>{mfaPending ? t(language, "mfaChallengeTitle") : forgotPasswordOpen ? t(language, "forgotPasswordTitle") : t(language, "signInTitle")}</h2>
+              <p className="section-subtitle">{mfaPending ? t(language, "mfaChallengeSubtitle") : forgotPasswordOpen ? t(language, "forgotPasswordSubtitle") : t(language, "signInSubtitle")}</p>
             </div>
           </div>
           <div className="login-panel-single">
-            {forgotPasswordOpen ? (
+            {mfaPending ? (
+              <Card title={t(language, "mfaChallengeTitle")}>
+                <form className="form-stack" onSubmit={handleMfaChallengeSubmit}>
+                  <label>
+                    {t(language, "mfaCodeLabel")}
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      className="field"
+                      value={mfaCode}
+                      onChange={(e) => setMfaCode(e.target.value)}
+                      maxLength={6}
+                    />
+                  </label>
+                  {mfaError ? <div className="notice danger">{mfaError}</div> : null}
+                  <button className="btn" type="submit" disabled={mfaBusy || mfaCode.trim().length < 6}>
+                    {mfaBusy ? t(language, "verifyingCode") : t(language, "verifyCodeButton")}
+                  </button>
+                </form>
+              </Card>
+            ) : forgotPasswordOpen ? (
               <Card title={t(language, "forgotPasswordTitle")}>
                 <form className="form-stack" onSubmit={handleForgotPasswordSubmit}>
                   <label>
@@ -1594,8 +1793,10 @@ export default function App() {
                   {canEditMembers ? <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editMemberButton")}</button> : null}
                   <button className="btn-ghost" type="button" onClick={() => window.print()}>{t(language, "printProfileButton")}</button>
                   <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor(member)}>{t(language, "suggestCorrectionButton")}</button><button className="btn-ghost" type="button" onClick={() => navigate({ page: "branch", memberId: member.id })}>Share family branch</button>
+                  <button className="btn-ghost" type="button" onClick={() => void shareMember(member)}>{t(language, "shareProfileButton")}</button>
                 </div>
                 {suggestionSent ? <p className="hint no-print">{t(language, "suggestionSentMessage")}</p> : null}
+                {shareNotice ? <p className="hint no-print">{shareNotice}</p> : null}
                 {member.bio ? <p style={{ marginTop: 16, lineHeight: 1.8 }}>{member.bio}</p> : null}
               </div>
 
@@ -1933,6 +2134,59 @@ export default function App() {
               {passwordChangeSuccess ? <div className="notice">{t(language, "passwordChangedSuccess")}</div> : null}
               <button className="btn" type="submit" disabled={passwordChangeBusy}>{passwordChangeBusy ? t(language, "savingPassword") : t(language, "savePasswordButton")}</button>
             </form>
+
+            <div style={{ marginTop: 28, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
+              <strong>{t(language, "mfaSectionTitle")}</strong>
+              <p className="hint" style={{ marginTop: 6 }}>
+                {mfaFactors.some((f) => f.status === "verified") ? t(language, "mfaSectionSubtitleOn") : t(language, "mfaSectionSubtitleOff")}
+              </p>
+              {mfaEnrollment ? (
+                <div style={{ marginTop: 12 }}>
+                  <p className="hint">{t(language, "mfaScanInstruction")}</p>
+                  {mfaEnrollment.qrCode.startsWith("data:") ? (
+                    <img src={mfaEnrollment.qrCode} alt="" style={{ width: 180, height: 180, margin: "10px 0" }} />
+                  ) : (
+                    <div style={{ width: 180, margin: "10px 0" }} dangerouslySetInnerHTML={{ __html: mfaEnrollment.qrCode }} />
+                  )}
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="field"
+                    value={mfaSetupCode}
+                    onChange={(e) => setMfaSetupCode(e.target.value)}
+                    maxLength={6}
+                    style={{ maxWidth: 160 }}
+                  />
+                  {mfaSetupError ? <div className="notice danger" style={{ marginTop: 8 }}>{mfaSetupError}</div> : null}
+                  <div className="actions-row" style={{ marginTop: 10 }}>
+                    <button className="btn" type="button" disabled={mfaSetupBusy || mfaSetupCode.trim().length < 6} onClick={() => void confirmMfaSetup()}>
+                      {mfaSetupBusy ? t(language, "verifyingCode") : t(language, "mfaConfirmButton")}
+                    </button>
+                    <button className="btn-ghost" type="button" onClick={cancelMfaSetup}>{t(language, "mfaCancelButton")}</button>
+                  </div>
+                </div>
+              ) : mfaFactors.some((f) => f.status === "verified") ? (
+                <div style={{ marginTop: 12 }}>
+                  {mfaSetupError ? <div className="notice danger" style={{ marginBottom: 8 }}>{mfaSetupError}</div> : null}
+                  <button
+                    className="btn-ghost danger"
+                    type="button"
+                    disabled={mfaSetupBusy}
+                    onClick={() => {
+                      const factor = mfaFactors.find((f) => f.status === "verified");
+                      if (factor) void disableMfa(factor.id);
+                    }}
+                  >
+                    {t(language, "mfaDisableButton")}
+                  </button>
+                </div>
+              ) : (
+                <div style={{ marginTop: 12 }}>
+                  {mfaSetupError ? <div className="notice danger" style={{ marginBottom: 8 }}>{mfaSetupError}</div> : null}
+                  <button className="btn-ghost" type="button" onClick={() => void startMfaEnrollment()}>{t(language, "mfaEnableButton")}</button>
+                </div>
+              )}
+            </div>
           </div>
         );
       }
@@ -2227,7 +2481,8 @@ export default function App() {
   })();
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" onTouchStart={handlePullTouchStart} onTouchMove={handlePullTouchMove} onTouchEnd={handlePullTouchEnd}>
+      {pullRefreshing ? <div className="pull-refresh-indicator">{t(language, "refreshingData")}</div> : null}
       <header className="topbar">
         <a className="brand" href="#/home">
           <div className="brand-mark"><img src={import.meta.env.BASE_URL + "logo.jpg"} alt="" /></div>

@@ -14,8 +14,8 @@
 //   "Build Sajra Android APK" GitHub Actions workflow (secrets.FIREBASE_SERVICE_ACCOUNT_JSON there).
 //   Paste the whole JSON file's contents as the secret's value.
 //
-// Sends to the "sajra_updates" FCM topic, the same one the Android app subscribes/unsubscribes
-// from in AppUpdater.tsx ("Turn on notifications"), so no separate opt-in is needed for this.
+// Sends to the "sajra_announcements" FCM topic - a separate opt-in from app-update notifications,
+// see the "Family announcement notifications" toggle in AppUpdater.tsx.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -25,7 +25,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS"
 };
 
-const FCM_TOPIC = "sajra_updates";
+const FCM_TOPIC = "sajra_announcements";
 const MAX_BODY_LENGTH = 180;
 
 interface RequestBody {

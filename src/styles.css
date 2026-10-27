@@ -917,6 +917,19 @@ button {
 .lightbox-nav-prev { left: 12px; }
 .lightbox-nav-next { right: 12px; }
 
+.pull-refresh-indicator {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  text-align: center;
+  padding: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--accent-strong);
+  background: var(--surface-strong);
+  border-bottom: 1px solid var(--border);
+}
+
 @media (max-width: 640px) {
   .lightbox-nav { width: 38px; height: 38px; font-size: 1.3rem; }
 }

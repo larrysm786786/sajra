@@ -12,8 +12,10 @@
   "dependencies": {
     "@capacitor-community/firebase-analytics": "^8.0.0",
     "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.5.3",
     "@capacitor/push-notifications": "^8.0.0",
+    "@capacitor/share": "^8.0.3",
     "@capawesome/capacitor-badge": "^8.0.4",
     "@supabase/supabase-js": "^2.111.0",
     "@types/d3": "^7.4.3",

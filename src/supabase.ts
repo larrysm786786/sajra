@@ -213,3 +213,65 @@ export async function updatePassword(newPassword: string): Promise<void> {
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) throw new Error(error.message);
 }
+
+// --- Two-step verification (TOTP), using Supabase Auth's own MFA support. ---
+
+export interface MfaFactor {
+  id: string;
+  status: "verified" | "unverified";
+}
+
+/** Lists this account's TOTP factors, so the Security tab can show whether 2-step verification is already on. */
+export async function listMfaFactors(): Promise<MfaFactor[]> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return [];
+  const { data, error } = await supabase.auth.mfa.listFactors();
+  if (error) throw new Error(error.message);
+  return (data?.totp ?? []).map((factor) => ({ id: factor.id, status: factor.status }));
+}
+
+/** Starts enrolling a new authenticator app; returns a QR code to scan and the id needed to confirm it. */
+export async function enrollMfa(): Promise<{ factorId: string; qrCode: string; secret: string }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp" });
+  if (error) throw new Error(error.message);
+  return { factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret };
+}
+
+/** Confirms a freshly-enrolled factor with the 6-digit code from the authenticator app. */
+export async function confirmMfaEnrollment(factorId: string, code: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+  if (challengeError) throw new Error(challengeError.message);
+  const { error } = await supabase.auth.mfa.verify({ factorId, challengeId: challenge.id, code });
+  if (error) throw new Error(error.message);
+}
+
+/** Turns two-step verification back off. */
+export async function unenrollMfa(factorId: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.auth.mfa.unenroll({ factorId });
+  if (error) throw new Error(error.message);
+}
+
+/** After a password sign-in, says whether a 6-digit code is still needed before the session is fully trusted. */
+export async function mfaStepUpRequired(): Promise<boolean> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return false;
+  const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (error) throw new Error(error.message);
+  return data.nextLevel === "aal2" && data.currentLevel !== "aal2";
+}
+
+/** Verifies the 6-digit code at login time, for an account with 2-step verification already on. */
+export async function verifyMfaChallenge(factorId: string, code: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+  if (challengeError) throw new Error(challengeError.message);
+  const { error } = await supabase.auth.mfa.verify({ factorId, challengeId: challenge.id, code });
+  if (error) throw new Error(error.message);
+}
