@@ -1,19 +1,9 @@
 name: Build Sajra Android APK
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'src/**'
-      - 'public/**'
-      - 'assets/**'
-      - 'index.html'
-      - 'android/**'
-      - 'capacitor.config.ts'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'vite.config.ts'
-      - '.github/workflows/android-apk.yml'
+  # Manual only: website changes land on every push (see deploy.yml), but the Android app
+  # (new APK, GitHub release, and an update notification to every user) should only go out
+  # when asked for, not on every small web change. Run this from the Actions tab when ready.
   workflow_dispatch:
 
 permissions:
