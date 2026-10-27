@@ -22,7 +22,8 @@ export function createEmptyState(): AppState {
     gallery: [],
     activityLog: [],
     visitorCount: 0,
-    suggestions: []
+    suggestions: [],
+    announcements: []
   };
 }
 
@@ -32,7 +33,8 @@ function finalizeState(state: AppState): AppState {
     members: assignMissingUniqueIds(state.members),
     activityLog: Array.isArray(state.activityLog) ? state.activityLog : [],
     visitorCount: typeof state.visitorCount === "number" ? state.visitorCount : 0,
-    suggestions: Array.isArray(state.suggestions) ? state.suggestions : []
+    suggestions: Array.isArray(state.suggestions) ? state.suggestions : [],
+    announcements: Array.isArray(state.announcements) ? state.announcements : []
   };
 }
 

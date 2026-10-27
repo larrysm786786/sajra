@@ -16,6 +16,7 @@ export function mergeStates(base: AppState, local: AppState, remote: AppState): 
   const gallery = mergeById(base.gallery, local.gallery, remote.gallery);
   const activityLog = mergeById(base.activityLog ?? [], local.activityLog ?? [], remote.activityLog ?? []);
   const suggestions = mergeById(base.suggestions ?? [], local.suggestions ?? [], remote.suggestions ?? []);
+  const announcements = mergeById(base.announcements ?? [], local.announcements ?? [], remote.announcements ?? []);
   // Apply only what this browser actually added to the counter, on top of whatever remote has now,
   // so a concurrent visit elsewhere isn't overwritten by our (possibly stale) count.
   const visitorDelta = Math.max(0, (local.visitorCount ?? 0) - (base.visitorCount ?? 0));
@@ -30,6 +31,7 @@ export function mergeStates(base: AppState, local: AppState, remote: AppState): 
     gallery: gallery.items,
     activityLog: [...activityLog.items].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 200),
     suggestions: [...suggestions.items].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 200),
+    announcements: [...announcements.items].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 200),
     visitorCount: (remote.visitorCount ?? 0) + visitorDelta
   };
 }

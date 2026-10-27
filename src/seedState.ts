@@ -2681,5 +2681,6 @@ export const SAJRA_SEED_STATE: AppState = {
   ],
   "activityLog": [],
   "visitorCount": 0,
-  "suggestions": []
+  "suggestions": [],
+  "announcements": []
 } as AppState;

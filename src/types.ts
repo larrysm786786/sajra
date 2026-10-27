@@ -74,6 +74,18 @@ export interface Suggestion {
   createdAt: string;
 }
 
+/** A notice posted by an admin or any visitor, shown to everyone on the home page. */
+export interface Announcement {
+  id: number;
+  message: string;
+  authorName?: string | null;
+  /** True when the poster was signed in as admin at the time, shown as an "Admin" badge. */
+  fromAdmin: boolean;
+  /** ISO date; the announcement stops showing after this day if set. */
+  expiresAt?: string | null;
+  createdAt: string;
+}
+
 export interface AppState {
   appName: string;
   language: Language;
@@ -84,6 +96,7 @@ export interface AppState {
   activityLog: ActivityLogEntry[];
   visitorCount: number;
   suggestions: Suggestion[];
+  announcements: Announcement[];
 }
 
 export interface TreeNode {

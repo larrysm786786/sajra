@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { trackNativeScreenView, trackWebPageView } from "./analytics";
 import type { FormEvent, ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
-import type { AppState, GalleryImage, Gender, Language, Member, Role, Suggestion, User, ViewKey } from "./types";
+import type { Announcement, AppState, GalleryImage, Gender, Language, Member, Role, Suggestion, User, ViewKey } from "./types";
 import {
   buildTree,
   calculateAge,
@@ -118,6 +118,12 @@ type SuggestionDraft = {
   memberSearch: string;
   message: string;
   submitterName: string;
+};
+
+type AnnouncementDraft = {
+  message: string;
+  authorName: string;
+  expiresAt: string;
 };
 
 /** Name prefixed with profession, so people who share a name (common in this family) can be told apart in search lists. */
@@ -507,6 +513,8 @@ export default function App() {
   const [suggestionDraft, setSuggestionDraft] = useState<SuggestionDraft | null>(null);
   const [suggestionBusy, setSuggestionBusy] = useState(false);
   const [suggestionSent, setSuggestionSent] = useState(false);
+  const [announcementDraft, setAnnouncementDraft] = useState<AnnouncementDraft | null>(null);
+  const [announcementBusy, setAnnouncementBusy] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<GalleryImage | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [importError, setImportError] = useState("");
@@ -922,6 +930,47 @@ export default function App() {
     updateState((current) => ({ ...current, suggestions: current.suggestions.filter((suggestion) => suggestion.id !== id) }));
   }
 
+  // Anyone, admin or any visitor, can post one. That's the point: a shared notice board, not an admin-only memo.
+  function openAnnouncementEditor() {
+    setAnnouncementDraft({ message: "", authorName: "", expiresAt: "" });
+  }
+
+  function closeAnnouncementEditor() {
+    setAnnouncementDraft(null);
+  }
+
+  async function submitAnnouncement() {
+    if (!announcementDraft || !announcementDraft.message.trim() || announcementBusy) return;
+    setAnnouncementBusy(true);
+    try {
+      let publishedState: AppState | null = null;
+      updateState((current) => {
+        const announcement: Announcement = {
+          id: nextId(current.announcements),
+          message: announcementDraft.message.trim(),
+          authorName: announcementDraft.authorName.trim() || null,
+          fromAdmin: isAdmin,
+          expiresAt: announcementDraft.expiresAt || null,
+          createdAt: new Date().toISOString()
+        };
+        const next = { ...current, announcements: [announcement, ...current.announcements].slice(0, 200) };
+        publishedState = next;
+        return next;
+      });
+      // Same reasoning as submitSuggestion: a visitor who isn't logged in never triggers the normal
+      // autosave, so this write is pushed to Supabase directly or nobody else would ever see it.
+      if (supabaseConfigured && publishedState) await persistToSupabase(publishedState);
+      closeAnnouncementEditor();
+    } finally {
+      setAnnouncementBusy(false);
+    }
+  }
+
+  function deleteAnnouncement(id: number) {
+    if (!isAdmin) return;
+    updateState((current) => ({ ...current, announcements: current.announcements.filter((announcement) => announcement.id !== id) }));
+  }
+
   function openLightbox(image: GalleryImage) {
     setLightboxImage(image);
     setZoomLevel(1);
@@ -1286,6 +1335,11 @@ export default function App() {
       oldestLiving
     };
   }, [state.members]);
+
+  const activeAnnouncements = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return state.announcements.filter((announcement) => !announcement.expiresAt || announcement.expiresAt >= today);
+  }, [state.announcements]);
 
   const content = (() => {
     // A recovery link signs the user in with a temporary session, so this must not depend on !isLoggedIn.
@@ -1871,6 +1925,37 @@ export default function App() {
 
     return (
       <>
+        <section className="section announcements-section">
+          <div className="section-head">
+            <div>
+              <span className="eyebrow">{t(language, "eyebrowAnnouncements")}</span>
+              <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "announcementsTitle")}</h2>
+              <p className="section-subtitle">{t(language, "announcementsSubtitle")}</p>
+            </div>
+            <button className="btn-ghost" type="button" onClick={openAnnouncementEditor}>{t(language, "postAnnouncementButton")}</button>
+          </div>
+          {activeAnnouncements.length ? (
+            <div className="list">
+              {activeAnnouncements.map((announcement) => (
+                <div key={announcement.id} className="card announcement-card">
+                  <div className="announcement-card-body">
+                    {announcement.fromAdmin ? <span className="chip announcement-admin-badge">{t(language, "adminOption")}</span> : null}
+                    <p className="announcement-message">{announcement.message}</p>
+                    <div className="tree-sub">
+                      {formatDate(announcement.createdAt, language)} | {announcement.authorName || t(language, "anonymousSubmitter")}
+                    </div>
+                  </div>
+                  {isAdmin ? (
+                    <button className="btn-ghost danger" type="button" onClick={() => deleteAnnouncement(announcement.id)}>{t(language, "deleteButton")}</button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty">{t(language, "noAnnouncementsYet")}</div>
+          )}
+        </section>
+
         <section className="hero">
           <span className="eyebrow">{t(language, "eyebrowHero")}</span>
           <h1 className="hero-legacy-title">Nine Generations. One Legacy.</h1>
@@ -2517,6 +2602,48 @@ export default function App() {
               {suggestionBusy ? t(language, "sendingSuggestion") : t(language, "sendSuggestionButton")}
             </button>
             <button className="btn-ghost" type="button" onClick={closeSuggestionEditor}>{t(language, "cancelButton")}</button>
+          </div>
+        </Modal>
+      ) : null}
+
+      {announcementDraft ? (
+        <Modal title={t(language, "postAnnouncementModalTitle")} subtitle={t(language, "postAnnouncementModalSubtitle")} onClose={closeAnnouncementEditor}>
+          <div className="form-grid">
+            <label className="span-12">
+              <span className="sr-only">{t(language, "announcementMessageLabel")}</span>
+              <textarea
+                className="textarea"
+                placeholder={t(language, "announcementMessagePlaceholder")}
+                value={announcementDraft.message}
+                onChange={(e) => setAnnouncementDraft((current) => current ? { ...current, message: e.target.value } : current)}
+              />
+            </label>
+            <label className="span-6">
+              <span className="sr-only">{t(language, "suggestionNameLabel")}</span>
+              <input
+                className="field"
+                placeholder={t(language, "suggestionNamePlaceholder")}
+                value={announcementDraft.authorName}
+                onChange={(e) => setAnnouncementDraft((current) => current ? { ...current, authorName: e.target.value } : current)}
+              />
+            </label>
+            <label className="span-6">
+              <span className="sr-only">{t(language, "announcementExpiryLabel")}</span>
+              <input
+                className="field"
+                type="date"
+                aria-label={t(language, "announcementExpiryLabel")}
+                value={announcementDraft.expiresAt}
+                onChange={(e) => setAnnouncementDraft((current) => current ? { ...current, expiresAt: e.target.value } : current)}
+              />
+              <small className="muted">{t(language, "announcementExpiryHint")}</small>
+            </label>
+          </div>
+          <div className="actions-row" style={{ marginTop: 18 }}>
+            <button className="btn" type="button" disabled={!announcementDraft.message.trim() || announcementBusy} onClick={() => void submitAnnouncement()}>
+              {announcementBusy ? t(language, "sendingSuggestion") : t(language, "postAnnouncementButton")}
+            </button>
+            <button className="btn-ghost" type="button" onClick={closeAnnouncementEditor}>{t(language, "cancelButton")}</button>
           </div>
         </Modal>
       ) : null}
