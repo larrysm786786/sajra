@@ -67,7 +67,7 @@ public class AppMessagingService extends com.capacitorjs.plugins.pushnotificatio
         if (manager.getNotificationChannel(CHANNEL_ID) != null) return;
         NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Sajra announcements", NotificationManager.IMPORTANCE_HIGH);
         channel.setDescription("Family announcements posted by the Sajra admin");
-        manager.createChannel(channel);
+        manager.createNotificationChannel(channel);
     }
 
     private void bumpBadge() {
