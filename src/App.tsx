@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { PushNotifications } from "@capacitor/push-notifications";
+import { Badge } from "@capawesome/capacitor-badge";
 import { trackNativeScreenView, trackWebPageView } from "./analytics";
 import type { FormEvent, ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
@@ -745,6 +748,23 @@ export default function App() {
       window.location.hash = "#/home";
     }
   }, [memberMap, route]);
+
+  // Bumps the app icon's red badge count when an announcement push arrives, so it's visible
+  // even if notifications aren't open. The Notifications page clears it below once it's read.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const listenerPromise = PushNotifications.addListener("pushNotificationReceived", (notification) => {
+      if (notification.data?.type === "announcement") void Badge.increase().catch(() => {});
+    });
+    return () => {
+      void listenerPromise.then((listener) => listener.remove());
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform() || route.page !== "calendar") return;
+    void Badge.clear().catch(() => {});
+  }, [route.page]);
 
   function navigate(next: RouteState): void {
     window.location.hash = routeHash(next);
