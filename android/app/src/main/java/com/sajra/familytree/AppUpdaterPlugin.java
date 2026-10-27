@@ -50,6 +50,7 @@ public class AppUpdaterPlugin extends Plugin {
             downloadReceiver = new BroadcastReceiver() {
                 @Override public void onReceive(Context context, Intent intent) {
                     if (intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1) != id) return;
+                    boolean launched = false;
                     try (android.database.Cursor cursor = manager.query(new DownloadManager.Query().setFilterById(id))) {
                         if (cursor == null || !cursor.moveToFirst() || cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)) != DownloadManager.STATUS_SUCCESSFUL || !apk.isFile()) return;
                         Uri uri = FileProvider.getUriForFile(context, context.getPackageName() + ".fileprovider", apk);
@@ -57,8 +58,15 @@ public class AppUpdaterPlugin extends Plugin {
                         installer.setDataAndType(uri, "application/vnd.android.package-archive");
                         installer.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
                         context.startActivity(installer);
+                        launched = true;
                     } catch (Exception ignored) { /* Android installer handles final approval. */ }
-                    finally { try { context.unregisterReceiver(this); } catch (Exception ignored) {} downloadReceiver = null; }
+                    finally {
+                        try { context.unregisterReceiver(this); } catch (Exception ignored) {}
+                        downloadReceiver = null;
+                        JSObject data = new JSObject();
+                        data.put("status", launched ? "ready" : "failed");
+                        notifyListeners("downloadComplete", data);
+                    }
                 }
             };
             ContextCompat.registerReceiver(getContext(), downloadReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), ContextCompat.RECEIVER_NOT_EXPORTED);

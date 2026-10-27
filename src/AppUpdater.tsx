@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Capacitor, registerPlugin } from "@capacitor/core";
+import type { PluginListenerHandle } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import type { Language } from "./types";
 type UpdaterPlugin = {
   getAppInfo(): Promise<{ version: string; versionCode: number }>;
   installApk(options: { url: string }): Promise<{ status: "downloading" | "permission_required" }>;
+  addListener(eventName: "downloadComplete", listener: (data: { status: "ready" | "failed" }) => void): Promise<PluginListenerHandle>;
 };
 const updater = registerPlugin<UpdaterPlugin>("AppUpdater");
 type AppNotificationsPlugin = {
@@ -16,6 +18,7 @@ const releasesUrl = "https://api.github.com/repos/larrysm786786/sajra/releases/l
 export default function AppUpdaterCard({ language }: { language: Language }) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [apkUrl, setApkUrl] = useState("");
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem("sajra-update-notifications") === "enabled");
   const [notificationBusy, setNotificationBusy] = useState(false);
@@ -66,21 +69,33 @@ export default function AppUpdaterCard({ language }: { language: Language }) {
     } catch { setMessage(ur ? "اپ ڈیٹ چیک نہیں ہو سکی۔ انٹرنیٹ چیک کر کے دوبارہ کوشش کریں۔" : "Could not check for updates. Check your internet and try again."); }
     finally { setBusy(false); }
   }
+  useEffect(() => {
+    const listenerPromise = updater.addListener("downloadComplete", (data) => {
+      setDownloading(false);
+      setMessage(data.status === "ready"
+        ? (ur ? "ڈاؤن لوڈ مکمل۔ انسٹال کی تصدیق کریں۔" : "Download finished. Confirm the install.")
+        : (ur ? "ڈاؤن لوڈ مکمل نہیں ہو سکا۔ دوبارہ کوشش کریں۔" : "The download didn't finish. Please try again."));
+    });
+    return () => { void listenerPromise.then((listener) => listener.remove()); };
+  }, [ur]);
   async function install() {
     if (!apkUrl) return;
     setBusy(true);
     try {
       const result = await updater.installApk({ url: apkUrl });
-      setMessage(result.status === "permission_required"
-        ? (ur ? "Android settings میں Sajra کے لیے unknown apps کی اجازت دیں، پھر دوبارہ بٹن دبائیں۔" : "Allow Sajra to install unknown apps in Android settings, then tap Download and install again.")
-        : (ur ? "ڈاؤن لوڈ شروع ہو گیا ہے۔ مکمل ہونے پر Android انسٹال کی تصدیق مانگے گا۔" : "Download started. Android will ask you to confirm the installation when it finishes."));
+      if (result.status === "permission_required") {
+        setMessage(ur ? "Android settings میں Sajra کے لیے unknown apps کی اجازت دیں، پھر دوبارہ بٹن دبائیں۔" : "Allow Sajra to install unknown apps in Android settings, then tap Download and install again.");
+      } else {
+        setDownloading(true);
+        setMessage(ur ? "ڈاؤن لوڈ شروع ہو گیا ہے۔ مکمل ہونے پر Android انسٹال کی تصدیق مانگے گا۔" : "Download started. Android will ask you to confirm the installation when it finishes.");
+      }
     } catch { setMessage(ur ? "ڈاؤن لوڈ شروع نہیں ہو سکا۔ دوبارہ کوشش کریں۔" : "The download could not start. Please try again."); }
     finally { setBusy(false); }
   }
   return <div className="notice" style={{ marginTop: 18 }}>
     <strong>{ur ? "ایپ اپ ڈیٹ" : "App update"}</strong>
     <p style={{ margin: "8px 0 12px" }}>{message || (ur ? "Sajra کا تازہ ترین ورژن چیک کریں۔" : "Check for the latest version of Sajra.")}</p>
-    {apkUrl ? <button className="btn-ghost" type="button" disabled={busy} onClick={() => void install()}>{ur ? "ڈاؤن لوڈ اور انسٹال کریں" : "Download and install"}</button>
+    {apkUrl ? <button className="btn-ghost" type="button" disabled={busy || downloading} onClick={() => void install()}>{busy || downloading ? (ur ? "ڈاؤن لوڈ ہو رہا ہے…" : "Downloading…") : (ur ? "ڈاؤن لوڈ اور انسٹال کریں" : "Download and install")}</button>
       : <button className="btn-ghost" type="button" disabled={busy} onClick={() => void check()}>{busy ? (ur ? "چیک ہو رہا ہے…" : "Checking…") : (ur ? "اپ ڈیٹ چیک کریں" : "Check for updates")}</button>}
     <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
       <strong>{ur ? "نئے فیچرز کی اطلاعات" : "New feature notifications"}</strong>

@@ -27,12 +27,11 @@ const STRINGS = {
     navDashboardLabel: "Dashboard",
     adminPanelTitle: "Admin panel",
     adminSidebarAria: "Admin sections",
-    adminNavOverview: "Overview",
+    adminNavOverview: "Dashboard",
     adminNavGallery: "Gallery",
     adminNavSuggestions: "Suggestions",
     adminNavLogs: "Log History",
     adminNavSecurity: "Security",
-    adminNavWebsite: "Website",
     suggestionsSubtitle: "Corrections and new names sent in by family members. Have a look and sort them out.",
     aboutPrefix: "About:",
     generalSuggestionLabel: "General suggestion",
@@ -54,7 +53,6 @@ const STRINGS = {
 
     eyebrowAnnouncements: "Announcements",
     announcementsTitle: "Family notice board",
-    announcementsSubtitle: "Notices from the family admin. No login needed to read them.",
     postAnnouncementButton: "Post an announcement",
     noAnnouncementsYet: "No announcements right now.",
     postAnnouncementModalTitle: "Post an announcement",
@@ -285,6 +283,8 @@ const STRINGS = {
 
     zoomInLabel: "Zoom in",
     zoomOutLabel: "Zoom out",
+    previousLabel: "Previous photo",
+    nextLabel: "Next photo",
     closeLabel: "Close",
 
     professionLabel: "Profession",
@@ -372,12 +372,11 @@ const STRINGS = {
 
     adminPanelTitle: "ایڈمن پینل",
     adminSidebarAria: "ایڈمن حصے",
-    adminNavOverview: "جائزہ",
+    adminNavOverview: "ڈیش بورڈ",
     adminNavGallery: "گیلری",
     adminNavSuggestions: "تجاویز",
     adminNavLogs: "لاگ ہسٹری",
     adminNavSecurity: "سیکیورٹی",
-    adminNavWebsite: "ویب سائٹ",
     suggestionsSubtitle: "خاندان کے افراد کی بھیجی گئی تصحیحات اور تجاویز، جائزہ لینے کے لیے۔",
     aboutPrefix: "متعلق:",
     generalSuggestionLabel: "عمومی تجویز",
@@ -400,7 +399,6 @@ const STRINGS = {
 
     eyebrowAnnouncements: "اعلانات",
     announcementsTitle: "خاندانی اعلانات",
-    announcementsSubtitle: "فیملی ایڈمن کے اعلانات۔ پڑھنے کے لیے لاگ ان ضروری نہیں۔",
     postAnnouncementButton: "اعلان پوسٹ کریں",
     noAnnouncementsYet: "ابھی کوئی اعلان نہیں ہے۔",
     postAnnouncementModalTitle: "اعلان پوسٹ کریں",
@@ -630,6 +628,8 @@ const STRINGS = {
 
     zoomInLabel: "زوم ان",
     zoomOutLabel: "زوم آؤٹ",
+    previousLabel: "پچھلی تصویر",
+    nextLabel: "اگلی تصویر",
     closeLabel: "بند کریں",
 
     professionLabel: "پیشہ",

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
+import { PushNotifications } from "@capacitor/push-notifications";
 import { Badge } from "@capawesome/capacitor-badge";
 import { trackNativeScreenView, trackWebPageView } from "./analytics";
-import type { FormEvent, ReactNode } from "react";
+import type { FormEvent, ReactNode, TouchEvent as ReactTouchEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { Announcement, AppState, GalleryImage, Gender, Language, Member, Role, Suggestion, User, ViewKey } from "./types";
 import {
@@ -537,6 +538,7 @@ export default function App() {
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
   const toastTimerRef = useRef<number | undefined>(undefined);
   const [saveToast, setSaveToast] = useState<{ tone: "ok" | "error"; key: StringKey } | null>(null);
+  const lightboxTouchRef = useRef<{ mode: "pinch" | "swipe"; startDistance: number; startZoom: number; startX: number } | null>(null);
 
   const isLoggedIn = Boolean(supabaseSession);
   const userRole = supabaseSession?.user.app_metadata?.role as Role | undefined;
@@ -747,6 +749,17 @@ export default function App() {
       window.location.hash = "#/home";
     }
   }, [memberMap, route]);
+
+  // Asks for the Android notification permission up front (the system's own one-time prompt),
+  // instead of only when the user later finds the "Turn on notifications" toggle in About.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    void PushNotifications.checkPermissions().then((status) => {
+      if (status.receive === "prompt" || status.receive === "prompt-with-rationale") {
+        void PushNotifications.requestPermissions();
+      }
+    });
+  }, []);
 
   // The app icon's red badge count is bumped natively (AppMessagingService.java) when an
   // announcement push arrives, since that has to work even if the app is closed in the
@@ -1015,6 +1028,48 @@ export default function App() {
 
   function zoomOutLightbox() {
     setZoomLevel((z) => Math.max(0.5, Math.round((z - 0.25) * 100) / 100));
+  }
+
+  function goToAdjacentImage(direction: 1 | -1) {
+    if (!lightboxImage) return;
+    const list = state.gallery;
+    const index = list.findIndex((image) => image.id === lightboxImage.id);
+    if (index === -1) return;
+    const nextIndex = (index + direction + list.length) % list.length;
+    setLightboxImage(list[nextIndex]);
+    setZoomLevel(1);
+  }
+
+  function lightboxTouchDistance(touches: ReactTouchEvent["touches"]) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.hypot(dx, dy);
+  }
+
+  function handleLightboxTouchStart(e: ReactTouchEvent) {
+    if (e.touches.length === 2) {
+      lightboxTouchRef.current = { mode: "pinch", startDistance: lightboxTouchDistance(e.touches), startZoom: zoomLevel, startX: 0 };
+    } else if (e.touches.length === 1 && zoomLevel <= 1) {
+      lightboxTouchRef.current = { mode: "swipe", startDistance: 0, startZoom: zoomLevel, startX: e.touches[0].clientX };
+    } else {
+      lightboxTouchRef.current = null;
+    }
+  }
+
+  function handleLightboxTouchMove(e: ReactTouchEvent) {
+    const touch = lightboxTouchRef.current;
+    if (!touch || touch.mode !== "pinch" || e.touches.length !== 2) return;
+    e.preventDefault();
+    const scale = lightboxTouchDistance(e.touches) / touch.startDistance;
+    setZoomLevel(Math.min(4, Math.max(0.5, Math.round(touch.startZoom * scale * 100) / 100)));
+  }
+
+  function handleLightboxTouchEnd(e: ReactTouchEvent) {
+    const touch = lightboxTouchRef.current;
+    lightboxTouchRef.current = null;
+    if (!touch || touch.mode !== "swipe") return;
+    const dx = e.changedTouches[0].clientX - touch.startX;
+    if (Math.abs(dx) > 60) goToAdjacentImage(dx < 0 ? 1 : -1);
   }
 
   async function saveMember() {
@@ -1467,7 +1522,6 @@ export default function App() {
             <div>
               <span className="eyebrow">{t(language, "eyebrowAnnouncements")}</span>
               <h1 className="section-title">{t(language, "announcementsTitle")}</h1>
-              <p className="section-subtitle">{t(language, "announcementsSubtitle")}</p>
             </div>
             {isAdmin ? <button className="btn-ghost" type="button" onClick={openAnnouncementEditor}>{t(language, "postAnnouncementButton")}</button> : null}
           </div>
@@ -1902,11 +1956,6 @@ export default function App() {
               ))}
             </nav>
             <div className="admin-sidebar-group">
-              <div className="admin-sidebar-label">{t(language, "adminNavWebsite")}</div>
-              <button type="button" className="admin-nav-item" onClick={() => navigate({ page: "home" })}><span>{NAV_LABELS[language].home}</span></button>
-              <button type="button" className="admin-nav-item" onClick={() => navigate({ page: "tree" })}><span>{NAV_LABELS[language].tree}</span></button>
-              <button type="button" className="admin-nav-item" onClick={() => navigate({ page: "gallery" })}><span>{NAV_LABELS[language].gallery}</span></button>
-              <button type="button" className="admin-nav-item" onClick={() => navigate({ page: "about" })}><span>{NAV_LABELS[language].about}</span></button>
               <button type="button" className="admin-nav-item danger" onClick={logout}><span>{t(language, "logoutButton")}</span></button>
             </div>
           </aside>
@@ -2704,6 +2753,9 @@ export default function App() {
             <button type="button" className="icon-btn" aria-label={t(language, "zoomInLabel")} onClick={zoomInLightbox}>+</button>
             <button type="button" className="close-btn" aria-label={t(language, "closeLabel")} onClick={closeLightbox}>x</button>
           </div>
+          {state.gallery.length > 1 ? (
+            <button type="button" className="lightbox-nav lightbox-nav-prev" aria-label={t(language, "previousLabel")} onClick={(e) => { e.stopPropagation(); goToAdjacentImage(-1); }}>‹</button>
+          ) : null}
           <div
             className="lightbox-viewport"
             onClick={(e) => e.stopPropagation()}
@@ -2711,6 +2763,9 @@ export default function App() {
               e.preventDefault();
               setZoomLevel((z) => Math.min(4, Math.max(0.5, Math.round((z - e.deltaY * 0.001) * 100) / 100)));
             }}
+            onTouchStart={handleLightboxTouchStart}
+            onTouchMove={handleLightboxTouchMove}
+            onTouchEnd={handleLightboxTouchEnd}
           >
             <img
               src={photoSrc(lightboxImage.src)}
@@ -2718,6 +2773,9 @@ export default function App() {
               style={{ transform: `scale(${zoomLevel})` }}
             />
           </div>
+          {state.gallery.length > 1 ? (
+            <button type="button" className="lightbox-nav lightbox-nav-next" aria-label={t(language, "nextLabel")} onClick={(e) => { e.stopPropagation(); goToAdjacentImage(1); }}>›</button>
+          ) : null}
           {lightboxImage.caption ? (
             <div className="lightbox-caption" onClick={(e) => e.stopPropagation()}>{lightboxImage.caption}</div>
           ) : null}

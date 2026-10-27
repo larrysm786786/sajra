@@ -109,7 +109,10 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px max(20px, calc((100vw - 1240px) / 2));
+  /* On the Android app, the status bar area draws over the page (edge-to-edge is mandatory on
+     Android 15+), so without this the bar's blue background stops at the status bar and leaves
+     a white strip above it instead of extending underneath it. */
+  padding: calc(16px + env(safe-area-inset-top, 0px)) max(20px, calc((100vw - 1240px) / 2)) 16px;
   background: #2e5185;
   border-bottom: 1px solid color-mix(in oklab, var(--accent) 30%, transparent);
   box-shadow: var(--shadow);
@@ -892,6 +895,30 @@ button {
   font-size: 0.92rem;
   text-align: center;
   max-width: 80vw;
+}
+
+.lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 61;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-size: 1.6rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+.lightbox-nav-prev { left: 12px; }
+.lightbox-nav-next { right: 12px; }
+
+@media (max-width: 640px) {
+  .lightbox-nav { width: 38px; height: 38px; font-size: 1.3rem; }
 }
 
 .profile-layout {
