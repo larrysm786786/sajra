@@ -1129,33 +1129,11 @@ button {
     gap: 14px;
   }
 
-  /* On small screens the sidebar becomes a horizontally scrollable tab bar;
-     the website links and logout already live in the top menu. */
+  /* Stays a vertical list like the desktop sidebar, just stacked above the
+     content instead of beside it - there isn't room to sit side by side on a phone. */
   .admin-sidebar {
     position: static;
-    padding: 10px;
-  }
-
-  .admin-sidebar-title,
-  .admin-sidebar-group {
-    display: none;
-  }
-
-  .admin-sidebar-nav {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-  }
-
-  .admin-nav-item {
-    width: auto;
-    flex: 0 0 auto;
-    white-space: nowrap;
-    padding: 9px 14px;
-    border-color: var(--border);
-    border-radius: 999px;
+    padding: 12px;
   }
 }
 
