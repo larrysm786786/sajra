@@ -1444,10 +1444,10 @@ export default function App() {
             </div>
             {isAdmin ? <button className="btn-ghost" type="button" onClick={openAnnouncementEditor}>{t(language, "postAnnouncementButton")}</button> : null}
           </div>
-          {activeAnnouncements.length ? (
+          {activeAnnouncements.length || familyCalendarEvents.length ? (
             <div className="list">
               {activeAnnouncements.map((announcement) => (
-                <div key={announcement.id} className="card announcement-card">
+                <div key={`announcement-${announcement.id}`} className="card announcement-card">
                   <div className="announcement-card-body">
                     {announcement.fromAdmin ? <span className="chip announcement-admin-badge">{t(language, "adminOption")}</span> : null}
                     <p className="announcement-message">{announcement.message}</p>
@@ -1460,31 +1460,27 @@ export default function App() {
                   ) : null}
                 </div>
               ))}
+              {familyCalendarEvents.map((event) => (
+                <button key={`calendar-${event.id}`} type="button" className="card announcement-card calendar-notification-card" onClick={() => navigate({ page: "member", memberId: event.member.id })}>
+                  <div className="announcement-card-body">
+                    <span className={`chip announcement-admin-badge calendar-event-chip ${event.kind}`}>
+                      {event.kind === "birthday" ? t(language, "calendarBirthdayLabel") : t(language, "calendarRemembranceLabel")}
+                    </span>
+                    <p className="announcement-message">
+                      {event.kind === "birthday"
+                        ? `${displayName(event.member, language)} ${t(language, "calendarBirthdayMessage")}`
+                        : `${displayName(event.member, language)} ${t(language, "calendarRemembranceMessage")}`}
+                    </p>
+                    <div className="tree-sub">
+                      {event.date.toLocaleDateString(language === "ur" ? "ur-PK" : "en", { day: "numeric", month: "short", year: "numeric" })}
+                    </div>
+                  </div>
+                </button>
+              ))}
             </div>
           ) : (
             <div className="empty">{t(language, "noAnnouncementsYet")}</div>
           )}
-
-          <div className="section-head" style={{ marginTop: 28 }}>
-            <div>
-              <span className="eyebrow">Family dates</span>
-              <h2 className="section-title">Family calendar</h2>
-              <p className="section-subtitle">Upcoming birthdays and remembrance dates.</p>
-            </div>
-          </div>
-          <div className="family-calendar-list">
-            {familyCalendarEvents.map((event) => (
-              <button className="family-calendar-event card" key={event.id} onClick={() => navigate({ page: "member", memberId: event.member.id })}>
-                <span className={`calendar-event-icon ${event.kind}`}>{event.kind === "birthday" ? "??" : "?"}</span>
-                <span className="calendar-event-person">
-                  <strong>{displayName(event.member, language)}</strong>
-                  <small>{event.member.uniqueId || ""}</small>
-                </span>
-                <span className="calendar-event-type">{event.kind === "birthday" ? "Birthday" : "Remembrance"}</span>
-                <time>{event.date.toLocaleDateString(language === "ur" ? "ur-PK" : "en", { day: "numeric", month: "short", year: "numeric" })}</time>
-              </button>
-            ))}
-          </div>
         </section>
       );
     }

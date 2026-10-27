@@ -1872,6 +1872,8 @@ html[dir="rtl"] .select {
 .announcement-admin-badge { display: inline-flex; margin-bottom: 6px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
 .announcement-message { margin: 0 0 6px; color: var(--text); line-height: 1.65; overflow-wrap: anywhere; white-space: pre-wrap; }
 @media (max-width: 600px) { .announcement-card { flex-direction: column; gap: 10px; padding: 14px; } }
+.calendar-notification-card { display: flex; width: 100%; color: inherit; text-align: left; cursor: pointer; background: var(--surface-strong); }
+.calendar-event-chip.death-anniversary { color: #62471c; background: #f5e8c9; }
 .member-qr-row { display: flex; margin-top: 20px; }
 .member-qr-card { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px 20px; width: min(100%, 520px); padding: 18px; }
 .member-qr-card > div:first-child { grid-column: 1; }.member-qr-card img { grid-column: 2; grid-row: 1 / span 2; width: 150px; height: 150px; }.member-qr-card .actions-row { grid-column: 1; }.member-qr-card .muted { margin: 5px 0 0; font-size: 13px; }
