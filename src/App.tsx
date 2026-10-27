@@ -38,6 +38,7 @@ import {
   onSupabaseAuthChange,
   publishInitialState,
   saveSupabaseState,
+  sendAnnouncementNotification,
   sendPasswordResetEmail,
   signInWithPassword,
   signOutSupabase,
@@ -515,6 +516,7 @@ export default function App() {
   const [suggestionSent, setSuggestionSent] = useState(false);
   const [announcementDraft, setAnnouncementDraft] = useState<AnnouncementDraft | null>(null);
   const [announcementBusy, setAnnouncementBusy] = useState(false);
+  const [announcementNotice, setAnnouncementNotice] = useState("");
   const [lightboxImage, setLightboxImage] = useState<GalleryImage | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [importError, setImportError] = useState("");
@@ -933,6 +935,7 @@ export default function App() {
   // Admin-only: everyone can read announcements, but only the family admin posts them.
   function openAnnouncementEditor() {
     if (!isAdmin) return;
+    setAnnouncementNotice("");
     setAnnouncementDraft({ message: "", authorName: "", expiresAt: "" });
   }
 
@@ -942,13 +945,14 @@ export default function App() {
 
   async function submitAnnouncement() {
     if (!isAdmin || !announcementDraft || !announcementDraft.message.trim() || announcementBusy) return;
+    const messageText = announcementDraft.message.trim();
     setAnnouncementBusy(true);
     try {
       let publishedState: AppState | null = null;
       updateState((current) => {
         const announcement: Announcement = {
           id: nextId(current.announcements),
-          message: announcementDraft.message.trim(),
+          message: messageText,
           authorName: announcementDraft.authorName.trim() || null,
           fromAdmin: isAdmin,
           expiresAt: announcementDraft.expiresAt || null,
@@ -962,6 +966,17 @@ export default function App() {
       // announcement reaches everyone else's browser right away instead of after ~600ms.
       if (supabaseConfigured && publishedState) await persistToSupabase(publishedState);
       closeAnnouncementEditor();
+      // The announcement is already saved at this point, so a failure here (e.g. the
+      // send-announcement function isn't deployed yet) doesn't undo the post, it just means
+      // nobody's phone buzzed, they'd still see it if they open Notifications.
+      if (supabaseConfigured) {
+        try {
+          await sendAnnouncementNotification(messageText);
+          setAnnouncementNotice(t(language, "announcementNotificationSent"));
+        } catch (error) {
+          setAnnouncementNotice(`${t(language, "announcementNotificationFailed")} ${error instanceof Error ? error.message : ""}`);
+        }
+      }
     } finally {
       setAnnouncementBusy(false);
     }
@@ -1444,6 +1459,7 @@ export default function App() {
             </div>
             {isAdmin ? <button className="btn-ghost" type="button" onClick={openAnnouncementEditor}>{t(language, "postAnnouncementButton")}</button> : null}
           </div>
+          {announcementNotice ? <p className="hint">{announcementNotice}</p> : null}
           {activeAnnouncements.length || familyCalendarEvents.length ? (
             <div className="list">
               {activeAnnouncements.map((announcement) => (

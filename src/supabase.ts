@@ -167,6 +167,36 @@ export async function manageAuthUser(request: ManageUserRequest): Promise<void> 
   }
 }
 
+/**
+ * Pushes a real phone notification for an announcement through the `send-announcement` Edge
+ * Function (supabase/functions/send-announcement). The function checks the caller is a signed-in
+ * admin and uses its own Firebase service account, so that credential never reaches the browser.
+ * Best-effort: the announcement itself is already saved by the time this is called, so a failure
+ * here (e.g. the function isn't deployed yet) shouldn't be treated as the whole post having failed.
+ */
+export async function sendAnnouncementNotification(message: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+
+  const { data, error } = await supabase.functions.invoke("send-announcement", { body: { message } });
+  if (error) {
+    let errorMessage = error.message;
+    const response = (error as { context?: Response }).context;
+    if (response && typeof response.json === "function") {
+      if (response.status === 404) {
+        errorMessage = "The send-announcement function is not deployed in Supabase yet.";
+      } else {
+        const body = await response.json().catch(() => null);
+        if (body?.error) errorMessage = String(body.error);
+      }
+    }
+    throw new Error(errorMessage);
+  }
+  if (data && typeof data === "object" && "error" in data && data.error) {
+    throw new Error(String(data.error));
+  }
+}
+
 /** Sends a password-recovery email with a link back to this site. */
 export async function sendPasswordResetEmail(email: string): Promise<void> {
   const supabase = getSupabaseClient();

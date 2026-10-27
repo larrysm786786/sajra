@@ -87,6 +87,23 @@ If `admin-users` was already deployed before the `contributor` role was added, r
 [`supabase/functions/admin-users/index.ts`](./supabase/functions/admin-users/index.ts) (same steps as
 above), otherwise new "Contributor" accounts get silently saved as "Editor".
 
+## Announcement push notifications
+
+Posting an announcement (admin only, from the Notifications page) also pushes a real phone
+notification to everyone who has notifications turned on in the Android app, through the
+`send-announcement` Edge Function in
+[`supabase/functions/send-announcement/index.ts`](./supabase/functions/send-announcement/index.ts).
+One-time setup in the Supabase dashboard:
+
+1. **Edge Functions → Deploy a new function → Via Editor**. Name it `send-announcement`, paste the
+   file above, keep *Verify JWT* on, and deploy.
+2. **Edge Functions → Manage secrets → Add new secret**. Name it `FIREBASE_SERVICE_ACCOUNT_JSON` and
+   paste in the same Firebase service account JSON already stored as the `FIREBASE_SERVICE_ACCOUNT_JSON`
+   GitHub Actions secret (used by `.github/workflows/android-apk.yml` to send update notifications).
+
+Without this, posting an announcement still works, it's just saved and visible on the Notifications
+page like normal, nobody's phone buzzes until this is set up.
+
 ## Important files
 
 - [`src/App.tsx`](./src/App.tsx) contains the full React app.
