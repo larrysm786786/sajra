@@ -637,13 +637,14 @@ export default function App() {
 
         setSyncStatus("ready");
 
-        // Best-effort, once per browser session: bump the shared visitor counter through the
-        // normal save pipeline, so a concurrent save is merged instead of clobbered or lost.
+        // Best-effort, once per browser session: bump the shared visitor counter. Only touch
+        // local state here and let the normal debounced autosave (below) persist it through the
+        // save queue - an extra direct save here used a snapshot from page-load time, so if it
+        // landed after some other save (e.g. a freshly posted announcement), it could silently
+        // overwrite that newer data with this stale one.
         if (remote && !sessionStorage.getItem(VISIT_SESSION_KEY)) {
           sessionStorage.setItem(VISIT_SESSION_KEY, "1");
-          const bumped = { ...remote.state, visitorCount: (remote.state.visitorCount ?? 0) + 1 };
-          setState((current) => ({ ...current, visitorCount: bumped.visitorCount }));
-          void persistToSupabase(bumped);
+          setState((current) => ({ ...current, visitorCount: (current.visitorCount ?? 0) + 1 }));
         }
       } catch {
         if (cancelled) return;
