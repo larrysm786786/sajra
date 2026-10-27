@@ -135,6 +135,12 @@ Deno.serve(async (req) => {
     const serviceAccount = JSON.parse(serviceAccountJson) as ServiceAccount;
     const accessToken = await getGoogleAccessToken(serviceAccount, "https://www.googleapis.com/auth/firebase.messaging");
 
+    // Sent as a data-only message (no top-level "notification" field) on purpose: with a
+    // "notification" field, Android auto-displays it when the app is backgrounded and never
+    // calls into the app at all, which is why the badge/sound couldn't be made reliable before.
+    // A data-only message always reaches AppMessagingService.java (android/app/src/main/java/
+    // com/sajra/familytree/AppMessagingService.java), which builds the notification itself and
+    // bumps the app icon badge, whether the app is open, backgrounded, or fully closed.
     const fcmResponse = await fetch(
       `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`,
       {
@@ -143,12 +149,11 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           message: {
             topic: FCM_TOPIC,
-            notification: {
+            data: {
+              type: "announcement",
               title: "Sajra announcement",
               body: message.length > MAX_BODY_LENGTH ? `${message.slice(0, MAX_BODY_LENGTH - 1)}…` : message
-            },
-            android: { notification: { channel_id: FCM_TOPIC } },
-            data: { type: "announcement" }
+            }
           }
         })
       }

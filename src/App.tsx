@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
-import { PushNotifications } from "@capacitor/push-notifications";
 import { Badge } from "@capawesome/capacitor-badge";
 import { trackNativeScreenView, trackWebPageView } from "./analytics";
 import type { FormEvent, ReactNode } from "react";
@@ -749,18 +748,10 @@ export default function App() {
     }
   }, [memberMap, route]);
 
-  // Bumps the app icon's red badge count when an announcement push arrives, so it's visible
-  // even if notifications aren't open. The Notifications page clears it below once it's read.
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    const listenerPromise = PushNotifications.addListener("pushNotificationReceived", (notification) => {
-      if (notification.data?.type === "announcement") void Badge.increase().catch(() => {});
-    });
-    return () => {
-      void listenerPromise.then((listener) => listener.remove());
-    };
-  }, []);
-
+  // The app icon's red badge count is bumped natively (AppMessagingService.java) when an
+  // announcement push arrives, since that has to work even if the app is closed in the
+  // background - a JS-side pushNotificationReceived listener only fires while the app is open.
+  // This just clears it once the user actually reads the Notifications page.
   useEffect(() => {
     if (!Capacitor.isNativePlatform() || route.page !== "calendar") return;
     void Badge.clear().catch(() => {});

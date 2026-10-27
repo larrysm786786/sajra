@@ -51,6 +51,10 @@ dependencies {
     // Capacitor plugin only depends on it as "implementation", which doesn't expose the class
     // to this module, so it has to be declared here too or the build fails to compile.
     implementation "com.google.firebase:firebase-messaging:$firebaseMessagingVersion"
+    // AppMessagingService.java builds notifications with NotificationCompat and sets the app
+    // badge with ShortcutBadger directly - same "implementation isn't transitive" reason as above.
+    implementation "androidx.core:core:$androidxCoreVersion"
+    implementation "me.leolin:ShortcutBadger:$shortcutBadgerVersion@aar"
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
