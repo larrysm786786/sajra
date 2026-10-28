@@ -12,8 +12,11 @@ const updater = registerPlugin<UpdaterPlugin>("AppUpdater");
 type AppNotificationsPlugin = {
   subscribeToTopic(options: { topic: string }): Promise<void>;
   unsubscribeFromTopic(options: { topic: string }): Promise<void>;
+  isIgnoringBatteryOptimizations(): Promise<{ ignoring: boolean }>;
+  requestIgnoreBatteryOptimizations(): Promise<void>;
+  openAutostartSettings(): Promise<void>;
 };
-const appNotifications = registerPlugin<AppNotificationsPlugin>("AppNotifications");
+export const appNotifications = registerPlugin<AppNotificationsPlugin>("AppNotifications");
 const releasesUrl = "https://api.github.com/repos/larrysm786786/sajra/releases/latest";
 
 /** One on/off toggle for one FCM topic - used separately for app-update and announcement notifications, so turning one on doesn't mean the other. */
@@ -58,6 +61,8 @@ export default function AppUpdaterCard({ language }: { language: Language }) {
   const [busy, setBusy] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [apkUrl, setApkUrl] = useState("");
+  const [batteryIgnoring, setBatteryIgnoring] = useState<boolean | null>(null);
+  const [deliveryMessage, setDeliveryMessage] = useState("");
   const ur = language === "ur";
   const updateNotifications = useTopicNotifications(
     "sajra_updates",
@@ -98,6 +103,26 @@ export default function AppUpdaterCard({ language }: { language: Language }) {
     });
     return () => { void listenerPromise.then((listener) => listener.remove()); };
   }, [ur]);
+  useEffect(() => {
+    void appNotifications.isIgnoringBatteryOptimizations().then((result) => setBatteryIgnoring(result.ignoring)).catch(() => {});
+  }, []);
+  async function allowBackgroundActivity() {
+    try {
+      await appNotifications.requestIgnoreBatteryOptimizations();
+      window.setTimeout(() => {
+        void appNotifications.isIgnoringBatteryOptimizations().then((result) => setBatteryIgnoring(result.ignoring)).catch(() => {});
+      }, 1500);
+    } catch {
+      setDeliveryMessage(ur ? "بیٹری کی ترتیبات نہیں کھل سکیں۔" : "Could not open the battery settings.");
+    }
+  }
+  async function openAutostart() {
+    try {
+      await appNotifications.openAutostartSettings();
+    } catch {
+      setDeliveryMessage(ur ? "ترتیبات نہیں کھل سکیں۔" : "Could not open settings.");
+    }
+  }
   async function install() {
     if (!apkUrl) return;
     setBusy(true);
@@ -143,6 +168,17 @@ export default function AppUpdaterCard({ language }: { language: Language }) {
       </button>
       {announcementNotifications.message ? <small style={{ display: "block", marginTop: 8 }}>{announcementNotifications.message}</small> : null}
     </div>
+    {batteryIgnoring === false ? <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
+      <strong>{ur ? "اطلاعات نہیں مل رہیں؟" : "Not receiving notifications?"}</strong>
+      <p style={{ margin: "6px 0 10px" }}>{ur ? "کچھ فون کمپنیاں (جیسے Xiaomi، Oppo، Vivo، Huawei) بند ایپس کو اطلاعات بھیجنے سے روک دیتی ہیں، جب تک یہ اجازتیں آن نہ ہوں۔" : "Some phone brands (Xiaomi, Oppo, Vivo, Huawei) block closed apps from receiving notifications unless these are allowed."}</p>
+      <button className="btn-ghost notif-toggle-btn" type="button" onClick={() => void allowBackgroundActivity()} style={{ marginRight: 8, marginBottom: 8 }}>
+        {ur ? "بیک گراؤنڈ سرگرمی کی اجازت دیں" : "Allow background activity"}
+      </button>
+      <button className="btn-ghost notif-toggle-btn" type="button" onClick={() => void openAutostart()} style={{ marginBottom: 8 }}>
+        {ur ? "Autostart کی ترتیبات کھولیں" : "Open autostart settings"}
+      </button>
+      {deliveryMessage ? <small style={{ display: "block", marginTop: 8 }}>{deliveryMessage}</small> : null}
+    </div> : null}
     <small style={{ display: "block", marginTop: 10 }}>{ur ? "انسٹال کرنے کی آخری اجازت Android دے گا۔" : "Android asks you to confirm before installing an update."}</small>
   </div>;
 }

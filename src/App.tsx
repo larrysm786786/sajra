@@ -70,7 +70,7 @@ import {
 } from "./professions";
 import { t, tGender } from "./i18n";
 import SajraChat from "./SajraChat";
-import AppUpdaterCard from "./AppUpdater";
+import AppUpdaterCard, { appNotifications } from "./AppUpdater";
 import { BranchPage } from "./FamilyTools";
 import type { StringKey } from "./i18n";
 
@@ -850,6 +850,19 @@ export default function App() {
         void PushNotifications.requestPermissions();
       }
     });
+  }, []);
+
+  // One-time prompt for the official Android battery-optimization exemption, so push
+  // notifications keep arriving in the background on OEMs (Xiaomi, Oppo, Vivo, Huawei) that
+  // otherwise kill closed apps. Gated on localStorage since the system dialog would otherwise
+  // reappear every launch if the user dismisses it - they can still do this later from Settings.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    if (localStorage.getItem("sajra-battery-exemption-prompted")) return;
+    void appNotifications.isIgnoringBatteryOptimizations().then((result) => {
+      if (!result.ignoring) void appNotifications.requestIgnoreBatteryOptimizations();
+      localStorage.setItem("sajra-battery-exemption-prompted", "1");
+    }).catch(() => {});
   }, []);
 
   // The app icon's red badge count is bumped natively (AppMessagingService.java) when an
