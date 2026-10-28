@@ -2234,15 +2234,14 @@ export default function App() {
       }
 
       return (
-        <div className="admin-layout">
-          <aside className="admin-sidebar" aria-label={t(language, "adminSidebarAria")}>
-            <div className="admin-sidebar-title">{t(language, "adminPanelTitle")}</div>
-            <nav className="admin-sidebar-nav">
+        <div className="admin-layout admin-layout-no-sidebar">
+          <section className="section admin-main">
+            <nav className="admin-section-switcher" aria-label={t(language, "adminSidebarAria")}>
               {sections.map((section) => (
                 <button
                   key={section.key}
                   type="button"
-                  className={`admin-nav-item${section.key === activeSection.key ? " active" : ""}`}
+                  className={`admin-section-chip${section.key === activeSection.key ? " active" : ""}`}
                   aria-current={section.key === activeSection.key ? "page" : undefined}
                   onClick={() => { setAdminSection(section.key); setPasswordChangeError(""); setPasswordChangeSuccess(false); }}
                 >
@@ -2251,12 +2250,6 @@ export default function App() {
                 </button>
               ))}
             </nav>
-            <div className="admin-sidebar-group">
-              <button type="button" className="admin-nav-item danger" onClick={logout}><span>{t(language, "logoutButton")}</span></button>
-            </div>
-          </aside>
-
-          <section className="section admin-main">
             <div className="section-head">
               <div>
                 <span className="eyebrow">{t(language, "eyebrowAdminConsole")}</span>
