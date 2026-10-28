@@ -162,7 +162,7 @@ function parseRoute(): RouteState {
   if (!raw || raw === "/") return { page: "home" };
   const [page, id] = raw.split("/").filter(Boolean);
   if ((page === "member" || page === "branch") && id) return { page, memberId: Number(id) || undefined };
-  if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots" || page === "calendar") {
+  if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots" || page === "calendar" || page === "settings") {
     return { page };
   }
   return { page: "home" };
@@ -473,7 +473,7 @@ function ProfessionPhotoSlider({ members, language, onOpen }: { members: Member[
       </div>
       {bio ? <div className="profession-photo-bio"><p>{bio}</p></div> : null}
     </div>
-    {photoMembers.length > 1 ? <div className="profession-photo-controls"><button type="button" aria-label="Previous professional profile" onClick={() => setSlideIndex((index) => (index - 1 + photoMembers.length) % photoMembers.length)}>Previous</button><span>{slideIndex + 1} / {photoMembers.length}</span><button type="button" aria-label="Next professional profile" onClick={() => setSlideIndex((index) => (index + 1) % photoMembers.length)}>Next</button></div> : null}
+    {photoMembers.length > 1 ? <div className="profession-photo-controls"><button type="button" aria-label={t(language, "previousProfileLabel")} onClick={() => setSlideIndex((index) => (index - 1 + photoMembers.length) % photoMembers.length)}>{t(language, "previousButtonLabel")}</button><span>{slideIndex + 1} / {photoMembers.length}</span><button type="button" aria-label={t(language, "nextProfileLabel")} onClick={() => setSlideIndex((index) => (index + 1) % photoMembers.length)}>{t(language, "nextButtonLabel")}</button></div> : null}
   </div>;
 }
 export default function App() {
@@ -542,6 +542,7 @@ export default function App() {
   const [shareNotice, setShareNotice] = useState("");
   const [lightboxImage, setLightboxImage] = useState<GalleryImage | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [importError, setImportError] = useState("");
   const [lastBackupAt, setLastBackupAt] = useState<string | null>(() => {
     try {
@@ -558,10 +559,19 @@ export default function App() {
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
   const toastTimerRef = useRef<number | undefined>(undefined);
   const [saveToast, setSaveToast] = useState<{ tone: "ok" | "error"; key: StringKey } | null>(null);
-  const lightboxTouchRef = useRef<{ mode: "pinch" | "swipe"; startDistance: number; startZoom: number; startX: number } | null>(null);
+  const lightboxTouchRef = useRef<{
+    mode: "pinch" | "swipe" | "pan";
+    startDistance: number;
+    startZoom: number;
+    startX: number;
+    startY: number;
+    startPanX: number;
+    startPanY: number;
+  } | null>(null);
   const pullStartYRef = useRef<number | null>(null);
   const pullReadyRef = useRef(false);
-  const [pullRefreshing, setPullRefreshing] = useState(false);
+  const [pullStatus, setPullStatus] = useState<"idle" | "refreshing" | "done" | "error">("idle");
+  const [pullDistance, setPullDistance] = useState(0);
 
   // mfaPending keeps the admin area locked while a 2-step verification code is still owed,
   // even though signInWithPassword already issued a session (just one not yet at aal2).
@@ -758,9 +768,8 @@ export default function App() {
 
   /** Pull-to-refresh: re-fetches the shared archive and merges it the same way a save conflict does, so anything typed locally but not yet saved isn't lost. */
   async function refreshFromSupabase() {
-    if (!supabaseConfigured || pullRefreshing) return;
-    setPullRefreshing(true);
-    showSaveToast("ok", "refreshingData");
+    if (!supabaseConfigured || pullStatus === "refreshing") return;
+    setPullStatus("refreshing");
     try {
       const remote = await loadSupabaseState();
       if (remote) {
@@ -768,26 +777,30 @@ export default function App() {
         remoteUpdatedAtRef.current = remote.updatedAt;
         syncedRef.current = { json: JSON.stringify(remote.state), state: remote.state };
         setState(merged);
-        showSaveToast("ok", "dataRefreshed", 2000);
       }
+      setPullStatus("done");
     } catch {
-      showSaveToast("error", "saveFailed");
+      setPullStatus("error");
     } finally {
-      setPullRefreshing(false);
+      window.setTimeout(() => setPullStatus("idle"), 1400);
     }
   }
 
   function handlePullTouchStart(e: ReactTouchEvent) {
-    pullStartYRef.current = window.scrollY <= 0 && e.touches.length === 1 ? e.touches[0].clientY : null;
+    pullStartYRef.current = window.scrollY <= 0 && e.touches.length === 1 && pullStatus === "idle" ? e.touches[0].clientY : null;
   }
 
   function handlePullTouchMove(e: ReactTouchEvent) {
-    if (pullStartYRef.current === null || pullRefreshing) return;
-    if (e.touches[0].clientY - pullStartYRef.current > 70) pullReadyRef.current = true;
+    if (pullStartYRef.current === null) return;
+    const dy = e.touches[0].clientY - pullStartYRef.current;
+    if (dy <= 0) { setPullDistance(0); pullReadyRef.current = false; return; }
+    setPullDistance(Math.min(70, dy));
+    pullReadyRef.current = dy > 70;
   }
 
   function handlePullTouchEnd() {
-    if (pullReadyRef.current && !pullRefreshing) void refreshFromSupabase();
+    if (pullReadyRef.current) void refreshFromSupabase();
+    setPullDistance(0);
     pullStartYRef.current = null;
     pullReadyRef.current = false;
   }
@@ -1117,9 +1130,9 @@ export default function App() {
     updateState((current) => ({ ...current, suggestions: current.suggestions.filter((suggestion) => suggestion.id !== id) }));
   }
 
-  // Admin-only: everyone can read announcements, but only the family admin posts them.
+  // Everyone can read announcements; any signed-in account (admin, contributor or editor) can post one.
   function openAnnouncementEditor() {
-    if (!isAdmin) return;
+    if (!isLoggedIn) return;
     setAnnouncementNotice("");
     setAnnouncementDraft({ message: "", authorName: "", expiresAt: "" });
   }
@@ -1129,7 +1142,7 @@ export default function App() {
   }
 
   async function submitAnnouncement() {
-    if (!isAdmin || !announcementDraft || !announcementDraft.message.trim() || announcementBusy) return;
+    if (!isLoggedIn || !announcementDraft || !announcementDraft.message.trim() || announcementBusy) return;
     const messageText = announcementDraft.message.trim();
     setAnnouncementBusy(true);
     try {
@@ -1193,11 +1206,13 @@ export default function App() {
   function openLightbox(image: GalleryImage) {
     setLightboxImage(image);
     setZoomLevel(1);
+    setPanOffset({ x: 0, y: 0 });
   }
 
   function closeLightbox() {
     setLightboxImage(null);
     setZoomLevel(1);
+    setPanOffset({ x: 0, y: 0 });
   }
 
   function zoomInLightbox() {
@@ -1205,7 +1220,11 @@ export default function App() {
   }
 
   function zoomOutLightbox() {
-    setZoomLevel((z) => Math.max(0.5, Math.round((z - 0.25) * 100) / 100));
+    setZoomLevel((z) => {
+      const next = Math.max(0.5, Math.round((z - 0.25) * 100) / 100);
+      if (next <= 1) setPanOffset({ x: 0, y: 0 });
+      return next;
+    });
   }
 
   function goToAdjacentImage(direction: 1 | -1) {
@@ -1216,6 +1235,7 @@ export default function App() {
     const nextIndex = (index + direction + list.length) % list.length;
     setLightboxImage(list[nextIndex]);
     setZoomLevel(1);
+    setPanOffset({ x: 0, y: 0 });
   }
 
   function lightboxTouchDistance(touches: ReactTouchEvent["touches"]) {
@@ -1226,9 +1246,20 @@ export default function App() {
 
   function handleLightboxTouchStart(e: ReactTouchEvent) {
     if (e.touches.length === 2) {
-      lightboxTouchRef.current = { mode: "pinch", startDistance: lightboxTouchDistance(e.touches), startZoom: zoomLevel, startX: 0 };
-    } else if (e.touches.length === 1 && zoomLevel <= 1) {
-      lightboxTouchRef.current = { mode: "swipe", startDistance: 0, startZoom: zoomLevel, startX: e.touches[0].clientX };
+      lightboxTouchRef.current = {
+        mode: "pinch", startDistance: lightboxTouchDistance(e.touches), startZoom: zoomLevel,
+        startX: 0, startY: 0, startPanX: panOffset.x, startPanY: panOffset.y
+      };
+    } else if (e.touches.length === 1 && zoomLevel > 1) {
+      lightboxTouchRef.current = {
+        mode: "pan", startDistance: 0, startZoom: zoomLevel,
+        startX: e.touches[0].clientX, startY: e.touches[0].clientY, startPanX: panOffset.x, startPanY: panOffset.y
+      };
+    } else if (e.touches.length === 1) {
+      lightboxTouchRef.current = {
+        mode: "swipe", startDistance: 0, startZoom: zoomLevel,
+        startX: e.touches[0].clientX, startY: 0, startPanX: 0, startPanY: 0
+      };
     } else {
       lightboxTouchRef.current = null;
     }
@@ -1236,10 +1267,20 @@ export default function App() {
 
   function handleLightboxTouchMove(e: ReactTouchEvent) {
     const touch = lightboxTouchRef.current;
-    if (!touch || touch.mode !== "pinch" || e.touches.length !== 2) return;
-    e.preventDefault();
-    const scale = lightboxTouchDistance(e.touches) / touch.startDistance;
-    setZoomLevel(Math.min(4, Math.max(0.5, Math.round(touch.startZoom * scale * 100) / 100)));
+    if (!touch) return;
+    if (touch.mode === "pinch" && e.touches.length === 2) {
+      e.preventDefault();
+      const scale = lightboxTouchDistance(e.touches) / touch.startDistance;
+      const nextZoom = Math.min(4, Math.max(0.5, Math.round(touch.startZoom * scale * 100) / 100));
+      setZoomLevel(nextZoom);
+      if (nextZoom <= 1) setPanOffset({ x: 0, y: 0 });
+    } else if (touch.mode === "pan" && e.touches.length === 1) {
+      e.preventDefault();
+      setPanOffset({
+        x: touch.startPanX + (e.touches[0].clientX - touch.startX),
+        y: touch.startPanY + (e.touches[0].clientY - touch.startY)
+      });
+    }
   }
 
   function handleLightboxTouchEnd(e: ReactTouchEvent) {
@@ -1722,7 +1763,7 @@ export default function App() {
               <span className="eyebrow">{t(language, "eyebrowAnnouncements")}</span>
               <h1 className="section-title">{t(language, "announcementsTitle")}</h1>
             </div>
-            {isAdmin ? <button className="btn-ghost" type="button" onClick={openAnnouncementEditor}>{t(language, "postAnnouncementButton")}</button> : null}
+            {isLoggedIn ? <button className="btn-ghost" type="button" onClick={openAnnouncementEditor}>{t(language, "postAnnouncementButton")}</button> : null}
           </div>
           {announcementNotice ? <p className="hint">{announcementNotice}</p> : null}
           {activeAnnouncements.length || familyCalendarEvents.length ? (
@@ -1792,7 +1833,7 @@ export default function App() {
                   <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openTreeButton")}</button>
                   {canEditMembers ? <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editMemberButton")}</button> : null}
                   <button className="btn-ghost" type="button" onClick={() => window.print()}>{t(language, "printProfileButton")}</button>
-                  <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor(member)}>{t(language, "suggestCorrectionButton")}</button><button className="btn-ghost" type="button" onClick={() => navigate({ page: "branch", memberId: member.id })}>Share family branch</button>
+                  <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor(member)}>{t(language, "suggestCorrectionButton")}</button><button className="btn-ghost" type="button" onClick={() => navigate({ page: "branch", memberId: member.id })}>{t(language, "shareFamilyBranchButton")}</button>
                   <button className="btn-ghost" type="button" onClick={() => void shareMember(member)}>{t(language, "shareProfileButton")}</button>
                 </div>
                 {suggestionSent ? <p className="hint no-print">{t(language, "suggestionSentMessage")}</p> : null}
@@ -1908,8 +1949,9 @@ export default function App() {
         { key: "members", label: t(language, "membersLabel"), subtitle: t(language, "membersCardSubtitle") },
         ...(isAdmin ? [{ key: "users" as const, label: t(language, "usersLabel"), subtitle: t(language, "usersCardSubtitle") }] : []),
         { key: "gallery", label: t(language, "adminNavGallery"), subtitle: t(language, "galleryAdminSubtitle") },
-        ...(isAdmin ? [{ key: "suggestions" as const, label: t(language, "adminNavSuggestions"), subtitle: t(language, "suggestionsSubtitle") }] : []),
-        ...(isAdmin ? [{ key: "logs" as const, label: t(language, "adminNavLogs"), subtitle: t(language, "logHistorySubtitle") }, { key: "quality" as const, label: "Data quality", subtitle: "Review possible family-tree data issues" }] : []),
+        { key: "suggestions", label: t(language, "adminNavSuggestions"), subtitle: t(language, "suggestionsSubtitle") },
+        ...(isAdmin ? [{ key: "logs" as const, label: t(language, "adminNavLogs"), subtitle: t(language, "logHistorySubtitle") }] : []),
+        { key: "quality", label: t(language, "adminNavQuality"), subtitle: t(language, "adminQualitySubtitle") },
         ...(isAdmin ? [{ key: "backup" as const, label: t(language, "backupCardTitle"), subtitle: t(language, "backupCardSubtitle") }] : []),
         { key: "security", label: t(language, "adminNavSecurity"), subtitle: t(language, "changePasswordSubtitle") }
       ];
@@ -1966,7 +2008,7 @@ export default function App() {
           </>
         );
       } else if (activeSection.key === "quality") {
-        sectionBody = qualityIssues.length ? <div className="list">{qualityIssues.map((issue) => <div className="card data-quality-item" key={issue.id}><div><strong>{issue.kind.replace(/-/g, " ")}</strong><p>{issue.detail}</p></div><button className="btn-ghost" type="button" onClick={() => navigate({ page: "member", memberId: issue.memberId })}>Open member</button></div>)}</div> : <div className="empty">No possible data issues found.</div>;
+        sectionBody = qualityIssues.length ? <div className="list">{qualityIssues.map((issue) => <div className="card data-quality-item" key={issue.id}><div><strong>{issue.kind.replace(/-/g, " ")}</strong><p>{issue.detail}</p></div><button className="btn-ghost" type="button" onClick={() => navigate({ page: "member", memberId: issue.memberId })}>{t(language, "openMemberButton")}</button></div>)}</div> : <div className="empty">{t(language, "noDataQualityIssues")}</div>;
       } else if (activeSection.key === "members") {
         sectionBody = (
           <>
@@ -2090,7 +2132,7 @@ export default function App() {
                     <div className="tree-sub">
                       {formatDate(entry.createdAt, language)} | {entry.actorEmail ? (state.users.find((user) => user.email?.trim().toLowerCase() === entry.actorEmail?.trim().toLowerCase())?.name || state.users.find((user) => user.email?.trim().toLowerCase() === entry.actorEmail?.trim().toLowerCase())?.username || entry.actorEmail) : t(language, "systemActor")}
                     </div>
-                    {entry.type === "member" && entry.memberBefore ? <details className="activity-change-details"><summary>Saved version: {entry.memberBefore.name}</summary><ul>{["name", "profession", "birthplace", "dob", "dod", "fatherId", "motherId"].map((field) => { const before = String((entry.memberBefore as unknown as Record<string, unknown>)[field] ?? "-"); const after = String((entry.memberAfter as unknown as Record<string, unknown> | null)?.[field] ?? "-"); return before !== after ? <li key={field}><strong>{field}</strong>: {before} -&gt; {after}</li> : null; })}</ul><button className="btn-ghost" type="button" onClick={() => restoreMemberVersion(entry)}>Restore this version</button></details> : null}
+                    {entry.type === "member" && entry.memberBefore ? <details className="activity-change-details"><summary>{t(language, "savedVersionPrefix")} {entry.memberBefore.name}</summary><ul>{["name", "profession", "birthplace", "dob", "dod", "fatherId", "motherId"].map((field) => { const before = String((entry.memberBefore as unknown as Record<string, unknown>)[field] ?? "-"); const after = String((entry.memberAfter as unknown as Record<string, unknown> | null)?.[field] ?? "-"); return before !== after ? <li key={field}><strong>{field}</strong>: {before} -&gt; {after}</li> : null; })}</ul><button className="btn-ghost" type="button" onClick={() => restoreMemberVersion(entry)}>{t(language, "restoreVersionButton")}</button></details> : null}
                   </div>
                 </div>
               </div>
@@ -2240,6 +2282,16 @@ export default function App() {
           <div className="notice" style={{ marginTop: 18 }}>
             {t(language, "aboutNotice")}
           </div>
+        </section>
+      );
+    }
+
+    if (route.page === "settings") {
+      return (
+        <section className="section">
+          <span className="eyebrow">{t(language, "eyebrowSettings")}</span>
+          <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "settingsTitle")}</h2>
+          <p className="section-subtitle" style={{ marginTop: 12 }}>{t(language, "settingsSubtitle")}</p>
           <AppUpdaterCard language={language} />
         </section>
       );
@@ -2309,12 +2361,12 @@ export default function App() {
       <>
         <section className="hero">
           <span className="eyebrow">{t(language, "eyebrowHero")}</span>
-          <h1 className="hero-legacy-title">Nine Generations. One Legacy.</h1>
-          <p className="hero-legacy-copy">A family bound by heritage, strengthened by unity, and carried forward through generations.</p>
+          <h1 className="hero-legacy-title">{t(language, "heroLegacyTitleLine1")}<br />{t(language, "heroLegacyTitleLine2")}</h1>
+          <p className="hero-legacy-copy">{t(language, "heroLegacyCopy")}</p>
           <ProfessionPhotoSlider members={state.members} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
         </section>
 
-        {todayMemories.length ? <section className="section today-memories-section"><div className="section-head"><div><span className="eyebrow">Family memories</span><h2 className="section-title">On this day</h2></div><button className="btn-ghost" onClick={() => navigate({ page: "calendar" })}>Open family calendar</button></div><div className="today-memory-grid">{todayMemories.map((memory) => <button className="card today-memory-card" key={memory.id} onClick={() => memory.member ? navigate({ page: "member", memberId: memory.member.id }) : navigate({ page: "gallery" })}>{memory.image ? <img src={photoSrc(memory.image.src)} alt="" /> : null}<span><strong>{memory.title}</strong><small>{memory.kind.replace(/-/g, " ")}</small></span></button>)}</div></section> : null}
+        {todayMemories.length ? <section className="section today-memories-section"><div className="section-head"><div><span className="eyebrow">{t(language, "familyMemoriesEyebrow")}</span><h2 className="section-title">{t(language, "onThisDayTitle")}</h2></div><button className="btn-ghost" onClick={() => navigate({ page: "calendar" })}>{t(language, "openFamilyCalendarButton")}</button></div><div className="today-memory-grid">{todayMemories.map((memory) => <button className="card today-memory-card" key={memory.id} onClick={() => memory.member ? navigate({ page: "member", memberId: memory.member.id }) : navigate({ page: "gallery" })}>{memory.image ? <img src={photoSrc(memory.image.src)} alt="" /> : null}<span><strong>{memory.title}</strong><small>{memory.kind.replace(/-/g, " ")}</small></span></button>)}</div></section> : null}
         <section className="hero-tools section">
           <div className="hero-actions">
             <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openFamilyTreeButton")}</button>
@@ -2480,9 +2532,36 @@ export default function App() {
     );
   })();
 
+  // On mobile, the hamburger menu becomes a direct shortcut list into the Dashboard for
+  // logged-in accounts, instead of the public site links - admins get the full set of
+  // sections they can reach, editors/contributors a smaller one matching what they can do.
+  const mobileAdminLinks: { key: string; label: string; onClick: () => void }[] = isLoggedIn
+    ? [
+        { key: "dashboard", label: t(language, "adminNavOverview"), onClick: () => { navigate({ page: "admin" }); setAdminSection("overview"); } },
+        { key: "addMember", label: t(language, "addMemberButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); openMemberEditor(); } },
+        ...(isAdmin ? [{ key: "addUser", label: t(language, "addUserButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("users"); openUserEditor(); } }] : []),
+        { key: "postAnnouncement", label: t(language, "postAnnouncementButton"), onClick: () => { navigate({ page: "calendar" }); openAnnouncementEditor(); } },
+        { key: "gallery", label: t(language, "adminNavGallery"), onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } },
+        { key: "suggestions", label: t(language, "adminNavSuggestions"), onClick: () => { navigate({ page: "admin" }); setAdminSection("suggestions"); } },
+        ...(isAdmin ? [{ key: "logs", label: t(language, "adminNavLogs"), onClick: () => { navigate({ page: "admin" }); setAdminSection("logs"); } }] : []),
+        { key: "quality", label: t(language, "adminNavQuality"), onClick: () => { navigate({ page: "admin" }); setAdminSection("quality"); } },
+        ...(isAdmin ? [{ key: "backup", label: t(language, "backupCardTitle"), onClick: () => { navigate({ page: "admin" }); setAdminSection("backup"); } }] : []),
+        { key: "security", label: t(language, "adminNavSecurity"), onClick: () => { navigate({ page: "admin" }); setAdminSection("security"); } },
+        ...(Capacitor.isNativePlatform() ? [{ key: "settings", label: t(language, "navSettingsLabel"), onClick: () => navigate({ page: "settings" }) }] : [])
+      ]
+    : [];
+
   return (
     <div className="app-shell" onTouchStart={handlePullTouchStart} onTouchMove={handlePullTouchMove} onTouchEnd={handlePullTouchEnd}>
-      {pullRefreshing ? <div className="pull-refresh-indicator">{t(language, "refreshingData")}</div> : null}
+      {pullStatus !== "idle" || pullDistance > 0 ? (
+        <div
+          className={`pull-refresh-indicator${pullStatus !== "idle" ? ` ${pullStatus}` : ""}`}
+          style={pullStatus === "idle" ? { opacity: Math.min(1, pullDistance / 70), transform: `translateX(-50%) scale(${0.6 + Math.min(1, pullDistance / 70) * 0.4})` } : undefined}
+        >
+          <span className={`pull-refresh-spinner${pullStatus === "refreshing" ? " spinning" : ""}`} />
+          {pullStatus === "done" ? t(language, "dataRefreshed") : pullStatus === "error" ? t(language, "saveFailed") : pullStatus === "refreshing" ? t(language, "refreshingData") : null}
+        </div>
+      ) : null}
       <header className="topbar">
         <a className="brand" href="#/home">
           <div className="brand-mark"><img src={import.meta.env.BASE_URL + "logo.jpg"} alt="" /></div>
@@ -2506,15 +2585,32 @@ export default function App() {
           <span />
           <span />
         </button>
-        <nav className={`topnav${mobileNavOpen ? " open" : ""}`}>
-          {isLoggedIn ? <NavLink active={route.page === "admin"} onClick={() => navigate({ page: "admin" })}>{t(language, "navDashboardLabel")}</NavLink> : null}
-          <NavLink active={route.page === "home"} onClick={() => navigate({ page: "home" })}>{NAV_LABELS[language].home}</NavLink>
-          <NavLink active={route.page === "tree"} onClick={() => navigate({ page: "tree" })}>{NAV_LABELS[language].tree}</NavLink>
-          <NavLink active={route.page === "roots"} onClick={() => navigate({ page: "roots" })}>{NAV_LABELS[language].roots}</NavLink>
-          <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
-          <NavLink active={route.page === "calendar"} onClick={() => navigate({ page: "calendar" })}>Notifications</NavLink>
-          <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
-          <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
+        <nav className={`topnav${mobileNavOpen ? " open" : ""}${isLoggedIn ? " topnav-authed" : ""}`}>
+          {isLoggedIn ? (
+            <div className="topnav-admin-links">
+              {mobileAdminLinks.map((link) => (
+                <button
+                  key={link.key}
+                  type="button"
+                  className="navlink"
+                  onClick={() => { link.onClick(); setMobileNavOpen(false); }}
+                >
+                  {link.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <div className="topnav-public-links">
+            {isLoggedIn ? <NavLink active={route.page === "admin"} onClick={() => navigate({ page: "admin" })}>{t(language, "navDashboardLabel")}</NavLink> : null}
+            <NavLink active={route.page === "home"} onClick={() => navigate({ page: "home" })}>{NAV_LABELS[language].home}</NavLink>
+            <NavLink active={route.page === "tree"} onClick={() => navigate({ page: "tree" })}>{NAV_LABELS[language].tree}</NavLink>
+            <NavLink active={route.page === "roots"} onClick={() => navigate({ page: "roots" })}>{NAV_LABELS[language].roots}</NavLink>
+            <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
+            <NavLink active={route.page === "calendar"} onClick={() => navigate({ page: "calendar" })}>{t(language, "navNotificationsLabel")}</NavLink>
+            <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
+            <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
+            {Capacitor.isNativePlatform() ? <NavLink active={route.page === "settings"} onClick={() => navigate({ page: "settings" })}>{t(language, "navSettingsLabel")}</NavLink> : null}
+          </div>
           <div className="topnav-actions-mobile">
             <button
               type="button"
@@ -2651,7 +2747,7 @@ export default function App() {
                 onChange={(e) => handleMemberPhoto(e.target.files?.[0])}
               />
             </label>
-            {isAdmin ? <label className="span-12 hero-slider-admin-toggle"><input type="checkbox" checked={memberDraft.showInHeroSlider} disabled={!memberDraft.showInHeroSlider && !(Boolean(memberDraft.photo.trim()) && isSliderProfession(normalizeProfession(memberDraft.professionChoice === PROFESSION_OTHER ? memberDraft.professionOther : memberDraft.professionChoice)))} onChange={(event) => setMemberDraft((current) => current ? { ...current, showInHeroSlider: event.target.checked } : current)} /><span><strong>Show in homepage professional slider</strong><small>Select this member for the home page. A profile photo and a profession are required.</small></span></label> : null}
+            {isAdmin ? <label className="span-12 hero-slider-admin-toggle"><input type="checkbox" checked={memberDraft.showInHeroSlider} disabled={!memberDraft.showInHeroSlider && !(Boolean(memberDraft.photo.trim()) && isSliderProfession(normalizeProfession(memberDraft.professionChoice === PROFESSION_OTHER ? memberDraft.professionOther : memberDraft.professionChoice)))} onChange={(event) => setMemberDraft((current) => current ? { ...current, showInHeroSlider: event.target.checked } : current)} /><span><strong>{t(language, "heroSliderToggleLabel")}</strong><small>{t(language, "heroSliderToggleHint")}</small></span></label> : null}
             <label className="span-12">
               <span className="sr-only">{t(language, "bioLabel")}</span>
               <textarea className="textarea" placeholder={t(language, "bioLabel")} value={memberDraft.bio} onChange={(e) => setMemberDraft((current) => current ? { ...current, bio: e.target.value } : current)} />
@@ -3004,7 +3100,7 @@ export default function App() {
         <div className="lightbox-backdrop" onClick={closeLightbox}>
           <div className="lightbox-toolbar" onClick={(e) => e.stopPropagation()}>
             <button type="button" className="icon-btn" aria-label={t(language, "zoomOutLabel")} onClick={zoomOutLightbox}>−</button>
-            <button type="button" className="icon-btn" onClick={() => setZoomLevel(1)}>{Math.round(zoomLevel * 100)}%</button>
+            <button type="button" className="icon-btn" onClick={() => { setZoomLevel(1); setPanOffset({ x: 0, y: 0 }); }}>{Math.round(zoomLevel * 100)}%</button>
             <button type="button" className="icon-btn" aria-label={t(language, "zoomInLabel")} onClick={zoomInLightbox}>+</button>
             <button type="button" className="close-btn" aria-label={t(language, "closeLabel")} onClick={closeLightbox}>x</button>
           </div>
@@ -3025,7 +3121,7 @@ export default function App() {
             <img
               src={photoSrc(lightboxImage.src)}
               alt={lightboxImage.caption ?? t(language, "galleryImageAlt")}
-              style={{ transform: `scale(${zoomLevel})` }}
+              style={{ transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})` }}
             />
           </div>
           {state.gallery.length > 1 ? (

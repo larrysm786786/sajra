@@ -118,9 +118,6 @@ Deno.serve(async (req) => {
   const { data: callerData, error: callerError } = await caller.auth.getUser();
   const me = callerData?.user;
   if (callerError || !me) return fail("You must be signed in.", 401);
-  if (me.app_metadata?.role === "editor" || me.app_metadata?.role === "contributor") {
-    return fail("Only admins can send announcement notifications.", 403);
-  }
 
   let body: RequestBody;
   try {

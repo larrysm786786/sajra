@@ -877,8 +877,11 @@ button {
   height: 100%;
   display: grid;
   place-items: center;
-  overflow: auto;
+  overflow: hidden;
   cursor: default;
+  /* Lets our own pinch/pan touch handlers drive the gesture instead of the browser's
+     native scroll/zoom fighting with them. */
+  touch-action: none;
 }
 
 .lightbox-viewport img {
@@ -886,7 +889,6 @@ button {
   max-height: 80vh;
   object-fit: contain;
   border-radius: 6px;
-  transition: transform 120ms ease;
 }
 
 .lightbox-caption {
@@ -917,17 +919,56 @@ button {
 .lightbox-nav-prev { left: 12px; }
 .lightbox-nav-next { right: 12px; }
 
+.notif-toggle-btn.active {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: #ffffff;
+}
+
 .pull-refresh-indicator {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  text-align: center;
-  padding: 8px;
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 999px;
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--accent-strong);
   background: var(--surface-strong);
-  border-bottom: 1px solid var(--border);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: opacity 150ms ease, transform 150ms ease;
+  pointer-events: none;
+}
+
+.pull-refresh-indicator.done {
+  color: #1f8f4d;
+}
+
+.pull-refresh-indicator.error {
+  color: var(--danger);
+}
+
+.pull-refresh-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in oklab, var(--accent-strong) 35%, transparent);
+  border-top-color: var(--accent-strong);
+  flex: 0 0 auto;
+}
+
+.pull-refresh-spinner.spinning {
+  animation: pull-refresh-spin 700ms linear infinite;
+}
+
+@keyframes pull-refresh-spin {
+  to { transform: rotate(360deg); }
 }
 
 @media (max-width: 640px) {
@@ -1435,6 +1476,26 @@ button {
     padding-top: 16px;
     border-top: 1px solid rgba(255, 255, 255, 0.14);
   }
+
+  /* Logged-in accounts get a Dashboard shortcut list on mobile instead of the public site
+     links - the site links are still one tap away via that Dashboard's own sidebar. */
+  .topnav-authed .topnav-public-links {
+    display: none;
+  }
+
+  .topnav-authed .topnav-admin-links {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+.topnav-admin-links {
+  display: none;
+}
+
+.topnav-public-links {
+  display: contents;
 }
 
 @media (min-width: 861px) {

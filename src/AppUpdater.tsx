@@ -120,16 +120,26 @@ export default function AppUpdaterCard({ language }: { language: Language }) {
     <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
       <strong>{ur ? "نئے فیچرز کی اطلاعات" : "New feature notifications"}</strong>
       <p style={{ margin: "6px 0 10px" }}>{ur ? "Sajra میں نیا فیچر یا ایپ اپ ڈیٹ آنے پر اطلاع حاصل کریں۔" : "Get a notification when Sajra releases a new feature or app update."}</p>
-      <button className="btn-ghost" type="button" disabled={updateNotifications.busy} onClick={() => void updateNotifications.toggle(ur)}>
-        {updateNotifications.busy ? (ur ? "براہ کرم انتظار کریں…" : "Please wait…") : updateNotifications.enabled ? (ur ? "اطلاعات بند کریں" : "Turn off notifications") : (ur ? "اطلاعات آن کریں" : "Turn on notifications")}
+      <button
+        className={`btn-ghost notif-toggle-btn${updateNotifications.enabled ? " active" : ""}`}
+        type="button"
+        disabled={updateNotifications.busy}
+        onClick={() => void updateNotifications.toggle(ur)}
+      >
+        {updateNotifications.busy ? (ur ? "براہ کرم انتظار کریں…" : "Please wait…") : updateNotifications.enabled ? (ur ? "آن" : "Turn on") : (ur ? "آف" : "Turn off")}
       </button>
       {updateNotifications.message ? <small style={{ display: "block", marginTop: 8 }}>{updateNotifications.message}</small> : null}
     </div>
     <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
       <strong>{ur ? "خاندانی اعلانات کی اطلاعات" : "Family announcement notifications"}</strong>
       <p style={{ margin: "6px 0 10px" }}>{ur ? "ایڈمن کوئی اعلان پوسٹ کرے تو اطلاع حاصل کریں۔" : "Get a notification when the admin posts a family announcement."}</p>
-      <button className="btn-ghost" type="button" disabled={announcementNotifications.busy} onClick={() => void announcementNotifications.toggle(ur)}>
-        {announcementNotifications.busy ? (ur ? "براہ کرم انتظار کریں…" : "Please wait…") : announcementNotifications.enabled ? (ur ? "اطلاعات بند کریں" : "Turn off notifications") : (ur ? "اطلاعات آن کریں" : "Turn on notifications")}
+      <button
+        className={`btn-ghost notif-toggle-btn${announcementNotifications.enabled ? " active" : ""}`}
+        type="button"
+        disabled={announcementNotifications.busy}
+        onClick={() => void announcementNotifications.toggle(ur)}
+      >
+        {announcementNotifications.busy ? (ur ? "براہ کرم انتظار کریں…" : "Please wait…") : announcementNotifications.enabled ? (ur ? "آن" : "Turn on") : (ur ? "آف" : "Turn off")}
       </button>
       {announcementNotifications.message ? <small style={{ display: "block", marginTop: 8 }}>{announcementNotifications.message}</small> : null}
     </div>
