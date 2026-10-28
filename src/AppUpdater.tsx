@@ -15,6 +15,7 @@ type AppNotificationsPlugin = {
   isIgnoringBatteryOptimizations(): Promise<{ ignoring: boolean }>;
   requestIgnoreBatteryOptimizations(): Promise<void>;
   openAutostartSettings(): Promise<void>;
+  logException(options: { message: string; stack?: string }): Promise<void>;
 };
 export const appNotifications = registerPlugin<AppNotificationsPlugin>("AppNotifications");
 const releasesUrl = "https://api.github.com/repos/larrysm786786/sajra/releases/latest";

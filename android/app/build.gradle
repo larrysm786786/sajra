@@ -51,6 +51,7 @@ dependencies {
     // Capacitor plugin only depends on it as "implementation", which doesn't expose the class
     // to this module, so it has to be declared here too or the build fails to compile.
     implementation "com.google.firebase:firebase-messaging:$firebaseMessagingVersion"
+    implementation "com.google.firebase:firebase-crashlytics:$firebaseCrashlyticsVersion"
     // AppMessagingService.java builds notifications with NotificationCompat and sets the app
     // badge with ShortcutBadger directly - same "implementation isn't transitive" reason as above.
     implementation "androidx.core:core:$androidxCoreVersion"
@@ -64,7 +65,10 @@ dependencies {
 apply from: 'capacitor.build.gradle'
 try {
     def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) apply plugin: 'com.google.gms.google-services'
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+        apply plugin: 'com.google.firebase.crashlytics'
+    }
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }

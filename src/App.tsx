@@ -865,6 +865,28 @@ export default function App() {
     }).catch(() => {});
   }, []);
 
+  // Forwards unhandled JS errors to Crashlytics (native crashes are caught automatically, but
+  // most real-world failures here are in the WebView, not native code).
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    function reportError(message: string, stack?: string) {
+      void appNotifications.logException({ message, stack }).catch(() => {});
+    }
+    function onError(event: ErrorEvent) {
+      reportError(event.message, event.error instanceof Error ? event.error.stack : undefined);
+    }
+    function onRejection(event: PromiseRejectionEvent) {
+      const reason = event.reason;
+      reportError(reason instanceof Error ? reason.message : String(reason), reason instanceof Error ? reason.stack : undefined);
+    }
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+    };
+  }, []);
+
   // The app icon's red badge count is bumped natively (AppMessagingService.java) when an
   // announcement push arrives, since that has to work even if the app is closed in the
   // background - a JS-side pushNotificationReceived listener only fires while the app is open.

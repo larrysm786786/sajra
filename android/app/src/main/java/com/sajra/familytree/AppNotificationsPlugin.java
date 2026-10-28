@@ -12,10 +12,26 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.google.firebase.messaging.FirebaseMessaging;
 
 @CapacitorPlugin(name = "AppNotifications")
 public class AppNotificationsPlugin extends Plugin {
+    /**
+     * Most crashes in this app are unhandled JS exceptions inside the WebView, not native Java
+     * ones - Crashlytics only captures those automatically, so the JS side forwards window.onerror
+     * / unhandledrejection here to get them into the same crash-free-users dashboard.
+     */
+    @PluginMethod
+    public void logException(PluginCall call) {
+        String message = call.getString("message", "Unknown JS error");
+        String stack = call.getString("stack", "");
+        FirebaseCrashlytics crashlytics = FirebaseCrashlytics.getInstance();
+        crashlytics.log(stack.isEmpty() ? message : message + "\n" + stack);
+        crashlytics.recordException(new Throwable(message));
+        call.resolve();
+    }
+
     /**
      * Android has no API an app can use to request exemption from OEM-specific background
      * kill rules (MIUI's "Autostart" toggle, Samsung's "Put unused apps to sleep", etc) - those
