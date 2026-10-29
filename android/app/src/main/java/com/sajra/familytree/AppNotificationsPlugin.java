@@ -109,6 +109,46 @@ public class AppNotificationsPlugin extends Plugin {
         }
     }
 
+    /**
+     * Opens the exact "Sajra announcements" channel's system settings page, where Android/MIUI
+     * put per-channel sound, vibration and lock-screen controls - the official, documented intent
+     * (API 26+), unlike autostart/power-saver which have no public equivalent.
+     */
+    @PluginMethod
+    public void openChannelNotificationSettings(PluginCall call) {
+        String channelId = call.getString("channelId");
+        if (channelId == null || channelId.isEmpty()) { call.reject("A channelId is required"); return; }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) { call.resolve(); return; }
+        Intent intent = new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS);
+        intent.putExtra(Settings.EXTRA_APP_PACKAGE, getContext().getPackageName());
+        intent.putExtra(Settings.EXTRA_CHANNEL_ID, channelId);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            getContext().startActivity(intent);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Could not open channel settings", e);
+        }
+    }
+
+    /**
+     * Opens the app's overall notification settings page (all channels plus the app icon badge
+     * toggle on most OEMs including MIUI) - also an official, documented intent (API 26+).
+     */
+    @PluginMethod
+    public void openAppNotificationSettings(PluginCall call) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) { call.resolve(); return; }
+        Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+        intent.putExtra(Settings.EXTRA_APP_PACKAGE, getContext().getPackageName());
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            getContext().startActivity(intent);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Could not open notification settings", e);
+        }
+    }
+
     @PluginMethod
     public void subscribeToTopic(PluginCall call) {
         String topic = call.getString("topic");

@@ -15,6 +15,8 @@ type AppNotificationsPlugin = {
   isIgnoringBatteryOptimizations(): Promise<{ ignoring: boolean }>;
   requestIgnoreBatteryOptimizations(): Promise<void>;
   openAutostartSettings(): Promise<void>;
+  openChannelNotificationSettings(options: { channelId: string }): Promise<void>;
+  openAppNotificationSettings(): Promise<void>;
   logException(options: { message: string; stack?: string }): Promise<void>;
 };
 export const appNotifications = registerPlugin<AppNotificationsPlugin>("AppNotifications");
@@ -124,6 +126,20 @@ export default function AppUpdaterCard({ language }: { language: Language }) {
       setDeliveryMessage(ur ? "ترتیبات نہیں کھل سکیں۔" : "Could not open settings.");
     }
   }
+  async function openChannelSettings() {
+    try {
+      await appNotifications.openChannelNotificationSettings({ channelId: "sajra_announcements" });
+    } catch {
+      setDeliveryMessage(ur ? "ترتیبات نہیں کھل سکیں۔" : "Could not open settings.");
+    }
+  }
+  async function openAppNotifSettings() {
+    try {
+      await appNotifications.openAppNotificationSettings();
+    } catch {
+      setDeliveryMessage(ur ? "ترتیبات نہیں کھل سکیں۔" : "Could not open settings.");
+    }
+  }
   async function install() {
     if (!apkUrl) return;
     setBusy(true);
@@ -169,17 +185,38 @@ export default function AppUpdaterCard({ language }: { language: Language }) {
       </button>
       {announcementNotifications.message ? <small style={{ display: "block", marginTop: 8 }}>{announcementNotifications.message}</small> : null}
     </div>
-    {batteryIgnoring === false ? <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
+    <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
       <strong>{ur ? "اطلاعات نہیں مل رہیں؟" : "Not receiving notifications?"}</strong>
-      <p style={{ margin: "6px 0 10px" }}>{ur ? "کچھ فون کمپنیاں (جیسے Xiaomi، Oppo، Vivo، Huawei) بند ایپس کو اطلاعات بھیجنے سے روک دیتی ہیں، جب تک یہ اجازتیں آن نہ ہوں۔" : "Some phone brands (Xiaomi, Oppo, Vivo, Huawei) block closed apps from receiving notifications unless these are allowed."}</p>
-      <button className="btn-ghost notif-toggle-btn" type="button" onClick={() => void allowBackgroundActivity()} style={{ marginRight: 8, marginBottom: 8 }}>
-        {ur ? "بیک گراؤنڈ سرگرمی کی اجازت دیں" : "Allow background activity"}
-      </button>
-      <button className="btn-ghost notif-toggle-btn" type="button" onClick={() => void openAutostart()} style={{ marginBottom: 8 }}>
-        {ur ? "Autostart کی ترتیبات کھولیں" : "Open autostart settings"}
-      </button>
+      <p style={{ margin: "6px 0 12px" }}>{ur ? "کچھ فون کمپنیاں (جیسے Xiaomi، Oppo، Vivo، Huawei) بند ایپس کو اطلاعات بھیجنے سے روک دیتی ہیں۔ نیچے دی گئی چاروں ترتیبات چیک کریں۔" : "Some phone brands (Xiaomi, Oppo, Vivo, Huawei) block closed apps from receiving notifications. Check all four settings below."}</p>
+
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontWeight: 600, marginBottom: 2 }}>{ur ? "1. Autostart آن کریں" : "1. Turn on Autostart"}</div>
+        <p style={{ margin: "0 0 6px", fontSize: 13, opacity: 0.85 }}>{ur ? "MIUI نئی ایپس کے لیے یہ بند رکھتا ہے، جس سے بیک گراؤنڈ میں پیغام نہیں پہنچتا۔" : "MIUI keeps this off for new apps by default, which blocks background messages."}</p>
+        <button className="btn-ghost notif-toggle-btn" type="button" onClick={() => void openAutostart()}>{ur ? "Autostart ترتیبات کھولیں" : "Open autostart settings"}</button>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontWeight: 600, marginBottom: 2 }}>{ur ? "2. بیٹری سیور کو \"No restrictions\" کریں" : "2. Set battery saver to \"No restrictions\""}</div>
+        <p style={{ margin: "0 0 6px", fontSize: 13, opacity: 0.85 }}>
+          {batteryIgnoring === true ? (ur ? "اجازت مل چکی ہے۔" : "Already allowed.") : (ur ? "\"Save battery\" کی بجائے \"No restrictions\" چنیں۔" : "Choose \"No restrictions\" instead of \"Save battery\".")}
+        </p>
+        <button className="btn-ghost notif-toggle-btn" type="button" onClick={() => void allowBackgroundActivity()}>{ur ? "بیٹری ترتیبات کھولیں" : "Open battery settings"}</button>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontWeight: 600, marginBottom: 2 }}>{ur ? "3. اعلانات کی آواز چیک کریں" : "3. Check announcement sound"}</div>
+        <p style={{ margin: "0 0 6px", fontSize: 13, opacity: 0.85 }}>{ur ? "\"Sajra announcements\" چینل میں Sound آن ہونا چاہیے۔" : "The \"Sajra announcements\" channel should have Sound turned on."}</p>
+        <button className="btn-ghost notif-toggle-btn" type="button" onClick={() => void openChannelSettings()}>{ur ? "چینل ترتیبات کھولیں" : "Open channel settings"}</button>
+      </div>
+
+      <div style={{ marginBottom: 4 }}>
+        <div style={{ fontWeight: 600, marginBottom: 2 }}>{ur ? "4. ایپ آئیکون بیج کی اجازت" : "4. App icon badge permission"}</div>
+        <p style={{ margin: "0 0 6px", fontSize: 13, opacity: 0.85 }}>{ur ? "یہاں Sajra کے لیے بیج (badge) آن ہونا چاہیے۔" : "The app icon badge should be allowed for Sajra here."}</p>
+        <button className="btn-ghost notif-toggle-btn" type="button" onClick={() => void openAppNotifSettings()}>{ur ? "اطلاعات کی ترتیبات کھولیں" : "Open notification settings"}</button>
+      </div>
+
       {deliveryMessage ? <small style={{ display: "block", marginTop: 8 }}>{deliveryMessage}</small> : null}
-    </div> : null}
+    </div>
     <small style={{ display: "block", marginTop: 10 }}>{ur ? "انسٹال کرنے کی آخری اجازت Android دے گا۔" : "Android asks you to confirm before installing an update."}</small>
   </div>;
 }
