@@ -26,6 +26,7 @@ import me.leolin.shortcutbadger.ShortcutBadger;
 public class AppMessagingService extends com.capacitorjs.plugins.pushnotifications.MessagingService {
     private static final String CHANNEL_ANNOUNCEMENTS = "sajra_announcements";
     private static final String CHANNEL_LIVE = "sajra_live";
+    private static final String CHANNEL_EVENTS = "sajra_events";
     private static final String BADGE_PREFS_NAME = "capacitor.badge";
     private static final String BADGE_KEY = "capacitor.badge";
 
@@ -43,6 +44,10 @@ public class AppMessagingService extends com.capacitorjs.plugins.pushnotificatio
         } else if ("live".equals(type)) {
             showNotification(CHANNEL_LIVE, "Sajra live", "Live video links posted by the Sajra admin",
                 title != null ? title : "Sajra is live", body);
+            bumpBadge();
+        } else if ("events".equals(type)) {
+            showNotification(CHANNEL_EVENTS, "Sajra birthdays & anniversaries", "Family birthdays and remembrance days",
+                title != null ? title : "Today in the family", body);
             bumpBadge();
         }
     }

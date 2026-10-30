@@ -91,6 +91,13 @@ export default function AppUpdaterCard({ language }: { language: Language }) {
     "Family announcements posted by the Sajra admin",
     "sajra-announcement-notifications"
   );
+  const eventNotifications = useTopicNotifications(
+    "sajra_events",
+    "sajra_events",
+    "Sajra birthdays & anniversaries",
+    "Family birthdays and remembrance days",
+    "sajra-event-notifications"
+  );
   if (!Capacitor.isNativePlatform()) return null;
   async function check() {
     setBusy(true); setApkUrl("");
@@ -204,6 +211,19 @@ export default function AppUpdaterCard({ language }: { language: Language }) {
         {announcementNotifications.busy ? (ur ? "براہ کرم انتظار کریں…" : "Please wait…") : announcementNotifications.enabled ? (ur ? "آن" : "Turn on") : (ur ? "آف" : "Turn off")}
       </button>
       {announcementNotifications.message ? <small style={{ display: "block", marginTop: 8 }}>{announcementNotifications.message}</small> : null}
+    </div>
+    <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
+      <strong>{ur ? "سالگرہ اور یادگار دن کی اطلاعات" : "Birthday & remembrance notifications"}</strong>
+      <p style={{ margin: "6px 0 10px" }}>{ur ? "خاندان میں کسی کی سالگرہ یا یادگار دن ہونے پر صبح اطلاع حاصل کریں۔" : "Get a morning notification when it's someone's birthday or remembrance day in the family."}</p>
+      <button
+        className={`btn-ghost notif-toggle-btn${eventNotifications.enabled ? " active" : ""}`}
+        type="button"
+        disabled={eventNotifications.busy}
+        onClick={() => void eventNotifications.toggle(ur)}
+      >
+        {eventNotifications.busy ? (ur ? "براہ کرم انتظار کریں…" : "Please wait…") : eventNotifications.enabled ? (ur ? "آن" : "Turn on") : (ur ? "آف" : "Turn off")}
+      </button>
+      {eventNotifications.message ? <small style={{ display: "block", marginTop: 8 }}>{eventNotifications.message}</small> : null}
     </div>
     <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
       <strong>{ur ? "اطلاعات نہیں مل رہیں؟" : "Not receiving notifications?"}</strong>
