@@ -194,6 +194,14 @@ const STRINGS = {
     liveNotificationFailed: "Posted, but the push notification could not be sent.",
     liveLinkSaved: "Live link saved.",
 
+    eyebrowGuestbook: "Guestbook",
+    guestbookTitle: "Memories & wishes",
+    guestbookSubtitle: "Leave a message on this profile - a memory, a birthday wish, anything you'd like the family to see.",
+    guestbookMessageLabel: "Message",
+    guestbookMessagePlaceholder: "Write a message...",
+    guestbookPostButton: "Post message",
+    noGuestbookEntries: "No messages yet. Be the first to leave one.",
+
     eyebrowHero: "Sajra family archive",
     heroLegacyTitleLine1: "Nine Generations.",
     heroLegacyTitleLine2: "One Legacy.",
@@ -599,6 +607,14 @@ const STRINGS = {
     liveNotificationSent: "پوسٹ ہو گیا، اور سب کو اطلاع بھیج دی گئی۔",
     liveNotificationFailed: "پوسٹ ہو گیا، لیکن پش اطلاع نہیں بھیجی جا سکی۔",
     liveLinkSaved: "لائیو لنک محفوظ ہو گیا۔",
+
+    eyebrowGuestbook: "یادداشتیں",
+    guestbookTitle: "یادیں اور نیک خواہشات",
+    guestbookSubtitle: "اس پروفائل پر ایک پیغام چھوڑیں - کوئی یاد، سالگرہ کی مبارکباد، یا کچھ بھی جو خاندان کو دکھانا چاہیں۔",
+    guestbookMessageLabel: "پیغام",
+    guestbookMessagePlaceholder: "پیغام لکھیں...",
+    guestbookPostButton: "پیغام پوسٹ کریں",
+    noGuestbookEntries: "ابھی کوئی پیغام نہیں۔ سب سے پہلے آپ لکھیں۔",
 
     eyebrowHero: "شجرہ خاندانی آرکائیو",
     heroLegacyTitleLine1: "نو نسلیں۔",

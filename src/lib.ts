@@ -24,7 +24,8 @@ export function createEmptyState(): AppState {
     visitorCount: 0,
     suggestions: [],
     announcements: [],
-    liveStream: { url: null, title: null, updatedAt: null }
+    liveStream: { url: null, title: null, updatedAt: null },
+    profileComments: []
   };
 }
 
@@ -36,7 +37,8 @@ function finalizeState(state: AppState): AppState {
     visitorCount: typeof state.visitorCount === "number" ? state.visitorCount : 0,
     suggestions: Array.isArray(state.suggestions) ? state.suggestions : [],
     announcements: Array.isArray(state.announcements) ? state.announcements : [],
-    liveStream: state.liveStream && typeof state.liveStream === "object" ? state.liveStream : { url: null, title: null, updatedAt: null }
+    liveStream: state.liveStream && typeof state.liveStream === "object" ? state.liveStream : { url: null, title: null, updatedAt: null },
+    profileComments: Array.isArray(state.profileComments) ? state.profileComments : []
   };
 }
 

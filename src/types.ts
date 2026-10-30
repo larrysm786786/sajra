@@ -88,6 +88,15 @@ export interface Announcement {
   createdAt: string;
 }
 
+/** A message left on a member's profile (a memory, a birthday wish). Anyone can post one; only admins can remove one. */
+export interface ProfileComment {
+  id: number;
+  memberId: number;
+  message: string;
+  authorName?: string | null;
+  createdAt: string;
+}
+
 /** The current live video link (e.g. a YouTube stream of a family function), admin-only to set. */
 export interface LiveStream {
   url: string | null;
@@ -107,6 +116,7 @@ export interface AppState {
   suggestions: Suggestion[];
   announcements: Announcement[];
   liveStream: LiveStream;
+  profileComments: ProfileComment[];
 }
 
 export interface TreeNode {

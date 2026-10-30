@@ -2683,5 +2683,6 @@ export const SAJRA_SEED_STATE: AppState = {
   "visitorCount": 0,
   "suggestions": [],
   "announcements": [],
-  "liveStream": { "url": null, "title": null, "updatedAt": null }
+  "liveStream": { "url": null, "title": null, "updatedAt": null },
+  "profileComments": []
 } as AppState;

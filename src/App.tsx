@@ -567,6 +567,8 @@ export default function App() {
   const [liveTitleInput, setLiveTitleInput] = useState("");
   const [liveBusy, setLiveBusy] = useState(false);
   const [liveNotice, setLiveNotice] = useState("");
+  const [guestbookMessage, setGuestbookMessage] = useState("");
+  const [guestbookAuthorName, setGuestbookAuthorName] = useState("");
   const [shareNotice, setShareNotice] = useState("");
   const [lightboxImage, setLightboxImage] = useState<GalleryImage | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -1322,6 +1324,27 @@ export default function App() {
     setLiveNotice("");
   }
 
+  // Anyone (no login needed) can leave a message on a member's profile, like Suggestions; only
+  // an admin can remove one.
+  function submitGuestbookComment(memberId: number) {
+    const message = guestbookMessage.trim();
+    if (!message) return;
+    updateState((current) => ({
+      ...current,
+      profileComments: [
+        { id: nextId(current.profileComments), memberId, message, authorName: guestbookAuthorName.trim() || null, createdAt: new Date().toISOString() },
+        ...current.profileComments
+      ].slice(0, 2000)
+    }));
+    setGuestbookMessage("");
+    setGuestbookAuthorName("");
+  }
+
+  function deleteGuestbookComment(id: number) {
+    if (!isAdmin) return;
+    updateState((current) => ({ ...current, profileComments: current.profileComments.filter((comment) => comment.id !== id) }));
+  }
+
   async function shareMember(member: Member) {
     setShareNotice("");
     const url = `${window.location.origin}${import.meta.env.BASE_URL}#/member/${member.id}`;
@@ -2013,6 +2036,57 @@ export default function App() {
                     </div>
                   ) : <div className="empty">{t(language, "noChildren")}</div>}
                 </Card>
+              </div>
+
+              <div className="no-print" style={{ marginTop: 28, paddingTop: 20, borderTop: "1px solid var(--border, #ddd)" }}>
+                <span className="eyebrow">{t(language, "eyebrowGuestbook")}</span>
+                <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "guestbookTitle")}</h2>
+                <p className="section-subtitle" style={{ marginTop: 12 }}>{t(language, "guestbookSubtitle")}</p>
+                <div className="form-grid" style={{ marginTop: 14 }}>
+                  <label className="span-12">
+                    <span className="sr-only">{t(language, "guestbookMessageLabel")}</span>
+                    <textarea
+                      className="textarea"
+                      placeholder={t(language, "guestbookMessagePlaceholder")}
+                      value={guestbookMessage}
+                      onChange={(e) => setGuestbookMessage(e.target.value)}
+                    />
+                  </label>
+                  <label className="span-6">
+                    <span className="sr-only">{t(language, "suggestionNameLabel")}</span>
+                    <input
+                      className="field"
+                      placeholder={t(language, "suggestionNamePlaceholder")}
+                      value={guestbookAuthorName}
+                      onChange={(e) => setGuestbookAuthorName(e.target.value)}
+                    />
+                  </label>
+                </div>
+                <div className="actions-row" style={{ marginTop: 12 }}>
+                  <button className="btn" type="button" disabled={!guestbookMessage.trim()} onClick={() => submitGuestbookComment(member.id)}>
+                    {t(language, "guestbookPostButton")}
+                  </button>
+                </div>
+
+                {state.profileComments.filter((comment) => comment.memberId === member.id).length ? (
+                  <div className="list" style={{ marginTop: 18 }}>
+                    {state.profileComments.filter((comment) => comment.memberId === member.id).map((comment) => (
+                      <div key={comment.id} className="card announcement-card">
+                        <div className="announcement-card-body">
+                          <p className="announcement-message">{comment.message}</p>
+                          <div className="tree-sub">
+                            {formatDate(comment.createdAt, language)} | {comment.authorName || t(language, "anonymousSubmitter")}
+                          </div>
+                        </div>
+                        {isAdmin ? (
+                          <button className="btn-ghost danger" type="button" onClick={() => deleteGuestbookComment(comment.id)}>{t(language, "deleteButton")}</button>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty" style={{ marginTop: 18 }}>{t(language, "noGuestbookEntries")}</div>
+                )}
               </div>
             </>
           ) : (
