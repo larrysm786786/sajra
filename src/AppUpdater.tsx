@@ -22,6 +22,13 @@ type AppNotificationsPlugin = {
 export const appNotifications = registerPlugin<AppNotificationsPlugin>("AppNotifications");
 const releasesUrl = "https://api.github.com/repos/larrysm786786/sajra/releases/latest";
 
+function SwipeSwitch({ checked, onChange, disabled }: { checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean }) {
+  return <label className="swipe-switch">
+    <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
+    <span className="swipe-switch-track" />
+  </label>;
+}
+
 /** One on/off toggle for one FCM topic - used separately for app-update and announcement notifications, so turning one on doesn't mean the other. */
 function useTopicNotifications(topic: string, channelId: string, channelName: string, channelDescription: string, storageKey: string) {
   const [enabled, setEnabled] = useState(() => localStorage.getItem(storageKey) === "enabled");
@@ -66,6 +73,9 @@ export default function AppUpdaterCard({ language }: { language: Language }) {
   const [apkUrl, setApkUrl] = useState("");
   const [batteryIgnoring, setBatteryIgnoring] = useState<boolean | null>(null);
   const [deliveryMessage, setDeliveryMessage] = useState("");
+  const [autostartDone, setAutostartDone] = useState(() => localStorage.getItem("sajra-autostart-done") === "1");
+  const [channelSoundDone, setChannelSoundDone] = useState(() => localStorage.getItem("sajra-channel-sound-done") === "1");
+  const [badgeDone, setBadgeDone] = useState(() => localStorage.getItem("sajra-badge-done") === "1");
   const ur = language === "ur";
   const updateNotifications = useTopicNotifications(
     "sajra_updates",
@@ -109,7 +119,8 @@ export default function AppUpdaterCard({ language }: { language: Language }) {
   useEffect(() => {
     void appNotifications.isIgnoringBatteryOptimizations().then((result) => setBatteryIgnoring(result.ignoring)).catch(() => {});
   }, []);
-  async function allowBackgroundActivity() {
+  async function toggleBattery(checked: boolean) {
+    if (!checked) return;
     try {
       await appNotifications.requestIgnoreBatteryOptimizations();
       window.setTimeout(() => {
@@ -119,21 +130,30 @@ export default function AppUpdaterCard({ language }: { language: Language }) {
       setDeliveryMessage(ur ? "بیٹری کی ترتیبات نہیں کھل سکیں۔" : "Could not open the battery settings.");
     }
   }
-  async function openAutostart() {
+  async function toggleAutostart(checked: boolean) {
+    setAutostartDone(checked);
+    if (checked) localStorage.setItem("sajra-autostart-done", "1"); else localStorage.removeItem("sajra-autostart-done");
+    if (!checked) return;
     try {
       await appNotifications.openAutostartSettings();
     } catch {
       setDeliveryMessage(ur ? "ترتیبات نہیں کھل سکیں۔" : "Could not open settings.");
     }
   }
-  async function openChannelSettings() {
+  async function toggleChannelSound(checked: boolean) {
+    setChannelSoundDone(checked);
+    if (checked) localStorage.setItem("sajra-channel-sound-done", "1"); else localStorage.removeItem("sajra-channel-sound-done");
+    if (!checked) return;
     try {
       await appNotifications.openChannelNotificationSettings({ channelId: "sajra_announcements" });
     } catch {
       setDeliveryMessage(ur ? "ترتیبات نہیں کھل سکیں۔" : "Could not open settings.");
     }
   }
-  async function openAppNotifSettings() {
+  async function toggleBadge(checked: boolean) {
+    setBadgeDone(checked);
+    if (checked) localStorage.setItem("sajra-badge-done", "1"); else localStorage.removeItem("sajra-badge-done");
+    if (!checked) return;
     try {
       await appNotifications.openAppNotificationSettings();
     } catch {
@@ -189,32 +209,41 @@ export default function AppUpdaterCard({ language }: { language: Language }) {
       <strong>{ur ? "اطلاعات نہیں مل رہیں؟" : "Not receiving notifications?"}</strong>
       <p style={{ margin: "6px 0 12px" }}>{ur ? "کچھ فون کمپنیاں (جیسے Xiaomi، Oppo، Vivo، Huawei) بند ایپس کو اطلاعات بھیجنے سے روک دیتی ہیں۔ نیچے دی گئی چاروں ترتیبات چیک کریں۔" : "Some phone brands (Xiaomi, Oppo, Vivo, Huawei) block closed apps from receiving notifications. Check all four settings below."}</p>
 
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ fontWeight: 600, marginBottom: 2 }}>{ur ? "1. Autostart آن کریں" : "1. Turn on Autostart"}</div>
-        <p style={{ margin: "0 0 6px", fontSize: 13, opacity: 0.85 }}>{ur ? "MIUI نئی ایپس کے لیے یہ بند رکھتا ہے، جس سے بیک گراؤنڈ میں پیغام نہیں پہنچتا۔" : "MIUI keeps this off for new apps by default, which blocks background messages."}</p>
-        <button className="btn-ghost notif-toggle-btn" type="button" onClick={() => void openAutostart()}>{ur ? "Autostart ترتیبات کھولیں" : "Open autostart settings"}</button>
+      <div className="swipe-switch-row" style={{ marginBottom: 14 }}>
+        <div>
+          <div style={{ fontWeight: 600, marginBottom: 2 }}>{ur ? "1. Autostart آن کریں" : "1. Turn on Autostart"}</div>
+          <p style={{ margin: 0, fontSize: 13, opacity: 0.85 }}>{ur ? "MIUI نئی ایپس کے لیے یہ بند رکھتا ہے، جس سے بیک گراؤنڈ میں پیغام نہیں پہنچتا۔" : "MIUI keeps this off for new apps by default, which blocks background messages."}</p>
+        </div>
+        <SwipeSwitch checked={autostartDone} onChange={(checked) => void toggleAutostart(checked)} />
       </div>
 
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ fontWeight: 600, marginBottom: 2 }}>{ur ? "2. بیٹری سیور کو \"No restrictions\" کریں" : "2. Set battery saver to \"No restrictions\""}</div>
-        <p style={{ margin: "0 0 6px", fontSize: 13, opacity: 0.85 }}>
-          {batteryIgnoring === true ? (ur ? "اجازت مل چکی ہے۔" : "Already allowed.") : (ur ? "\"Save battery\" کی بجائے \"No restrictions\" چنیں۔" : "Choose \"No restrictions\" instead of \"Save battery\".")}
-        </p>
-        <button className="btn-ghost notif-toggle-btn" type="button" onClick={() => void allowBackgroundActivity()}>{ur ? "بیٹری ترتیبات کھولیں" : "Open battery settings"}</button>
+      <div className="swipe-switch-row" style={{ marginBottom: 14 }}>
+        <div>
+          <div style={{ fontWeight: 600, marginBottom: 2 }}>{ur ? "2. بیٹری سیور کو \"No restrictions\" کریں" : "2. Set battery saver to \"No restrictions\""}</div>
+          <p style={{ margin: 0, fontSize: 13, opacity: 0.85 }}>
+            {batteryIgnoring === true ? (ur ? "اجازت مل چکی ہے۔" : "Already allowed.") : (ur ? "\"Save battery\" کی بجائے \"No restrictions\" چنیں۔" : "Choose \"No restrictions\" instead of \"Save battery\".")}
+          </p>
+        </div>
+        <SwipeSwitch checked={batteryIgnoring === true} onChange={(checked) => void toggleBattery(checked)} />
       </div>
 
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ fontWeight: 600, marginBottom: 2 }}>{ur ? "3. اعلانات کی آواز چیک کریں" : "3. Check announcement sound"}</div>
-        <p style={{ margin: "0 0 6px", fontSize: 13, opacity: 0.85 }}>{ur ? "\"Sajra announcements\" چینل میں Sound آن ہونا چاہیے۔" : "The \"Sajra announcements\" channel should have Sound turned on."}</p>
-        <button className="btn-ghost notif-toggle-btn" type="button" onClick={() => void openChannelSettings()}>{ur ? "چینل ترتیبات کھولیں" : "Open channel settings"}</button>
+      <div className="swipe-switch-row" style={{ marginBottom: 14 }}>
+        <div>
+          <div style={{ fontWeight: 600, marginBottom: 2 }}>{ur ? "3. اعلانات کی آواز چیک کریں" : "3. Check announcement sound"}</div>
+          <p style={{ margin: 0, fontSize: 13, opacity: 0.85 }}>{ur ? "\"Sajra announcements\" چینل میں Sound آن ہونا چاہیے۔" : "The \"Sajra announcements\" channel should have Sound turned on."}</p>
+        </div>
+        <SwipeSwitch checked={channelSoundDone} onChange={(checked) => void toggleChannelSound(checked)} />
       </div>
 
-      <div style={{ marginBottom: 4 }}>
-        <div style={{ fontWeight: 600, marginBottom: 2 }}>{ur ? "4. ایپ آئیکون بیج کی اجازت" : "4. App icon badge permission"}</div>
-        <p style={{ margin: "0 0 6px", fontSize: 13, opacity: 0.85 }}>{ur ? "یہاں Sajra کے لیے بیج (badge) آن ہونا چاہیے۔" : "The app icon badge should be allowed for Sajra here."}</p>
-        <button className="btn-ghost notif-toggle-btn" type="button" onClick={() => void openAppNotifSettings()}>{ur ? "اطلاعات کی ترتیبات کھولیں" : "Open notification settings"}</button>
+      <div className="swipe-switch-row" style={{ marginBottom: 4 }}>
+        <div>
+          <div style={{ fontWeight: 600, marginBottom: 2 }}>{ur ? "4. ایپ آئیکون بیج کی اجازت" : "4. App icon badge permission"}</div>
+          <p style={{ margin: 0, fontSize: 13, opacity: 0.85 }}>{ur ? "یہاں Sajra کے لیے بیج (badge) آن ہونا چاہیے۔" : "The app icon badge should be allowed for Sajra here."}</p>
+        </div>
+        <SwipeSwitch checked={badgeDone} onChange={(checked) => void toggleBadge(checked)} />
       </div>
 
+      <small style={{ display: "block", marginTop: 4, opacity: 0.7 }}>{ur ? "سوئچ آن کرنے پر متعلقہ ترتیبات کھلیں گی - Android خود یہ اسٹیٹس نہیں بتا سکتا، اس لیے یہ صرف آپ کی اپنی یاد دہانی کے لیے ہے۔" : "Turning a switch on opens the matching settings screen - Android has no way to report these back automatically, so this is just your own reminder of what's been checked."}</small>
       {deliveryMessage ? <small style={{ display: "block", marginTop: 8 }}>{deliveryMessage}</small> : null}
     </div>
     <small style={{ display: "block", marginTop: 10 }}>{ur ? "انسٹال کرنے کی آخری اجازت Android دے گا۔" : "Android asks you to confirm before installing an update."}</small>
