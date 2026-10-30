@@ -194,6 +194,11 @@ const STRINGS = {
     liveNotificationFailed: "Posted, but the push notification could not be sent.",
     liveLinkSaved: "Live link saved.",
 
+    showQrCodeButton: "Show QR code",
+    qrCodeModalTitle: "Profile QR code",
+    qrCodeModalSubtitle: "Scan this with a phone camera to open the profile - handy to share or print at a family function.",
+    downloadQrButton: "Download QR code",
+
     eyebrowGuestbook: "Guestbook",
     guestbookTitle: "Memories & wishes",
     guestbookSubtitle: "Leave a message on this profile - a memory, a birthday wish, anything you'd like the family to see.",
@@ -607,6 +612,11 @@ const STRINGS = {
     liveNotificationSent: "پوسٹ ہو گیا، اور سب کو اطلاع بھیج دی گئی۔",
     liveNotificationFailed: "پوسٹ ہو گیا، لیکن پش اطلاع نہیں بھیجی جا سکی۔",
     liveLinkSaved: "لائیو لنک محفوظ ہو گیا۔",
+
+    showQrCodeButton: "کیو آر کوڈ دکھائیں",
+    qrCodeModalTitle: "پروفائل کیو آر کوڈ",
+    qrCodeModalSubtitle: "فون کے کیمرے سے اسکین کر کے پروفائل کھولیں - خاندانی تقریب میں شیئر یا پرنٹ کرنے کے لیے مفید۔",
+    downloadQrButton: "کیو آر کوڈ ڈاؤن لوڈ کریں",
 
     eyebrowGuestbook: "یادداشتیں",
     guestbookTitle: "یادیں اور نیک خواہشات",

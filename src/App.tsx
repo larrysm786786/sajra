@@ -4,6 +4,7 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { Share } from "@capacitor/share";
 import { Badge } from "@capawesome/capacitor-badge";
+import QRCode from "qrcode";
 import { trackNativeScreenView, trackWebPageView } from "./analytics";
 import type { FormEvent, ReactNode, TouchEvent as ReactTouchEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
@@ -569,6 +570,8 @@ export default function App() {
   const [liveNotice, setLiveNotice] = useState("");
   const [guestbookMessage, setGuestbookMessage] = useState("");
   const [guestbookAuthorName, setGuestbookAuthorName] = useState("");
+  const [qrCodeMember, setQrCodeMember] = useState<Member | null>(null);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState("");
   const [shareNotice, setShareNotice] = useState("");
   const [lightboxImage, setLightboxImage] = useState<GalleryImage | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -1363,6 +1366,22 @@ export default function App() {
     }
   }
 
+  async function openQrCode(member: Member) {
+    const url = `${window.location.origin}${import.meta.env.BASE_URL}#/member/${member.id}`;
+    try {
+      const dataUrl = await QRCode.toDataURL(url, { width: 320, margin: 2, color: { dark: "#2e5185", light: "#ffffff" } });
+      setQrCodeDataUrl(dataUrl);
+      setQrCodeMember(member);
+    } catch {
+      // Generation failed (shouldn't happen offline) - just don't open the modal.
+    }
+  }
+
+  function closeQrCode() {
+    setQrCodeMember(null);
+    setQrCodeDataUrl("");
+  }
+
   function openLightbox(image: GalleryImage) {
     setLightboxImage(image);
     setZoomLevel(1);
@@ -2002,6 +2021,7 @@ export default function App() {
                   <button className="btn-ghost" type="button" onClick={() => window.print()}>{t(language, "printProfileButton")}</button>
                   <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor(member)}>{t(language, "suggestCorrectionButton")}</button><button className="btn-ghost" type="button" onClick={() => navigate({ page: "branch", memberId: member.id })}>{t(language, "shareFamilyBranchButton")}</button>
                   <button className="btn-ghost" type="button" onClick={() => void shareMember(member)}>{t(language, "shareProfileButton")}</button>
+                  <button className="btn-ghost" type="button" onClick={() => void openQrCode(member)}>{t(language, "showQrCodeButton")}</button>
                 </div>
                 {suggestionSent ? <p className="hint no-print">{t(language, "suggestionSentMessage")}</p> : null}
                 {shareNotice ? <p className="hint no-print">{shareNotice}</p> : null}
@@ -3339,6 +3359,25 @@ export default function App() {
               {suggestionBusy ? t(language, "sendingSuggestion") : t(language, "sendSuggestionButton")}
             </button>
             <button className="btn-ghost" type="button" onClick={closeSuggestionEditor}>{t(language, "cancelButton")}</button>
+          </div>
+        </Modal>
+      ) : null}
+
+      {qrCodeMember ? (
+        <Modal title={t(language, "qrCodeModalTitle")} subtitle={displayName(qrCodeMember, language)} onClose={closeQrCode}>
+          <div style={{ textAlign: "center" }}>
+            {qrCodeDataUrl ? <img src={qrCodeDataUrl} alt={t(language, "qrCodeModalTitle")} style={{ width: 220, height: 220, borderRadius: 12 }} /> : null}
+            <p className="hint" style={{ marginTop: 12 }}>{t(language, "qrCodeModalSubtitle")}</p>
+            {qrCodeDataUrl ? (
+              <a
+                className="btn-ghost"
+                href={qrCodeDataUrl}
+                download={`sajra-${qrCodeMember.uniqueId || qrCodeMember.id}.png`}
+                style={{ marginTop: 10, display: "inline-block" }}
+              >
+                {t(language, "downloadQrButton")}
+              </a>
+            ) : null}
           </div>
         </Modal>
       ) : null}
