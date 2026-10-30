@@ -102,6 +102,7 @@ type MemberDraft = {
   age: string;
   dod: string;
   birthplace: string;
+  daughtersCount: string;
   professionChoice: string;
   professionOther: string;
   showInHeroSlider: boolean;
@@ -212,6 +213,7 @@ function emptyMemberDraft(member?: Member): MemberDraft {
         age: calculateAge(member.dob, member.dod) !== null ? String(calculateAge(member.dob, member.dod)) : "",
         dod: member.dod ?? "",
         birthplace: member.birthplace ?? "",
+        daughtersCount: member.daughtersCount != null ? String(member.daughtersCount) : "",
         ...professionDraftFields(member.profession),
         showInHeroSlider: member.showInHeroSlider === true,
         photo: member.photo ?? "",
@@ -227,6 +229,7 @@ function emptyMemberDraft(member?: Member): MemberDraft {
         age: "",
         dod: "",
         birthplace: "",
+        daughtersCount: "",
         professionChoice: "",
         professionOther: "",
         showInHeroSlider: false,
@@ -1454,6 +1457,11 @@ export default function App() {
         ? existingMember.dob ?? null
         : `${new Date().getFullYear() - typedAge}-01-01`;
 
+    // Sajra records sons as individual member profiles but, per the family's own convention,
+    // daughters only as a count on their parent's profile - never by name.
+    const typedDaughters = memberDraft.daughtersCount.trim() ? Number(memberDraft.daughtersCount.trim()) : null;
+    const daughtersCount = typedDaughters !== null && Number.isFinite(typedDaughters) ? Math.max(0, Math.round(typedDaughters)) : null;
+
     const updated: Member = {
       id,
       uniqueId: existingMember?.uniqueId || nextUniqueId(state.members),
@@ -1463,6 +1471,7 @@ export default function App() {
       dob,
       dod: memberDraft.dod || null,
       birthplace: memberDraft.birthplace.trim() || null,
+      daughtersCount,
       profession: normalizeProfession(memberDraft.professionChoice === PROFESSION_OTHER ? memberDraft.professionOther : memberDraft.professionChoice),
       showInHeroSlider: isAdmin ? memberDraft.showInHeroSlider : Boolean(existingMember?.showInHeroSlider),
       photo: memberDraft.photo.trim() || null,
@@ -1958,6 +1967,7 @@ export default function App() {
                     {member.birthplace || t(language, "noBirthplace")}
                     {member.dod ? ` | ${t(language, "diedWord")} ${formatDate(member.dod, language)}` : ""}
                     {calculateAge(member.dob, member.dod) !== null ? ` | ${t(language, "ageWord")} ${calculateAge(member.dob, member.dod)}` : ""}
+                    {member.daughtersCount != null ? ` | ${t(language, "daughtersCountLabel")}: ${member.daughtersCount}` : ""}
                   </p>
                 </div>
               </div>
@@ -2903,6 +2913,20 @@ export default function App() {
             <label className="span-6">
               <span className="sr-only">{t(language, "birthplaceLabel")}</span>
               <input className="field" placeholder={t(language, "birthplaceLabel")} value={memberDraft.birthplace} onChange={(e) => setMemberDraft((current) => current ? { ...current, birthplace: e.target.value } : current)} />
+            </label>
+            <label className="span-6">
+              <span className="sr-only">{t(language, "daughtersCountLabel")}</span>
+              <input
+                className="field"
+                type="number"
+                min="0"
+                max="30"
+                placeholder={t(language, "daughtersCountLabel")}
+                aria-label={t(language, "daughtersCountLabel")}
+                value={memberDraft.daughtersCount}
+                onChange={(e) => setMemberDraft((current) => current ? { ...current, daughtersCount: e.target.value } : current)}
+              />
+              <small className="muted">{t(language, "daughtersCountHint")}</small>
             </label>
             <label className="span-6">
               <span className="sr-only">{t(language, "professionLabel")}</span>

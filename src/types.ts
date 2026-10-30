@@ -18,6 +18,8 @@ export interface Member {
   profession?: string | null;
   /** Whether an admin selected this member for the homepage professional photo slider. */
   showInHeroSlider?: boolean;
+  /** How many daughters this member had, recorded as a count only (Sajra records sons individually but not daughters by name). */
+  daughtersCount?: number | null;
   photo?: string | null;
   bio?: string | null;
   fatherId?: number | null;
