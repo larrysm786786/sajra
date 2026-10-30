@@ -204,6 +204,7 @@ const STRINGS = {
     unlockAdminButton: "Unlock",
     biometricUnlockFailed: "Could not verify. Try again.",
 
+    silsilaLabel: "Silsila (lineage)",
     showQrCodeButton: "Show QR code",
     qrCodeModalTitle: "Profile QR code",
     qrCodeModalSubtitle: "Scan this with a phone camera to open the profile - handy to share or print at a family function.",
@@ -633,6 +634,7 @@ const STRINGS = {
     unlockAdminButton: "ان لاک کریں",
     biometricUnlockFailed: "تصدیق نہیں ہو سکی۔ دوبارہ کوشش کریں۔",
 
+    silsilaLabel: "سلسلہ (نسب)",
     showQrCodeButton: "کیو آر کوڈ دکھائیں",
     qrCodeModalTitle: "پروفائل کیو آر کوڈ",
     qrCodeModalSubtitle: "فون کے کیمرے سے اسکین کر کے پروفائل کھولیں - خاندانی تقریب میں شیئر یا پرنٹ کرنے کے لیے مفید۔",

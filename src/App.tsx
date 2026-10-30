@@ -17,6 +17,7 @@ import {
   exportJson,
   findRelation,
   formatDate,
+  getAncestorChain,
   getChildren,
   findDataQualityIssues,
   getFamilyCalendarEvents,
@@ -2041,6 +2042,7 @@ export default function App() {
     }
     if (route.page === "member") {
       const member = selectedMember;
+      const ancestorChain = member ? getAncestorChain(state.members, member.id) : [];
       return (
         <section className="section member-profile-section">
           {member ? (
@@ -2061,6 +2063,26 @@ export default function App() {
                   </p>
                 </div>
               </div>
+
+              {ancestorChain.length > 1 ? (
+                <div className="silsila-chain no-print">
+                  <span className="silsila-label">{t(language, "silsilaLabel")}</span>
+                  <div className="silsila-chain-row">
+                    {ancestorChain.map((ancestor, index) => (
+                      <span key={ancestor.id} className="silsila-chain-item">
+                        {ancestor.id === member.id ? (
+                          <strong className="silsila-chain-current">{displayName(ancestor, language)}</strong>
+                        ) : (
+                          <button type="button" className="silsila-chain-link" onClick={() => navigate({ page: "member", memberId: ancestor.id })}>
+                            {displayName(ancestor, language)}
+                          </button>
+                        )}
+                        {index < ancestorChain.length - 1 ? <span className="silsila-chain-arrow" aria-hidden="true">{"→"}</span> : null}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
               <div className="profile-actions-bio">
                 <div className="profile-meta no-print">

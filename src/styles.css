@@ -976,6 +976,55 @@ button {
   gap: 14px;
 }
 
+.silsila-chain {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--accent) 6%, var(--surface-strong));
+}
+.silsila-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-strong);
+  margin-bottom: 6px;
+}
+.silsila-chain-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+}
+.silsila-chain-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.silsila-chain-link {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--accent-strong);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.silsila-chain-current {
+  font-size: 0.88rem;
+  color: var(--text);
+}
+.silsila-chain-arrow {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 .live-video-wrap {
   position: relative;
   width: 100%;

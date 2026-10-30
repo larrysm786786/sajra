@@ -336,6 +336,26 @@ export function treeDepth(nodes: TreeNode[]): number {
   return 1 + Math.max(...nodes.map((node) => treeDepth(node.children)));
 }
 
+/**
+ * The direct lineage ("silsila") from the family's founding ancestor down to this member,
+ * following the same single-parent-per-generation link buildTree uses (fatherId, falling back
+ * to motherId) rather than both parents, so it lines up with how the tree itself is structured.
+ * Returns oldest ancestor first, the member themself last.
+ */
+export function getAncestorChain(members: Member[], memberId: number): Member[] {
+  const byId = new Map(members.map((member) => [member.id, member]));
+  const chain: Member[] = [];
+  const seen = new Set<number>();
+  let current = byId.get(memberId);
+  while (current && !seen.has(current.id)) {
+    chain.push(current);
+    seen.add(current.id);
+    const parentId = current.fatherId || current.motherId;
+    current = parentId ? byId.get(parentId) : undefined;
+  }
+  return chain.reverse();
+}
+
 export function sortMembers(a: Member, b: Member): number {
   return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
 }
