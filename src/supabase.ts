@@ -227,6 +227,34 @@ export async function sendLiveNotification(title: string | null): Promise<void> 
   }
 }
 
+const VIDEO_BUCKET = "sajra-videos";
+export const MAX_VIDEO_UPLOAD_BYTES = 95 * 1024 * 1024; // Comfortably under Supabase's free-tier 100MB request-body limit.
+
+/**
+ * Uploads a video file (e.g. an important family moment that wasn't livestreamed) to Supabase
+ * Storage and returns its public URL. Unlike gallery photos, video files are kept out of the
+ * sajra_state JSONB row entirely - a single row's worth of base64-encoded video would bloat
+ * every page load for every visitor and quickly blow past the free tier's database size limit,
+ * so only the (small) resulting URL string ever enters that JSON blob.
+ */
+export async function uploadLiveVideo(file: File): Promise<string> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+  if (file.size > MAX_VIDEO_UPLOAD_BYTES) throw new Error("That video is too large (max 95MB).");
+
+  const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "mp4";
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+
+  const { error } = await supabase.storage.from(VIDEO_BUCKET).upload(path, file, {
+    contentType: file.type || "video/mp4",
+    upsert: false
+  });
+  if (error) throw new Error(error.message);
+
+  const { data } = supabase.storage.from(VIDEO_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
 /** Sends a password-recovery email with a link back to this site. */
 export async function sendPasswordResetEmail(email: string): Promise<void> {
   const supabase = getSupabaseClient();

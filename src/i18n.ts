@@ -194,6 +194,10 @@ const STRINGS = {
     liveNotificationSent: "Posted, and a notification was sent to everyone.",
     liveNotificationFailed: "Posted, but the push notification could not be sent.",
     liveLinkSaved: "Live link saved.",
+    liveOrUploadTitle: "Or upload a video",
+    liveOrUploadHint: "Got an important video that isn't on YouTube? Upload it directly (up to 95MB) and it plays the same way.",
+    liveVideoTooLarge: "That video is too large (max 95MB).",
+    liveVideoUploadFailed: "The video could not be uploaded.",
 
     biometricLockTitle: "Admin Dashboard locked",
     biometricLockSubtitle: "Confirm it's you with your fingerprint, face, or device PIN to continue.",
@@ -619,6 +623,10 @@ const STRINGS = {
     liveNotificationSent: "پوسٹ ہو گیا، اور سب کو اطلاع بھیج دی گئی۔",
     liveNotificationFailed: "پوسٹ ہو گیا، لیکن پش اطلاع نہیں بھیجی جا سکی۔",
     liveLinkSaved: "لائیو لنک محفوظ ہو گیا۔",
+    liveOrUploadTitle: "یا ویڈیو اپ لوڈ کریں",
+    liveOrUploadHint: "کوئی اہم ویڈیو ہے جو یوٹیوب پر نہیں؟ اسے براہ راست اپ لوڈ کریں (زیادہ سے زیادہ 95MB)، یہ اسی طرح چلے گی۔",
+    liveVideoTooLarge: "یہ ویڈیو بہت بڑی ہے (زیادہ سے زیادہ 95MB)۔",
+    liveVideoUploadFailed: "ویڈیو اپ لوڈ نہیں ہو سکی۔",
 
     biometricLockTitle: "ایڈمن ڈیش بورڈ مقفل ہے",
     biometricLockSubtitle: "جاری رکھنے کے لیے اپنے فنگر پرنٹ، چہرے، یا ڈیوائس PIN سے تصدیق کریں۔",

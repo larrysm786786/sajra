@@ -100,6 +100,8 @@ export interface ProfileComment {
 /** The current live video link (e.g. a YouTube stream of a family function), admin-only to set. */
 export interface LiveStream {
   url: string | null;
+  /** "youtube" embeds url as a YouTube player; "upload" plays it directly as a video file. */
+  kind?: "youtube" | "upload" | null;
   title?: string | null;
   updatedAt: string | null;
 }

@@ -49,7 +49,9 @@ import {
   publishInitialState,
   saveSupabaseState,
   sendAnnouncementNotification,
+  MAX_VIDEO_UPLOAD_BYTES,
   sendLiveNotification,
+  uploadLiveVideo,
   sendPasswordResetEmail,
   signInWithPassword,
   signOutSupabase,
@@ -1292,20 +1294,13 @@ export default function App() {
   // Only admins may set the live link - any signed-in editor/contributor can post an
   // announcement, but a live family event notification going to literally every install
   // (see the sajra_live auto-subscribe effect below) needs tighter control than that.
-  async function publishLiveStream() {
-    if (!isAdmin || liveBusy) return;
-    const url = liveUrlInput.trim();
-    const title = liveTitleInput.trim();
-    if (!getYouTubeEmbedUrl(url)) {
-      setLiveNotice(t(language, "liveInvalidUrl"));
-      return;
-    }
+  async function publishLive(url: string, kind: "youtube" | "upload", title: string) {
     setLiveBusy(true);
     setLiveNotice("");
     try {
       let publishedState: AppState | null = null;
       updateState((current) => {
-        const next = { ...current, liveStream: { url, title: title || null, updatedAt: new Date().toISOString() } };
+        const next = { ...current, liveStream: { url, kind, title: title || null, updatedAt: new Date().toISOString() } };
         publishedState = next;
         return next;
       });
@@ -1322,6 +1317,34 @@ export default function App() {
       }
     } finally {
       setLiveBusy(false);
+    }
+  }
+
+  async function publishLiveStream() {
+    if (!isAdmin || liveBusy) return;
+    const url = liveUrlInput.trim();
+    const title = liveTitleInput.trim();
+    if (!getYouTubeEmbedUrl(url)) {
+      setLiveNotice(t(language, "liveInvalidUrl"));
+      return;
+    }
+    await publishLive(url, "youtube", title);
+  }
+
+  async function uploadLiveVideoFile(file?: File) {
+    if (!isAdmin || !file || liveBusy) return;
+    if (file.size > MAX_VIDEO_UPLOAD_BYTES) {
+      setLiveNotice(t(language, "liveVideoTooLarge"));
+      return;
+    }
+    setLiveBusy(true);
+    setLiveNotice("");
+    try {
+      const url = await uploadLiveVideo(file);
+      await publishLive(url, "upload", liveTitleInput.trim());
+    } catch (error) {
+      setLiveBusy(false);
+      setLiveNotice(`${t(language, "liveVideoUploadFailed")} ${error instanceof Error ? error.message : ""}`);
     }
   }
 
@@ -2572,23 +2595,28 @@ export default function App() {
     }
 
     if (route.page === "live") {
-      const embedUrl = state.liveStream?.url ? getYouTubeEmbedUrl(state.liveStream.url) : null;
+      const isUploadedVideo = state.liveStream?.kind === "upload" && Boolean(state.liveStream.url);
+      const embedUrl = !isUploadedVideo && state.liveStream?.url ? getYouTubeEmbedUrl(state.liveStream.url) : null;
       return (
         <section className="section">
           <span className="eyebrow">{t(language, "eyebrowLive")}</span>
           <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "liveTitle")}</h2>
           <p className="section-subtitle" style={{ marginTop: 12 }}>{t(language, "liveSubtitle")}</p>
 
-          {embedUrl ? (
+          {embedUrl || isUploadedVideo ? (
             <div className="card" style={{ marginTop: 18 }}>
               {state.liveStream?.title ? <h3 style={{ marginTop: 0 }}>{state.liveStream.title}</h3> : null}
               <div className="live-video-wrap">
-                <iframe
-                  src={embedUrl}
-                  title={state.liveStream?.title || t(language, "liveTitle")}
-                  allow="autoplay; encrypted-media; picture-in-picture"
-                  allowFullScreen
-                />
+                {isUploadedVideo ? (
+                  <video src={state.liveStream!.url!} controls playsInline style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
+                ) : (
+                  <iframe
+                    src={embedUrl!}
+                    title={state.liveStream?.title || t(language, "liveTitle")}
+                    allow="autoplay; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                  />
+                )}
               </div>
               {state.liveStream?.updatedAt ? <div className="tree-sub" style={{ marginTop: 10 }}>{formatDate(state.liveStream.updatedAt, language)}</div> : null}
               {isAdmin ? (
@@ -2604,15 +2632,6 @@ export default function App() {
               <strong>{t(language, "liveAdminSectionTitle")}</strong>
               <div className="form-grid" style={{ marginTop: 12 }}>
                 <label className="span-12">
-                  <span className="sr-only">{t(language, "liveUrlLabel")}</span>
-                  <input
-                    className="field"
-                    placeholder={t(language, "liveUrlPlaceholder")}
-                    value={liveUrlInput}
-                    onChange={(e) => setLiveUrlInput(e.target.value)}
-                  />
-                </label>
-                <label className="span-12">
                   <span className="sr-only">{t(language, "liveTitleLabel")}</span>
                   <input
                     className="field"
@@ -2621,12 +2640,34 @@ export default function App() {
                     onChange={(e) => setLiveTitleInput(e.target.value)}
                   />
                 </label>
+                <label className="span-12">
+                  <span className="sr-only">{t(language, "liveUrlLabel")}</span>
+                  <input
+                    className="field"
+                    placeholder={t(language, "liveUrlPlaceholder")}
+                    value={liveUrlInput}
+                    onChange={(e) => setLiveUrlInput(e.target.value)}
+                  />
+                </label>
               </div>
               <div className="actions-row" style={{ marginTop: 12 }}>
                 <button className="btn" type="button" disabled={!liveUrlInput.trim() || liveBusy} onClick={() => void publishLiveStream()}>
                   {liveBusy ? t(language, "sendingSuggestion") : t(language, "livePublishButton")}
                 </button>
               </div>
+
+              <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--border, #ddd)" }}>
+                <strong style={{ fontSize: "0.9rem" }}>{t(language, "liveOrUploadTitle")}</strong>
+                <p className="hint" style={{ margin: "4px 0 10px" }}>{t(language, "liveOrUploadHint")}</p>
+                <input
+                  className="field"
+                  type="file"
+                  accept="video/*"
+                  disabled={liveBusy}
+                  onChange={(e) => void uploadLiveVideoFile(e.target.files?.[0])}
+                />
+              </div>
+
               {liveNotice ? <p className="hint" style={{ marginTop: 10 }}>{liveNotice}</p> : null}
             </div>
           ) : null}
