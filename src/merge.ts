@@ -32,7 +32,8 @@ export function mergeStates(base: AppState, local: AppState, remote: AppState): 
     activityLog: [...activityLog.items].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 200),
     suggestions: [...suggestions.items].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 200),
     announcements: [...announcements.items].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 200),
-    visitorCount: (remote.visitorCount ?? 0) + visitorDelta
+    visitorCount: (remote.visitorCount ?? 0) + visitorDelta,
+    liveStream: JSON.stringify(local.liveStream) !== JSON.stringify(base.liveStream) ? local.liveStream : remote.liveStream
   };
 }
 

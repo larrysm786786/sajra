@@ -48,6 +48,7 @@ import {
   publishInitialState,
   saveSupabaseState,
   sendAnnouncementNotification,
+  sendLiveNotification,
   sendPasswordResetEmail,
   signInWithPassword,
   signOutSupabase,
@@ -162,7 +163,7 @@ function parseRoute(): RouteState {
   if (!raw || raw === "/") return { page: "home" };
   const [page, id] = raw.split("/").filter(Boolean);
   if ((page === "member" || page === "branch") && id) return { page, memberId: Number(id) || undefined };
-  if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots" || page === "calendar" || page === "settings") {
+  if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots" || page === "calendar" || page === "settings" || page === "live") {
     return { page };
   }
   return { page: "home" };
@@ -171,6 +172,26 @@ function parseRoute(): RouteState {
 function routeHash(route: RouteState): string {
   if ((route.page === "member" || route.page === "branch") && route.memberId) return `#/${route.page}/${route.memberId}`;
   return `#/${route.page}`;
+}
+
+/** Turns a youtube.com/watch, youtu.be, /live/ or /embed/ link into an embeddable player URL, or null if it isn't a recognizable YouTube link. */
+function getYouTubeEmbedUrl(rawUrl: string): string | null {
+  try {
+    const url = new URL(rawUrl.trim());
+    const host = url.hostname.replace(/^www\./, "");
+    let videoId: string | null = null;
+    if (host === "youtu.be") {
+      videoId = url.pathname.slice(1).split("/")[0] || null;
+    } else if (host === "youtube.com" || host === "m.youtube.com") {
+      if (url.pathname === "/watch") videoId = url.searchParams.get("v");
+      else if (url.pathname.startsWith("/live/")) videoId = url.pathname.split("/")[2] || null;
+      else if (url.pathname.startsWith("/embed/")) videoId = url.pathname.split("/")[2] || null;
+    }
+    if (!videoId) return null;
+    return `https://www.youtube.com/embed/${videoId}?autoplay=0`;
+  } catch {
+    return null;
+  }
 }
 
 function professionDraftFields(profession?: string | null): Pick<MemberDraft, "professionChoice" | "professionOther"> {
@@ -539,6 +560,10 @@ export default function App() {
   const [announcementDraft, setAnnouncementDraft] = useState<AnnouncementDraft | null>(null);
   const [announcementBusy, setAnnouncementBusy] = useState(false);
   const [announcementNotice, setAnnouncementNotice] = useState("");
+  const [liveUrlInput, setLiveUrlInput] = useState("");
+  const [liveTitleInput, setLiveTitleInput] = useState("");
+  const [liveBusy, setLiveBusy] = useState(false);
+  const [liveNotice, setLiveNotice] = useState("");
   const [shareNotice, setShareNotice] = useState("");
   const [lightboxImage, setLightboxImage] = useState<GalleryImage | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -864,6 +889,36 @@ export default function App() {
       localStorage.setItem("sajra-battery-exemption-prompted", "1");
     }).catch(() => {});
   }, []);
+
+  // Every install auto-subscribes to the "sajra_live" FCM topic once, so a live family event
+  // reaches everyone who has the app - unlike announcement/update notifications, this is not an
+  // opt-in toggle. Gated on localStorage so it's only attempted once; a failure (e.g. permission
+  // not yet granted) just retries on the next launch since the flag is never set on error.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    if (localStorage.getItem("sajra-live-subscribed")) return;
+    (async () => {
+      try {
+        await PushNotifications.createChannel({ id: "sajra_live", name: "Sajra live", description: "Live video links posted by the Sajra admin", importance: 4 });
+        await PushNotifications.register();
+        await appNotifications.subscribeToTopic({ topic: "sajra_live" });
+        localStorage.setItem("sajra-live-subscribed", "1");
+      } catch {
+        // Retried on the next launch.
+      }
+    })();
+  }, []);
+
+  // Seeds the admin's live-link editor fields when they land on the Live page, without
+  // clobbering what they're typing if liveStream changes elsewhere while they're still on it.
+  useEffect(() => {
+    if (route.page === "live" && isAdmin) {
+      setLiveUrlInput(state.liveStream?.url ?? "");
+      setLiveTitleInput(state.liveStream?.title ?? "");
+      setLiveNotice("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.page, isAdmin]);
 
   // Forwards unhandled JS errors to Crashlytics (native crashes are caught automatically, but
   // most real-world failures here are in the WebView, not native code).
@@ -1218,6 +1273,50 @@ export default function App() {
   function deleteAnnouncement(id: number) {
     if (!isAdmin) return;
     updateState((current) => ({ ...current, announcements: current.announcements.filter((announcement) => announcement.id !== id) }));
+  }
+
+  // Only admins may set the live link - any signed-in editor/contributor can post an
+  // announcement, but a live family event notification going to literally every install
+  // (see the sajra_live auto-subscribe effect below) needs tighter control than that.
+  async function publishLiveStream() {
+    if (!isAdmin || liveBusy) return;
+    const url = liveUrlInput.trim();
+    const title = liveTitleInput.trim();
+    if (!getYouTubeEmbedUrl(url)) {
+      setLiveNotice(t(language, "liveInvalidUrl"));
+      return;
+    }
+    setLiveBusy(true);
+    setLiveNotice("");
+    try {
+      let publishedState: AppState | null = null;
+      updateState((current) => {
+        const next = { ...current, liveStream: { url, title: title || null, updatedAt: new Date().toISOString() } };
+        publishedState = next;
+        return next;
+      });
+      if (supabaseConfigured && publishedState) await persistToSupabase(publishedState);
+      if (supabaseConfigured) {
+        try {
+          await sendLiveNotification(title || null);
+          setLiveNotice(t(language, "liveNotificationSent"));
+        } catch (error) {
+          setLiveNotice(`${t(language, "liveNotificationFailed")} ${error instanceof Error ? error.message : ""}`);
+        }
+      } else {
+        setLiveNotice(t(language, "liveLinkSaved"));
+      }
+    } finally {
+      setLiveBusy(false);
+    }
+  }
+
+  function clearLiveStream() {
+    if (!isAdmin) return;
+    updateState((current) => ({ ...current, liveStream: { url: null, title: null, updatedAt: new Date().toISOString() } }));
+    setLiveUrlInput("");
+    setLiveTitleInput("");
+    setLiveNotice("");
   }
 
   async function shareMember(member: Member) {
@@ -2325,6 +2424,69 @@ export default function App() {
       );
     }
 
+    if (route.page === "live") {
+      const embedUrl = state.liveStream?.url ? getYouTubeEmbedUrl(state.liveStream.url) : null;
+      return (
+        <section className="section">
+          <span className="eyebrow">{t(language, "eyebrowLive")}</span>
+          <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "liveTitle")}</h2>
+          <p className="section-subtitle" style={{ marginTop: 12 }}>{t(language, "liveSubtitle")}</p>
+
+          {embedUrl ? (
+            <div className="card" style={{ marginTop: 18 }}>
+              {state.liveStream?.title ? <h3 style={{ marginTop: 0 }}>{state.liveStream.title}</h3> : null}
+              <div className="live-video-wrap">
+                <iframe
+                  src={embedUrl}
+                  title={state.liveStream?.title || t(language, "liveTitle")}
+                  allow="autoplay; encrypted-media; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+              {state.liveStream?.updatedAt ? <div className="tree-sub" style={{ marginTop: 10 }}>{formatDate(state.liveStream.updatedAt, language)}</div> : null}
+              {isAdmin ? (
+                <button className="btn-ghost danger" type="button" style={{ marginTop: 10 }} onClick={clearLiveStream}>{t(language, "liveRemoveButton")}</button>
+              ) : null}
+            </div>
+          ) : (
+            <div className="empty" style={{ marginTop: 18 }}>{t(language, "liveNoStreamBody")}</div>
+          )}
+
+          {isAdmin ? (
+            <div className="notice" style={{ marginTop: 18 }}>
+              <strong>{t(language, "liveAdminSectionTitle")}</strong>
+              <div className="form-grid" style={{ marginTop: 12 }}>
+                <label className="span-12">
+                  <span className="sr-only">{t(language, "liveUrlLabel")}</span>
+                  <input
+                    className="field"
+                    placeholder={t(language, "liveUrlPlaceholder")}
+                    value={liveUrlInput}
+                    onChange={(e) => setLiveUrlInput(e.target.value)}
+                  />
+                </label>
+                <label className="span-12">
+                  <span className="sr-only">{t(language, "liveTitleLabel")}</span>
+                  <input
+                    className="field"
+                    placeholder={t(language, "liveTitlePlaceholder")}
+                    value={liveTitleInput}
+                    onChange={(e) => setLiveTitleInput(e.target.value)}
+                  />
+                </label>
+              </div>
+              <div className="actions-row" style={{ marginTop: 12 }}>
+                <button className="btn" type="button" disabled={!liveUrlInput.trim() || liveBusy} onClick={() => void publishLiveStream()}>
+                  {liveBusy ? t(language, "sendingSuggestion") : t(language, "livePublishButton")}
+                </button>
+              </div>
+              {liveNotice ? <p className="hint" style={{ marginTop: 10 }}>{liveNotice}</p> : null}
+            </div>
+          ) : null}
+        </section>
+      );
+    }
+
     if (route.page === "guide") {
       return (
         <section className="section guide-section">
@@ -2635,6 +2797,7 @@ export default function App() {
             <NavLink active={route.page === "roots"} onClick={() => navigate({ page: "roots" })}>{NAV_LABELS[language].roots}</NavLink>
             <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
             <NavLink active={route.page === "calendar"} onClick={() => navigate({ page: "calendar" })}>{t(language, "navNotificationsLabel")}</NavLink>
+            <NavLink active={route.page === "live"} onClick={() => navigate({ page: "live" })}>{t(language, "navLiveLabel")}</NavLink>
             <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
             <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
             {Capacitor.isNativePlatform() ? <NavLink active={route.page === "settings"} onClick={() => navigate({ page: "settings" })}>{t(language, "navSettingsLabel")}</NavLink> : null}

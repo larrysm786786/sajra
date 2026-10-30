@@ -197,6 +197,36 @@ export async function sendAnnouncementNotification(message: string): Promise<voi
   }
 }
 
+/**
+ * Pushes a real phone notification when an admin posts a new live video link, through the
+ * `send-live` Edge Function (supabase/functions/send-live). Unlike announcements, that function
+ * requires the caller to be an admin specifically (not just signed in), and sends to the
+ * "sajra_live" topic, which every install is auto-subscribed to (see App.tsx) rather than being
+ * an opt-in toggle, since a live family event is meant to reach everyone.
+ */
+export async function sendLiveNotification(title: string | null): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+
+  const { data, error } = await supabase.functions.invoke("send-live", { body: { title } });
+  if (error) {
+    let errorMessage = error.message;
+    const response = (error as { context?: Response }).context;
+    if (response && typeof response.json === "function") {
+      if (response.status === 404) {
+        errorMessage = "The send-live function is not deployed in Supabase yet.";
+      } else {
+        const body = await response.json().catch(() => null);
+        if (body?.error) errorMessage = String(body.error);
+      }
+    }
+    throw new Error(errorMessage);
+  }
+  if (data && typeof data === "object" && "error" in data && data.error) {
+    throw new Error(String(data.error));
+  }
+}
+
 /** Sends a password-recovery email with a link back to this site. */
 export async function sendPasswordResetEmail(email: string): Promise<void> {
   const supabase = getSupabaseClient();

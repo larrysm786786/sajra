@@ -2,7 +2,7 @@ export type Language = "en" | "ur";
 export type Theme = "light" | "dark";
 export type Gender = "male" | "female";
 export type Role = "admin" | "editor" | "contributor";
-export type ViewKey = "home" | "tree" | "gallery" | "admin" | "member" | "branch" | "calendar" | "about" | "guide" | "roots" | "settings";
+export type ViewKey = "home" | "tree" | "gallery" | "admin" | "member" | "branch" | "calendar" | "about" | "guide" | "roots" | "settings" | "live";
 
 export interface Member {
   id: number;
@@ -86,6 +86,13 @@ export interface Announcement {
   createdAt: string;
 }
 
+/** The current live video link (e.g. a YouTube stream of a family function), admin-only to set. */
+export interface LiveStream {
+  url: string | null;
+  title?: string | null;
+  updatedAt: string | null;
+}
+
 export interface AppState {
   appName: string;
   language: Language;
@@ -97,6 +104,7 @@ export interface AppState {
   visitorCount: number;
   suggestions: Suggestion[];
   announcements: Announcement[];
+  liveStream: LiveStream;
 }
 
 export interface TreeNode {
