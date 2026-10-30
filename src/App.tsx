@@ -72,7 +72,7 @@ import {
 } from "./professions";
 import { t, tGender } from "./i18n";
 import SajraChat from "./SajraChat";
-import AppUpdaterCard, { appNotifications } from "./AppUpdater";
+import AppUpdaterCard, { appBiometric, appNotifications, BIOMETRIC_LOCK_STORAGE_KEY } from "./AppUpdater";
 import { BranchPage } from "./FamilyTools";
 import type { StringKey } from "./i18n";
 
@@ -572,6 +572,8 @@ export default function App() {
   const [guestbookAuthorName, setGuestbookAuthorName] = useState("");
   const [qrCodeMember, setQrCodeMember] = useState<Member | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState("");
+  const [biometricUnlocked, setBiometricUnlocked] = useState(false);
+  const [biometricUnlockError, setBiometricUnlockError] = useState("");
   const [shareNotice, setShareNotice] = useState("");
   const [lightboxImage, setLightboxImage] = useState<GalleryImage | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -615,6 +617,9 @@ export default function App() {
   const isAdmin = isLoggedIn && userRole !== "editor" && userRole !== "contributor";
   // Contributors (and admins) may edit members that were already added; plain editors may only add new ones.
   const canEditMembers = isAdmin || userRole === "contributor";
+  // A locally-set preference (see Settings), not synced to other devices - gates the Admin
+  // Dashboard behind the device's own fingerprint/face/PIN prompt, on top of the normal login.
+  const biometricLockRequired = Capacitor.isNativePlatform() && localStorage.getItem(BIOMETRIC_LOCK_STORAGE_KEY) === "1";
   const language = state.language;
   const members = useMemo(() => [...state.members].sort(sortMembers), [state.members]);
   const memberMap = useMemo(() => new Map(state.members.map((member) => [member.id, member])), [state.members]);
@@ -1022,6 +1027,7 @@ export default function App() {
     void signOutSupabase();
     setMfaPending(false);
     setMfaFactorId("");
+    setBiometricUnlocked(false);
     navigate({ page: "home" });
   }
 
@@ -1381,6 +1387,25 @@ export default function App() {
     setQrCodeMember(null);
     setQrCodeDataUrl("");
   }
+
+  async function unlockAdminDashboard() {
+    setBiometricUnlockError("");
+    try {
+      await appBiometric.authenticate({ title: t(language, "unlockAdminButton"), subtitle: t(language, "biometricLockSubtitle") });
+      setBiometricUnlocked(true);
+    } catch {
+      setBiometricUnlockError(t(language, "biometricUnlockFailed"));
+    }
+  }
+
+  // Prompts automatically on arrival, so the user isn't forced to tap a button first - the
+  // button below is only needed if they cancel or the prompt errors.
+  useEffect(() => {
+    if (isLoggedIn && route.page === "admin" && biometricLockRequired && !biometricUnlocked) {
+      void unlockAdminDashboard();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.page, biometricLockRequired, isLoggedIn]);
 
   function openLightbox(image: GalleryImage) {
     setLightboxImage(image);
@@ -2176,6 +2201,24 @@ export default function App() {
           ) : (
             <div className="empty">{t(language, "noPhotosYet")}</div>
           )}
+        </section>
+      );
+    }
+
+    if (isLoggedIn && route.page === "admin" && biometricLockRequired && !biometricUnlocked) {
+      return (
+        <section className="section">
+          <div className="section-head">
+            <div>
+              <span className="eyebrow">{t(language, "eyebrowSettings")}</span>
+              <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "biometricLockTitle")}</h2>
+              <p className="section-subtitle">{t(language, "biometricLockSubtitle")}</p>
+            </div>
+          </div>
+          <div className="notice" style={{ marginTop: 18 }}>
+            <button className="btn" type="button" onClick={() => void unlockAdminDashboard()}>{t(language, "unlockAdminButton")}</button>
+            {biometricUnlockError ? <p className="hint" style={{ marginTop: 10 }}>{biometricUnlockError}</p> : null}
+          </div>
         </section>
       );
     }

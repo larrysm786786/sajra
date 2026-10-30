@@ -20,6 +20,12 @@ type AppNotificationsPlugin = {
   logException(options: { message: string; stack?: string }): Promise<void>;
 };
 export const appNotifications = registerPlugin<AppNotificationsPlugin>("AppNotifications");
+type AppBiometricPlugin = {
+  isAvailable(): Promise<{ available: boolean }>;
+  authenticate(options: { title?: string; subtitle?: string }): Promise<void>;
+};
+export const appBiometric = registerPlugin<AppBiometricPlugin>("AppBiometric");
+export const BIOMETRIC_LOCK_STORAGE_KEY = "sajra-biometric-lock-enabled";
 const releasesUrl = "https://api.github.com/repos/larrysm786786/sajra/releases/latest";
 
 function SwipeSwitch({ checked, onChange, disabled }: { checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean }) {
@@ -76,6 +82,8 @@ export default function AppUpdaterCard({ language }: { language: Language }) {
   const [autostartDone, setAutostartDone] = useState(() => localStorage.getItem("sajra-autostart-done") === "1");
   const [channelSoundDone, setChannelSoundDone] = useState(() => localStorage.getItem("sajra-channel-sound-done") === "1");
   const [badgeDone, setBadgeDone] = useState(() => localStorage.getItem("sajra-badge-done") === "1");
+  const [biometricLockEnabled, setBiometricLockEnabled] = useState(() => localStorage.getItem(BIOMETRIC_LOCK_STORAGE_KEY) === "1");
+  const [biometricMessage, setBiometricMessage] = useState("");
   const ur = language === "ur";
   const updateNotifications = useTopicNotifications(
     "sajra_updates",
@@ -166,6 +174,27 @@ export default function AppUpdaterCard({ language }: { language: Language }) {
     } catch {
       setDeliveryMessage(ur ? "ترتیبات نہیں کھل سکیں۔" : "Could not open settings.");
     }
+  }
+  async function toggleBiometricLock(checked: boolean) {
+    setBiometricMessage("");
+    if (checked) {
+      try {
+        const result = await appBiometric.isAvailable();
+        if (!result.available) {
+          setBiometricMessage(ur ? "اس فون پر فنگر پرنٹ/PIN سیٹ اپ نہیں ہے۔" : "No fingerprint/face/PIN is set up on this phone.");
+          return;
+        }
+        await appBiometric.authenticate({
+          title: ur ? "فنگر پرنٹ لاک آن کریں" : "Turn on fingerprint lock",
+          subtitle: ur ? "تصدیق کریں کہ یہ آپ ہیں" : "Confirm it's you"
+        });
+      } catch {
+        setBiometricMessage(ur ? "تصدیق نہیں ہو سکی۔" : "Could not verify.");
+        return;
+      }
+    }
+    setBiometricLockEnabled(checked);
+    if (checked) localStorage.setItem(BIOMETRIC_LOCK_STORAGE_KEY, "1"); else localStorage.removeItem(BIOMETRIC_LOCK_STORAGE_KEY);
   }
   async function install() {
     if (!apkUrl) return;
@@ -266,6 +295,14 @@ export default function AppUpdaterCard({ language }: { language: Language }) {
       <small style={{ display: "block", marginTop: 4, opacity: 0.7 }}>{ur ? "سوئچ آن کرنے پر متعلقہ ترتیبات کھلیں گی - Android خود یہ اسٹیٹس نہیں بتا سکتا، اس لیے یہ صرف آپ کی اپنی یاد دہانی کے لیے ہے۔" : "Turning a switch on opens the matching settings screen - Android has no way to report these back automatically, so this is just your own reminder of what's been checked."}</small>
       {deliveryMessage ? <small style={{ display: "block", marginTop: 8 }}>{deliveryMessage}</small> : null}
     </div>
+    <div className="swipe-switch-row" style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
+      <div>
+        <strong>{ur ? "ایڈمن ڈیش بورڈ کے لیے فنگر پرنٹ لاک" : "Fingerprint lock for Admin Dashboard"}</strong>
+        <p style={{ margin: "6px 0 0", fontSize: 13, opacity: 0.85 }}>{ur ? "لاگ ان کے بعد بھی Admin Dashboard کھولنے کے لیے فنگر پرنٹ/PIN مانگے گا۔" : "Ask for fingerprint/face/PIN before opening the Admin Dashboard, even while already logged in."}</p>
+      </div>
+      <SwipeSwitch checked={biometricLockEnabled} onChange={(checked) => void toggleBiometricLock(checked)} />
+    </div>
+    {biometricMessage ? <small style={{ display: "block", marginTop: 8 }}>{biometricMessage}</small> : null}
     <small style={{ display: "block", marginTop: 10 }}>{ur ? "انسٹال کرنے کی آخری اجازت Android دے گا۔" : "Android asks you to confirm before installing an update."}</small>
   </div>;
 }

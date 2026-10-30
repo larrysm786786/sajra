@@ -194,6 +194,11 @@ const STRINGS = {
     liveNotificationFailed: "Posted, but the push notification could not be sent.",
     liveLinkSaved: "Live link saved.",
 
+    biometricLockTitle: "Admin Dashboard locked",
+    biometricLockSubtitle: "Confirm it's you with your fingerprint, face, or device PIN to continue.",
+    unlockAdminButton: "Unlock",
+    biometricUnlockFailed: "Could not verify. Try again.",
+
     showQrCodeButton: "Show QR code",
     qrCodeModalTitle: "Profile QR code",
     qrCodeModalSubtitle: "Scan this with a phone camera to open the profile - handy to share or print at a family function.",
@@ -612,6 +617,11 @@ const STRINGS = {
     liveNotificationSent: "پوسٹ ہو گیا، اور سب کو اطلاع بھیج دی گئی۔",
     liveNotificationFailed: "پوسٹ ہو گیا، لیکن پش اطلاع نہیں بھیجی جا سکی۔",
     liveLinkSaved: "لائیو لنک محفوظ ہو گیا۔",
+
+    biometricLockTitle: "ایڈمن ڈیش بورڈ مقفل ہے",
+    biometricLockSubtitle: "جاری رکھنے کے لیے اپنے فنگر پرنٹ، چہرے، یا ڈیوائس PIN سے تصدیق کریں۔",
+    unlockAdminButton: "ان لاک کریں",
+    biometricUnlockFailed: "تصدیق نہیں ہو سکی۔ دوبارہ کوشش کریں۔",
 
     showQrCodeButton: "کیو آر کوڈ دکھائیں",
     qrCodeModalTitle: "پروفائل کیو آر کوڈ",
