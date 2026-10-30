@@ -2878,7 +2878,7 @@ export default function App() {
         { key: "addMember", label: t(language, "addMemberButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); openMemberEditor(); } },
         ...(isAdmin ? [{ key: "addUser", label: t(language, "addUserButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("users"); openUserEditor(); } }] : []),
         { key: "postAnnouncement", label: t(language, "postAnnouncementButton"), onClick: () => { navigate({ page: "calendar" }); openAnnouncementEditor(); } },
-        { key: "live", label: t(language, "navLiveLabel"), onClick: () => navigate({ page: "live" }) },
+        { key: "live", label: isAdmin ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel"), onClick: () => navigate({ page: "live" }) },
         { key: "gallery", label: t(language, "adminNavGallery"), onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } },
         { key: "suggestions", label: t(language, "adminNavSuggestions"), onClick: () => { navigate({ page: "admin" }); setAdminSection("suggestions"); } },
         ...(isAdmin ? [{ key: "logs", label: t(language, "adminNavLogs"), onClick: () => { navigate({ page: "admin" }); setAdminSection("logs"); } }] : []),
@@ -2945,7 +2945,7 @@ export default function App() {
             <NavLink active={route.page === "roots"} onClick={() => navigate({ page: "roots" })}>{NAV_LABELS[language].roots}</NavLink>
             <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
             <NavLink active={route.page === "calendar"} onClick={() => navigate({ page: "calendar" })}>{t(language, "navNotificationsLabel")}</NavLink>
-            <NavLink active={route.page === "live"} onClick={() => navigate({ page: "live" })}>{t(language, "navLiveLabel")}</NavLink>
+            <NavLink active={route.page === "live"} onClick={() => navigate({ page: "live" })}>{isAdmin ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel")}</NavLink>
             <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
             <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
             {Capacitor.isNativePlatform() ? <NavLink active={route.page === "settings"} onClick={() => navigate({ page: "settings" })}>{t(language, "navSettingsLabel")}</NavLink> : null}

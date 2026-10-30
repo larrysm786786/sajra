@@ -177,7 +177,8 @@ const STRINGS = {
     aboutParagraph: "Sajra is our family's shajra nasab. It keeps the family tree, everyone's profile and our photos together in one place, so they stay with us across generations.",
     aboutNotice: "Every name you add, every photo you upload and every story you write here will be passed on to the next generation.",
 
-    navLiveLabel: "Live",
+    navLiveLabel: "Live Streaming",
+    addLiveStreamingLabel: "Add Live Streaming",
     eyebrowLive: "Live",
     liveTitle: "Family live stream",
     liveSubtitle: "Watch a live video of a family function when the admin starts one.",
@@ -601,7 +602,8 @@ const STRINGS = {
     aboutParagraph: "شجرہ ہمارے خاندان کا زندہ شجرہ نسب ہے، شجرۂ خاندان، ارکان کے پروفائلز، اور نسلوں کو جوڑنے والی یادگار تصاویر کا مشترکہ گھر۔",
     aboutNotice: "یہاں شامل کیا گیا ہر رکن، اپ لوڈ کی گئی ہر تصویر، اور درج کی گئی ہر کہانی اس آرکائیو کا حصہ بن جاتی ہے جو اگلی نسل کو وراثت میں ملے گا۔",
 
-    navLiveLabel: "لائیو",
+    navLiveLabel: "لائیو اسٹریمنگ",
+    addLiveStreamingLabel: "لائیو اسٹریمنگ شامل کریں",
     eyebrowLive: "لائیو",
     liveTitle: "خاندانی لائیو اسٹریم",
     liveSubtitle: "جب ایڈمن لائیو شروع کرے تو خاندانی تقریب کی لائیو ویڈیو دیکھیں۔",
