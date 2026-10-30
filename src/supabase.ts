@@ -255,6 +255,22 @@ export async function uploadLiveVideo(file: File): Promise<string> {
   return data.publicUrl;
 }
 
+/**
+ * Best-effort notification to admins through the `send-admin-alert` Edge Function when a visitor
+ * (not signed in) submits a Suggestion or a Guestbook message - things that previously only
+ * surfaced if an admin happened to open that section. Callers should not block the actual
+ * submission on this; it's a convenience, not something the submission depends on succeeding.
+ */
+export async function sendAdminAlertNotification(kind: "suggestion" | "guestbook", message: string, authorName: string | null): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    await supabase.functions.invoke("send-admin-alert", { body: { kind, message, authorName } });
+  } catch {
+    // Best-effort only - the suggestion/comment itself is already saved either way.
+  }
+}
+
 /** Sends a password-recovery email with a link back to this site. */
 export async function sendPasswordResetEmail(email: string): Promise<void> {
   const supabase = getSupabaseClient();

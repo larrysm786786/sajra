@@ -72,7 +72,7 @@ function useTopicNotifications(topic: string, channelId: string, channelName: st
   return { enabled, busy, message, toggle };
 }
 
-export default function AppUpdaterCard({ language }: { language: Language }) {
+export default function AppUpdaterCard({ language, isAdmin }: { language: Language; isAdmin?: boolean }) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -105,6 +105,13 @@ export default function AppUpdaterCard({ language }: { language: Language }) {
     "Sajra birthdays & anniversaries",
     "Family birthdays and remembrance days",
     "sajra-event-notifications"
+  );
+  const adminAlertNotifications = useTopicNotifications(
+    "sajra_admin_alerts",
+    "sajra_admin_alerts",
+    "Sajra admin alerts",
+    "New suggestions and guestbook messages from visitors",
+    "sajra-admin-alert-notifications"
   );
   if (!Capacitor.isNativePlatform()) return null;
   async function check() {
@@ -254,6 +261,21 @@ export default function AppUpdaterCard({ language }: { language: Language }) {
       </button>
       {eventNotifications.message ? <small style={{ display: "block", marginTop: 8 }}>{eventNotifications.message}</small> : null}
     </div>
+    {isAdmin ? (
+      <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
+        <strong>{ur ? "ایڈمن اطلاعات" : "Admin alerts"}</strong>
+        <p style={{ margin: "6px 0 10px" }}>{ur ? "کوئی وزیٹر suggestion یا guestbook پیغام بھیجے تو فوراً اطلاع حاصل کریں۔" : "Get notified right away when a visitor submits a suggestion or leaves a guestbook message."}</p>
+        <button
+          className={`btn-ghost notif-toggle-btn${adminAlertNotifications.enabled ? " active" : ""}`}
+          type="button"
+          disabled={adminAlertNotifications.busy}
+          onClick={() => void adminAlertNotifications.toggle(ur)}
+        >
+          {adminAlertNotifications.busy ? (ur ? "براہ کرم انتظار کریں…" : "Please wait…") : adminAlertNotifications.enabled ? (ur ? "آن" : "Turn on") : (ur ? "آف" : "Turn off")}
+        </button>
+        {adminAlertNotifications.message ? <small style={{ display: "block", marginTop: 8 }}>{adminAlertNotifications.message}</small> : null}
+      </div>
+    ) : null}
     <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
       <strong>{ur ? "اطلاعات نہیں مل رہیں؟" : "Not receiving notifications?"}</strong>
       <p style={{ margin: "6px 0 12px" }}>{ur ? "کچھ فون کمپنیاں (جیسے Xiaomi، Oppo، Vivo، Huawei) بند ایپس کو اطلاعات بھیجنے سے روک دیتی ہیں۔ نیچے دی گئی چاروں ترتیبات چیک کریں۔" : "Some phone brands (Xiaomi, Oppo, Vivo, Huawei) block closed apps from receiving notifications. Check all four settings below."}</p>

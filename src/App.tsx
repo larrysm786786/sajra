@@ -51,6 +51,7 @@ import {
   saveSupabaseState,
   sendAnnouncementNotification,
   MAX_VIDEO_UPLOAD_BYTES,
+  sendAdminAlertNotification,
   sendLiveNotification,
   uploadLiveVideo,
   sendPasswordResetEmail,
@@ -1199,6 +1200,7 @@ export default function App() {
       // Anonymous visitors never trigger the normal (isLoggedIn-only) autosave, so this one write
       // is pushed straight to Supabase, the whole point of a suggestion box is that it reaches the admin.
       if (supabaseConfigured && publishedState) await persistToSupabase(publishedState);
+      if (supabaseConfigured) void sendAdminAlertNotification("suggestion", suggestionDraft.message.trim(), suggestionDraft.submitterName.trim() || null);
       setSuggestionSent(true);
       setSuggestionDraft(null);
     } finally {
@@ -1362,13 +1364,15 @@ export default function App() {
   function submitGuestbookComment(memberId: number) {
     const message = guestbookMessage.trim();
     if (!message) return;
+    const authorName = guestbookAuthorName.trim() || null;
     updateState((current) => ({
       ...current,
       profileComments: [
-        { id: nextId(current.profileComments), memberId, message, authorName: guestbookAuthorName.trim() || null, createdAt: new Date().toISOString() },
+        { id: nextId(current.profileComments), memberId, message, authorName, createdAt: new Date().toISOString() },
         ...current.profileComments
       ].slice(0, 2000)
     }));
+    if (supabaseConfigured) void sendAdminAlertNotification("guestbook", message, authorName);
     setGuestbookMessage("");
     setGuestbookAuthorName("");
   }
@@ -2611,7 +2615,7 @@ export default function App() {
           <span className="eyebrow">{t(language, "eyebrowSettings")}</span>
           <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "settingsTitle")}</h2>
           <p className="section-subtitle" style={{ marginTop: 12 }}>{t(language, "settingsSubtitle")}</p>
-          <AppUpdaterCard language={language} />
+          <AppUpdaterCard language={language} isAdmin={isAdmin} />
         </section>
       );
     }

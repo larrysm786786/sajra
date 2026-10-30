@@ -27,6 +27,7 @@ public class AppMessagingService extends com.capacitorjs.plugins.pushnotificatio
     private static final String CHANNEL_ANNOUNCEMENTS = "sajra_announcements";
     private static final String CHANNEL_LIVE = "sajra_live";
     private static final String CHANNEL_EVENTS = "sajra_events";
+    private static final String CHANNEL_ADMIN_ALERTS = "sajra_admin_alerts";
     private static final String BADGE_PREFS_NAME = "capacitor.badge";
     private static final String BADGE_KEY = "capacitor.badge";
 
@@ -48,6 +49,10 @@ public class AppMessagingService extends com.capacitorjs.plugins.pushnotificatio
         } else if ("events".equals(type)) {
             showNotification(CHANNEL_EVENTS, "Sajra birthdays & anniversaries", "Family birthdays and remembrance days",
                 title != null ? title : "Today in the family", body);
+            bumpBadge();
+        } else if ("admin_alert".equals(type)) {
+            showNotification(CHANNEL_ADMIN_ALERTS, "Sajra admin alerts", "New suggestions and guestbook messages from visitors",
+                title != null ? title : "New activity", body);
             bumpBadge();
         }
     }
