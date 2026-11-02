@@ -1,9 +1,11 @@
 // Supabase Edge Function: send-live
 //
-// Called right after an admin posts a new live video link (see publishLiveStream in
-// src/App.tsx), so it reaches every installed phone as a real push notification. Unlike
-// send-announcement, which any signed-in account may trigger, this requires the caller to
-// specifically be an admin - only admins may set the live link.
+// Called right after an admin (or an editor specifically granted the "Add live streaming"
+// permission - see the Users admin section) posts a new live video link (see publishLiveStream
+// in src/App.tsx), so it reaches every installed phone as a real push notification. Any
+// signed-in account may trigger it, same as send-announcement - the real gate on who can publish
+// is client-side (see editorPermission() in App.tsx), since this function has no way to check a
+// per-user permission that lives in the app's own state data.
 //
 // Deploy: Supabase dashboard -> Edge Functions -> Deploy a new function -> Via Editor,
 // name it "send-live", paste this file, keep "Verify JWT" ON, then Deploy.
@@ -117,9 +119,11 @@ Deno.serve(async (req) => {
   const { data: callerData, error: callerError } = await caller.auth.getUser();
   const me = callerData?.user;
   if (callerError || !me) return fail("You must be signed in.", 401);
-  if (me.app_metadata?.role === "editor" || me.app_metadata?.role === "contributor") {
-    return fail("Only admins can start a live notification.", 403);
-  }
+  // Admin-only server-side used to be the enforcement point, but an admin can now grant specific
+  // editor accounts the "Add live streaming" permission (see the Users admin section) - that
+  // grant lives in the app's own state data, which this function has no way to check, so the
+  // real enforcement point is the client-side gate on who even sees the publish form. Any
+  // signed-in caller is accepted here, matching send-announcement's existing pattern.
 
   let body: RequestBody;
   try {

@@ -29,6 +29,19 @@ export interface Member {
 }
 
 /**
+ * Extra abilities an admin can grant to a specific "editor" account, on top of what the editor
+ * role gets by default. Admins and contributors are never affected by these - only checked when
+ * the signed-in account's own directory entry (matched by email) has role "editor".
+ */
+export interface UserPermissions {
+  addToSlider?: boolean;
+  addAnnouncement?: boolean;
+  addLiveStreaming?: boolean;
+  addGallery?: boolean;
+  addMember?: boolean;
+}
+
+/**
  * A directory label only, it does NOT grant login access. Real
  * authentication is handled entirely by Supabase Auth (see supabase.ts).
  * This just records who is considered an admin/editor for display purposes.
@@ -39,6 +52,7 @@ export interface User {
   name?: string | null;
   email?: string | null;
   role: Role;
+  permissions?: UserPermissions;
   createdAt: string;
 }
 

@@ -126,6 +126,11 @@ type UserDraft = {
   email: string;
   password: string;
   role: Role;
+  permAddToSlider: boolean;
+  permAddAnnouncement: boolean;
+  permAddLiveStreaming: boolean;
+  permAddGallery: boolean;
+  permAddMember: boolean;
 };
 
 type GalleryDraft = {
@@ -255,14 +260,24 @@ function emptyUserDraft(user?: User): UserDraft {
         name: user.name ?? "",
         email: user.email ?? "",
         password: "",
-        role: user.role
+        role: user.role,
+        permAddToSlider: user.permissions?.addToSlider === true,
+        permAddAnnouncement: user.permissions?.addAnnouncement === true,
+        permAddLiveStreaming: user.permissions?.addLiveStreaming === true,
+        permAddGallery: user.permissions?.addGallery === true,
+        permAddMember: user.permissions?.addMember === true
       }
     : {
         username: "",
         name: "",
         email: "",
         password: "",
-        role: "editor"
+        role: "editor",
+        permAddToSlider: false,
+        permAddAnnouncement: false,
+        permAddLiveStreaming: false,
+        permAddGallery: false,
+        permAddMember: false
       };
 }
 
@@ -624,6 +639,23 @@ export default function App() {
   const isAdmin = isLoggedIn && userRole !== "editor" && userRole !== "contributor";
   // Contributors (and admins) may edit members that were already added; plain editors may only add new ones.
   const canEditMembers = isAdmin || userRole === "contributor";
+  // Per-account extra permissions an admin can grant a specific editor (see the Users admin
+  // section) - looked up by email against the directory, since that's the only link between a
+  // signed-in Supabase Auth session and a state.users entry. Admins and contributors are never
+  // gated by these; only accounts whose own role is "editor" are.
+  const myPermissions = userRole === "editor"
+    ? state.users.find((user) => user.email?.trim().toLowerCase() === supabaseSession?.user.email?.trim().toLowerCase())?.permissions
+    : undefined;
+  function editorPermission(key: keyof NonNullable<User["permissions"]>, allowedForNonEditor: boolean): boolean {
+    if (!isLoggedIn) return false;
+    if (userRole !== "editor") return allowedForNonEditor;
+    return myPermissions?.[key] === true;
+  }
+  const canAddToSlider = editorPermission("addToSlider", isAdmin);
+  const canAddAnnouncement = editorPermission("addAnnouncement", true);
+  const canAddLiveStreaming = editorPermission("addLiveStreaming", isAdmin);
+  const canAddGalleryPhoto = editorPermission("addGallery", true);
+  const canAddMember = editorPermission("addMember", true);
   // A locally-set preference (see Settings), not synced to other devices - gates the Admin
   // Dashboard behind the device's own fingerprint/face/PIN prompt, on top of the normal login.
   const biometricLockRequired = Capacitor.isNativePlatform() && localStorage.getItem(BIOMETRIC_LOCK_STORAGE_KEY) === "1";
@@ -944,13 +976,13 @@ export default function App() {
   // Seeds the admin's live-link editor fields when they land on the Live page, without
   // clobbering what they're typing if liveStream changes elsewhere while they're still on it.
   useEffect(() => {
-    if (route.page === "live" && isAdmin) {
+    if (route.page === "live" && canAddLiveStreaming) {
       setLiveUrlInput(state.liveStream?.url ?? "");
       setLiveTitleInput(state.liveStream?.title ?? "");
       setLiveNotice("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route.page, isAdmin]);
+  }, [route.page, canAddLiveStreaming]);
 
   // Forwards unhandled JS errors to Crashlytics (native crashes are caught automatically, but
   // most real-world failures here are in the WebView, not native code).
@@ -1147,7 +1179,7 @@ export default function App() {
 
   // Editors may only add new members; contributors and admins may also edit existing ones.
   function openMemberEditor(member?: Member) {
-    if (!isLoggedIn || (member && !canEditMembers)) return;
+    if (member ? !canEditMembers : !canAddMember) return;
     setMemberDraft(emptyMemberDraft(member));
     setSpouseSearchQuery("");
     setFatherSearchQuery("");
@@ -1161,7 +1193,7 @@ export default function App() {
   }
 
   function openGalleryEditor(image?: GalleryImage) {
-    if (!isLoggedIn || (image && !isAdmin)) return;
+    if (image ? !isAdmin : !canAddGalleryPhoto) return;
     setGalleryDraft(emptyGalleryDraft(image));
   }
 
@@ -1254,9 +1286,10 @@ export default function App() {
     updateState((current) => ({ ...current, suggestions: current.suggestions.filter((suggestion) => suggestion.id !== id) }));
   }
 
-  // Everyone can read announcements; any signed-in account (admin, contributor or editor) can post one.
+  // Everyone can read announcements; admins and contributors can always post one, editors need
+  // the "Post an announcement" permission granted (see the Users admin section).
   function openAnnouncementEditor() {
-    if (!isLoggedIn) return;
+    if (!canAddAnnouncement) return;
     setAnnouncementNotice("");
     setAnnouncementDraft({ message: "", authorName: "", expiresAt: "" });
   }
@@ -1266,7 +1299,7 @@ export default function App() {
   }
 
   async function submitAnnouncement() {
-    if (!isLoggedIn || !announcementDraft || !announcementDraft.message.trim() || announcementBusy) return;
+    if (!canAddAnnouncement || !announcementDraft || !announcementDraft.message.trim() || announcementBusy) return;
     const messageText = announcementDraft.message.trim();
     setAnnouncementBusy(true);
     try {
@@ -1339,7 +1372,7 @@ export default function App() {
   }
 
   async function publishLiveStream() {
-    if (!isAdmin || liveBusy) return;
+    if (!canAddLiveStreaming || liveBusy) return;
     const url = liveUrlInput.trim();
     const title = liveTitleInput.trim();
     if (!getYouTubeEmbedUrl(url)) {
@@ -1350,7 +1383,7 @@ export default function App() {
   }
 
   async function uploadLiveVideoFile(file?: File) {
-    if (!isAdmin || !file || liveBusy) return;
+    if (!canAddLiveStreaming || !file || liveBusy) return;
     if (file.size > MAX_VIDEO_UPLOAD_BYTES) {
       setLiveNotice(t(language, "liveVideoTooLarge"));
       return;
@@ -1367,7 +1400,7 @@ export default function App() {
   }
 
   function clearLiveStream() {
-    if (!isAdmin) return;
+    if (!canAddLiveStreaming) return;
     updateState((current) => ({ ...current, liveStream: { url: null, title: null, updatedAt: new Date().toISOString() } }));
     setLiveUrlInput("");
     setLiveTitleInput("");
@@ -1588,7 +1621,7 @@ export default function App() {
       birthplace: memberDraft.birthplace.trim() || null,
       daughtersCount,
       profession: normalizeProfession(memberDraft.professionChoice === PROFESSION_OTHER ? memberDraft.professionOther : memberDraft.professionChoice),
-      showInHeroSlider: isAdmin ? memberDraft.showInHeroSlider : Boolean(existingMember?.showInHeroSlider),
+      showInHeroSlider: canAddToSlider ? memberDraft.showInHeroSlider : Boolean(existingMember?.showInHeroSlider),
       photo: memberDraft.photo.trim() || null,
       bio: memberDraft.bio.trim() || null,
       fatherId: memberDraft.fatherId ? Number(memberDraft.fatherId) : null,
@@ -1711,6 +1744,13 @@ export default function App() {
       name: userDraft.name.trim() || null,
       email: email || null,
       role: userDraft.role,
+      permissions: userDraft.role === "editor" ? {
+        addToSlider: userDraft.permAddToSlider,
+        addAnnouncement: userDraft.permAddAnnouncement,
+        addLiveStreaming: userDraft.permAddLiveStreaming,
+        addGallery: userDraft.permAddGallery,
+        addMember: userDraft.permAddMember
+      } : undefined,
       createdAt: existing?.createdAt || new Date().toISOString()
     };
     const actorEmail = supabaseSession?.user.email ?? null;
@@ -2021,7 +2061,7 @@ export default function App() {
               <span className="eyebrow">{t(language, "eyebrowAnnouncements")}</span>
               <h1 className="section-title">{t(language, "announcementsTitle")}</h1>
             </div>
-            {isLoggedIn ? <button className="btn-ghost" type="button" onClick={openAnnouncementEditor}>{t(language, "postAnnouncementButton")}</button> : null}
+            {canAddAnnouncement ? <button className="btn-ghost" type="button" onClick={openAnnouncementEditor}>{t(language, "postAnnouncementButton")}</button> : null}
           </div>
           {announcementNotice ? <p className="hint">{announcementNotice}</p> : null}
           {activeAnnouncements.length || familyCalendarEvents.length ? (
@@ -2245,7 +2285,7 @@ export default function App() {
               <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "capturedMemoriesTitle")}</h2>
               <p className="section-subtitle">{t(language, "gallerySubtitle")}</p>
             </div>
-            {isLoggedIn ? <button className="btn" type="button" onClick={() => openGalleryEditor()}>{t(language, "addPhotoButton")}</button> : null}
+            {canAddGalleryPhoto ? <button className="btn" type="button" onClick={() => openGalleryEditor()}>{t(language, "addPhotoButton")}</button> : null}
           </div>
           {state.gallery.length ? (
             <div className="gallery-grid">
@@ -2309,11 +2349,11 @@ export default function App() {
 
       let sectionActions: ReactNode = null;
       if (activeSection.key === "members") {
-        sectionActions = <button className="btn" type="button" onClick={() => openMemberEditor()}>{t(language, "addMemberButton")}</button>;
+        sectionActions = canAddMember ? <button className="btn" type="button" onClick={() => openMemberEditor()}>{t(language, "addMemberButton")}</button> : null;
       } else if (activeSection.key === "users") {
         sectionActions = <button className="btn" type="button" onClick={() => openUserEditor()}>{t(language, "addUserButton")}</button>;
       } else if (activeSection.key === "gallery") {
-        sectionActions = <button className="btn" type="button" onClick={() => openGalleryEditor()}>{t(language, "addGalleryPhotoButton")}</button>;
+        sectionActions = canAddGalleryPhoto ? <button className="btn" type="button" onClick={() => openGalleryEditor()}>{t(language, "addGalleryPhotoButton")}</button> : null;
       }
 
       let sectionBody: ReactNode = null;
@@ -2330,9 +2370,9 @@ export default function App() {
             <div style={{ marginTop: 18 }}>
               <Card title={t(language, "quickActionsTitle")} subtitle={t(language, "quickActionsSubtitle")}>
                 <div className="actions-row">
-                  <button className="btn" type="button" onClick={() => openMemberEditor()}>{t(language, "addMemberButton")}</button>
+                  {canAddMember ? <button className="btn" type="button" onClick={() => openMemberEditor()}>{t(language, "addMemberButton")}</button> : null}
                   {isAdmin ? <button className="btn-ghost" type="button" onClick={() => openUserEditor()}>{t(language, "addUserButton")}</button> : null}
-                  <button className="btn-ghost" type="button" onClick={() => openGalleryEditor()}>{t(language, "addGalleryPhotoButton")}</button>
+                  {canAddGalleryPhoto ? <button className="btn-ghost" type="button" onClick={() => openGalleryEditor()}>{t(language, "addGalleryPhotoButton")}</button> : null}
                   {isAdmin ? <button className="btn-ghost" type="button" onClick={exportState}>{t(language, "downloadBackupButton")}</button> : null}
                 </div>
               </Card>
@@ -2678,7 +2718,7 @@ export default function App() {
                 )}
               </div>
               {state.liveStream?.updatedAt ? <div className="tree-sub" style={{ marginTop: 10 }}>{formatDate(state.liveStream.updatedAt, language)}</div> : null}
-              {isAdmin ? (
+              {canAddLiveStreaming ? (
                 <button className="btn-ghost danger" type="button" style={{ marginTop: 10 }} onClick={clearLiveStream}>{t(language, "liveRemoveButton")}</button>
               ) : null}
             </div>
@@ -2686,7 +2726,7 @@ export default function App() {
             <div className="empty" style={{ marginTop: 18 }}>{t(language, "liveNoStreamBody")}</div>
           )}
 
-          {isAdmin ? (
+          {canAddLiveStreaming ? (
             <div className="notice" style={{ marginTop: 18 }}>
               <strong>{t(language, "liveAdminSectionTitle")}</strong>
               <div className="form-grid" style={{ marginTop: 12 }}>
@@ -2763,6 +2803,16 @@ export default function App() {
               <span className="guide-step-number">4</span>
               <div className="tree-name">{t(language, "guideStep4Title")}</div>
               <p className="guide-step-text">{t(language, "guideStep4Text")}</p>
+            </div>
+            <div className="guide-step">
+              <span className="guide-step-number">5</span>
+              <div className="tree-name">{t(language, "guideStep5Title")}</div>
+              <p className="guide-step-text">{t(language, "guideStep5Text")}</p>
+            </div>
+            <div className="guide-step">
+              <span className="guide-step-number">6</span>
+              <div className="tree-name">{t(language, "guideStep6Title")}</div>
+              <p className="guide-step-text">{t(language, "guideStep6Text")}</p>
             </div>
           </div>
         </section>
@@ -2975,10 +3025,10 @@ export default function App() {
   const mobileAdminLinks: { key: string; label: string; onClick: () => void }[] = isLoggedIn
     ? [
         { key: "dashboard", label: t(language, "adminNavOverview"), onClick: () => { navigate({ page: "admin" }); setAdminSection("overview"); } },
-        { key: "addMember", label: t(language, "addMemberButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); openMemberEditor(); } },
+        ...(canAddMember ? [{ key: "addMember", label: t(language, "addMemberButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); openMemberEditor(); } }] : []),
         ...(isAdmin ? [{ key: "addUser", label: t(language, "addUserButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("users"); openUserEditor(); } }] : []),
-        { key: "postAnnouncement", label: t(language, "postAnnouncementButton"), onClick: () => { navigate({ page: "calendar" }); openAnnouncementEditor(); } },
-        { key: "live", label: isAdmin ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel"), onClick: () => navigate({ page: "live" }) },
+        ...(canAddAnnouncement ? [{ key: "postAnnouncement", label: t(language, "postAnnouncementButton"), onClick: () => { navigate({ page: "calendar" }); openAnnouncementEditor(); } }] : []),
+        { key: "live", label: canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel"), onClick: () => navigate({ page: "live" }) },
         { key: "gallery", label: t(language, "adminNavGallery"), onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } },
         { key: "suggestions", label: t(language, "adminNavSuggestions"), onClick: () => { navigate({ page: "admin" }); setAdminSection("suggestions"); } },
         ...(isAdmin ? [{ key: "logs", label: t(language, "adminNavLogs"), onClick: () => { navigate({ page: "admin" }); setAdminSection("logs"); } }] : []),
@@ -3045,7 +3095,7 @@ export default function App() {
             <NavLink active={route.page === "roots"} onClick={() => navigate({ page: "roots" })}>{NAV_LABELS[language].roots}</NavLink>
             <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
             <NavLink active={route.page === "calendar"} onClick={() => navigate({ page: "calendar" })}>{t(language, "navNotificationsLabel")}</NavLink>
-            <NavLink active={route.page === "live"} onClick={() => navigate({ page: "live" })}>{isAdmin ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel")}</NavLink>
+            <NavLink active={route.page === "live"} onClick={() => navigate({ page: "live" })}>{canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel")}</NavLink>
             <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
             <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
             {Capacitor.isNativePlatform() ? <NavLink active={route.page === "settings"} onClick={() => navigate({ page: "settings" })}>{t(language, "navSettingsLabel")}</NavLink> : null}
@@ -3198,7 +3248,7 @@ export default function App() {
                 onChange={(e) => handleMemberPhoto(e.target.files?.[0])}
               />
             </label>
-            {isAdmin ? <label className="span-12 hero-slider-admin-toggle"><input type="checkbox" checked={memberDraft.showInHeroSlider} disabled={!memberDraft.showInHeroSlider && !(Boolean(memberDraft.photo.trim()) && isSliderProfession(normalizeProfession(memberDraft.professionChoice === PROFESSION_OTHER ? memberDraft.professionOther : memberDraft.professionChoice)))} onChange={(event) => setMemberDraft((current) => current ? { ...current, showInHeroSlider: event.target.checked } : current)} /><span><strong>{t(language, "heroSliderToggleLabel")}</strong></span></label> : null}
+            {canAddToSlider ? <label className="span-12 hero-slider-admin-toggle"><input type="checkbox" checked={memberDraft.showInHeroSlider} disabled={!memberDraft.showInHeroSlider && !(Boolean(memberDraft.photo.trim()) && isSliderProfession(normalizeProfession(memberDraft.professionChoice === PROFESSION_OTHER ? memberDraft.professionOther : memberDraft.professionChoice)))} onChange={(event) => setMemberDraft((current) => current ? { ...current, showInHeroSlider: event.target.checked } : current)} /><span><strong>{t(language, "heroSliderToggleLabel")}</strong></span></label> : null}
             <label className="span-12">
               <span className="sr-only">{t(language, "bioLabel")}</span>
               <textarea className="textarea" placeholder={t(language, "bioLabel")} value={memberDraft.bio} onChange={(e) => setMemberDraft((current) => current ? { ...current, bio: e.target.value } : current)} />
@@ -3401,6 +3451,27 @@ export default function App() {
                 <option value="admin">{t(language, "adminOption")}</option>
               </select>
             </label>
+            {userDraft.role === "editor" ? (
+              <div className="span-12 editor-permissions-grid">
+                <strong style={{ display: "block", marginBottom: 8 }}>{t(language, "editorPermissionsTitle")}</strong>
+                {([
+                  ["permAddToSlider", "permAddToSliderLabel"],
+                  ["permAddAnnouncement", "permAddAnnouncementLabel"],
+                  ["permAddLiveStreaming", "permAddLiveStreamingLabel"],
+                  ["permAddGallery", "permAddGalleryLabel"],
+                  ["permAddMember", "permAddMemberLabel"]
+                ] as const).map(([field, labelKey]) => (
+                  <label key={field} className="editor-permission-row">
+                    <input
+                      type="checkbox"
+                      checked={userDraft[field]}
+                      onChange={(e) => setUserDraft((current) => current ? { ...current, [field]: e.target.checked } : current)}
+                    />
+                    <span>{t(language, labelKey)}</span>
+                  </label>
+                ))}
+              </div>
+            ) : null}
             <label className="span-12">
               {t(language, userDraft.id ? "userPasswordEditLabel" : "userPasswordLabel")}
               <PasswordField
