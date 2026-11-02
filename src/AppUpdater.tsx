@@ -26,6 +26,10 @@ type AppBiometricPlugin = {
 };
 export const appBiometric = registerPlugin<AppBiometricPlugin>("AppBiometric");
 export const BIOMETRIC_LOCK_STORAGE_KEY = "sajra-biometric-lock-enabled";
+type AppPrintPlugin = {
+  print(): Promise<void>;
+};
+export const appPrint = registerPlugin<AppPrintPlugin>("AppPrint");
 const releasesUrl = "https://api.github.com/repos/larrysm786786/sajra/releases/latest";
 
 function SwipeSwitch({ checked, onChange, disabled }: { checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean }) {
@@ -224,10 +228,10 @@ export default function AppUpdaterCard({ language, isAdmin }: { language: Langua
       : <button className="btn-ghost" type="button" disabled={busy} onClick={() => void check()}>{busy ? (ur ? "چیک ہو رہا ہے…" : "Checking…") : (ur ? "اپ ڈیٹ چیک کریں" : "Check for updates")}</button>}
     <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
       <strong>{ur ? "نئے فیچرز کی اطلاعات" : "New feature notifications"}</strong>
-      <p style={{ margin: "6px 0 10px" }}>{ur ? "Sajra میں نیا فیچر یا ایپ اپ ڈیٹ آنے پر اطلاع حاصل کریں۔" : "Get a notification when Sajra releases a new feature or app update."}</p>
       <button
         className={`btn-ghost notif-toggle-btn${updateNotifications.enabled ? " active" : ""}`}
         type="button"
+        style={{ marginTop: 10 }}
         disabled={updateNotifications.busy}
         onClick={() => void updateNotifications.toggle(ur)}
       >
@@ -237,10 +241,10 @@ export default function AppUpdaterCard({ language, isAdmin }: { language: Langua
     </div>
     <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
       <strong>{ur ? "خاندانی اعلانات کی اطلاعات" : "Family announcement notifications"}</strong>
-      <p style={{ margin: "6px 0 10px" }}>{ur ? "ایڈمن کوئی اعلان پوسٹ کرے تو اطلاع حاصل کریں۔" : "Get a notification when the admin posts a family announcement."}</p>
       <button
         className={`btn-ghost notif-toggle-btn${announcementNotifications.enabled ? " active" : ""}`}
         type="button"
+        style={{ marginTop: 10 }}
         disabled={announcementNotifications.busy}
         onClick={() => void announcementNotifications.toggle(ur)}
       >
@@ -250,10 +254,10 @@ export default function AppUpdaterCard({ language, isAdmin }: { language: Langua
     </div>
     <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
       <strong>{ur ? "سالگرہ اور یادگار دن کی اطلاعات" : "Birthday & remembrance notifications"}</strong>
-      <p style={{ margin: "6px 0 10px" }}>{ur ? "خاندان میں کسی کی سالگرہ یا یادگار دن ہونے پر صبح اطلاع حاصل کریں۔" : "Get a morning notification when it's someone's birthday or remembrance day in the family."}</p>
       <button
         className={`btn-ghost notif-toggle-btn${eventNotifications.enabled ? " active" : ""}`}
         type="button"
+        style={{ marginTop: 10 }}
         disabled={eventNotifications.busy}
         onClick={() => void eventNotifications.toggle(ur)}
       >
@@ -264,10 +268,10 @@ export default function AppUpdaterCard({ language, isAdmin }: { language: Langua
     {isAdmin ? (
       <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
         <strong>{ur ? "ایڈمن اطلاعات" : "Admin alerts"}</strong>
-        <p style={{ margin: "6px 0 10px" }}>{ur ? "کوئی وزیٹر suggestion یا guestbook پیغام بھیجے تو فوراً اطلاع حاصل کریں۔" : "Get notified right away when a visitor submits a suggestion or leaves a guestbook message."}</p>
         <button
           className={`btn-ghost notif-toggle-btn${adminAlertNotifications.enabled ? " active" : ""}`}
           type="button"
+          style={{ marginTop: 10 }}
           disabled={adminAlertNotifications.busy}
           onClick={() => void adminAlertNotifications.toggle(ur)}
         >
@@ -278,53 +282,33 @@ export default function AppUpdaterCard({ language, isAdmin }: { language: Langua
     ) : null}
     <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
       <strong>{ur ? "اطلاعات نہیں مل رہیں؟" : "Not receiving notifications?"}</strong>
-      <p style={{ margin: "6px 0 12px" }}>{ur ? "کچھ فون کمپنیاں (جیسے Xiaomi، Oppo، Vivo، Huawei) بند ایپس کو اطلاعات بھیجنے سے روک دیتی ہیں۔ نیچے دی گئی چاروں ترتیبات چیک کریں۔" : "Some phone brands (Xiaomi, Oppo, Vivo, Huawei) block closed apps from receiving notifications. Check all four settings below."}</p>
 
-      <div className="swipe-switch-row" style={{ marginBottom: 14 }}>
-        <div>
-          <div style={{ fontWeight: 600, marginBottom: 2 }}>{ur ? "1. Autostart آن کریں" : "1. Turn on Autostart"}</div>
-          <p style={{ margin: 0, fontSize: 13, opacity: 0.85 }}>{ur ? "MIUI نئی ایپس کے لیے یہ بند رکھتا ہے، جس سے بیک گراؤنڈ میں پیغام نہیں پہنچتا۔" : "MIUI keeps this off for new apps by default, which blocks background messages."}</p>
-        </div>
+      <div className="swipe-switch-row" style={{ marginTop: 12, marginBottom: 14 }}>
+        <div style={{ fontWeight: 600 }}>{ur ? "1. Autostart آن کریں" : "1. Turn on Autostart"}</div>
         <SwipeSwitch checked={autostartDone} onChange={(checked) => void toggleAutostart(checked)} />
       </div>
 
       <div className="swipe-switch-row" style={{ marginBottom: 14 }}>
-        <div>
-          <div style={{ fontWeight: 600, marginBottom: 2 }}>{ur ? "2. بیٹری سیور کو \"No restrictions\" کریں" : "2. Set battery saver to \"No restrictions\""}</div>
-          <p style={{ margin: 0, fontSize: 13, opacity: 0.85 }}>
-            {batteryIgnoring === true ? (ur ? "اجازت مل چکی ہے۔" : "Already allowed.") : (ur ? "\"Save battery\" کی بجائے \"No restrictions\" چنیں۔" : "Choose \"No restrictions\" instead of \"Save battery\".")}
-          </p>
-        </div>
+        <div style={{ fontWeight: 600 }}>{ur ? "2. بیٹری سیور کو \"No restrictions\" کریں" : "2. Set battery saver to \"No restrictions\""}</div>
         <SwipeSwitch checked={batteryIgnoring === true} onChange={(checked) => void toggleBattery(checked)} />
       </div>
 
       <div className="swipe-switch-row" style={{ marginBottom: 14 }}>
-        <div>
-          <div style={{ fontWeight: 600, marginBottom: 2 }}>{ur ? "3. اعلانات کی آواز چیک کریں" : "3. Check announcement sound"}</div>
-          <p style={{ margin: 0, fontSize: 13, opacity: 0.85 }}>{ur ? "\"Sajra announcements\" چینل میں Sound آن ہونا چاہیے۔" : "The \"Sajra announcements\" channel should have Sound turned on."}</p>
-        </div>
+        <div style={{ fontWeight: 600 }}>{ur ? "3. اعلانات کی آواز چیک کریں" : "3. Check announcement sound"}</div>
         <SwipeSwitch checked={channelSoundDone} onChange={(checked) => void toggleChannelSound(checked)} />
       </div>
 
-      <div className="swipe-switch-row" style={{ marginBottom: 4 }}>
-        <div>
-          <div style={{ fontWeight: 600, marginBottom: 2 }}>{ur ? "4. ایپ آئیکون بیج کی اجازت" : "4. App icon badge permission"}</div>
-          <p style={{ margin: 0, fontSize: 13, opacity: 0.85 }}>{ur ? "یہاں Sajra کے لیے بیج (badge) آن ہونا چاہیے۔" : "The app icon badge should be allowed for Sajra here."}</p>
-        </div>
+      <div className="swipe-switch-row">
+        <div style={{ fontWeight: 600 }}>{ur ? "4. ایپ آئیکون بیج کی اجازت" : "4. App icon badge permission"}</div>
         <SwipeSwitch checked={badgeDone} onChange={(checked) => void toggleBadge(checked)} />
       </div>
 
-      <small style={{ display: "block", marginTop: 4, opacity: 0.7 }}>{ur ? "سوئچ آن کرنے پر متعلقہ ترتیبات کھلیں گی - Android خود یہ اسٹیٹس نہیں بتا سکتا، اس لیے یہ صرف آپ کی اپنی یاد دہانی کے لیے ہے۔" : "Turning a switch on opens the matching settings screen - Android has no way to report these back automatically, so this is just your own reminder of what's been checked."}</small>
       {deliveryMessage ? <small style={{ display: "block", marginTop: 8 }}>{deliveryMessage}</small> : null}
     </div>
     <div className="swipe-switch-row" style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
-      <div>
-        <strong>{ur ? "ایڈمن ڈیش بورڈ کے لیے فنگر پرنٹ لاک" : "Fingerprint lock for Admin Dashboard"}</strong>
-        <p style={{ margin: "6px 0 0", fontSize: 13, opacity: 0.85 }}>{ur ? "لاگ ان کے بعد بھی Admin Dashboard کھولنے کے لیے فنگر پرنٹ/PIN مانگے گا۔" : "Ask for fingerprint/face/PIN before opening the Admin Dashboard, even while already logged in."}</p>
-      </div>
+      <strong>{ur ? "ایڈمن ڈیش بورڈ کے لیے فنگر پرنٹ لاک" : "Fingerprint lock for Admin Dashboard"}</strong>
       <SwipeSwitch checked={biometricLockEnabled} onChange={(checked) => void toggleBiometricLock(checked)} />
     </div>
     {biometricMessage ? <small style={{ display: "block", marginTop: 8 }}>{biometricMessage}</small> : null}
-    <small style={{ display: "block", marginTop: 10 }}>{ur ? "انسٹال کرنے کی آخری اجازت Android دے گا۔" : "Android asks you to confirm before installing an update."}</small>
   </div>;
 }

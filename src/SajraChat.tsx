@@ -60,7 +60,7 @@ export default function SajraChat({ appName, members, onOpenMember, onFeedback }
     const next = [...messages, { role: "user" as const, content: text }];
     setMessages(next); setDraft(""); setBusy(true); setError("");
     try {
-      const familyMembers = members.map(({ id, uniqueId, name, nameUr, gender, profession, fatherId, motherId, spouseIds }) => ({ id, uniqueId, name, nameUr, gender, profession, fatherId, motherId, spouseIds }));
+      const familyMembers = members.map(({ id, uniqueId, name, nameUr, gender, profession, fatherId, motherId, spouseIds, daughtersCount }) => ({ id, uniqueId, name, nameUr, gender, profession, fatherId, motherId, spouseIds, daughtersCount: daughtersCount ?? undefined }));
       const { data, error: invokeError } = await supabase.functions.invoke("sajra-chat", { body: { messages: next.slice(-6), appName, familyMembers, answerLength, responseLanguage } });
       if (invokeError) throw invokeError;
       if (typeof data?.reply !== "string") throw new Error("I could not get an answer. Please try again.");

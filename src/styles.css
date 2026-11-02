@@ -994,35 +994,49 @@ button {
 }
 .silsila-chain-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 4px;
   overflow-x: auto;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
 }
 .silsila-chain-item {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+  flex: none;
 }
 .silsila-chain-link {
   background: none;
   border: none;
-  padding: 2px 4px;
+  padding: 4px 6px;
+  border-radius: 999px;
   font: inherit;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   color: var(--accent-strong);
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  transition: background 150ms ease;
+}
+.silsila-chain-link:hover,
+.silsila-chain-link:focus-visible {
+  background: var(--accent-soft);
 }
 .silsila-chain-current {
-  font-size: 0.88rem;
-  color: var(--text);
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--accent-strong);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 .silsila-chain-arrow {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+  flex: none;
 }
 
 .live-video-wrap {

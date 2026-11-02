@@ -30,6 +30,7 @@ import {
   nextId,
   nextUniqueId,
   photoSrc,
+  publicPageUrl,
   pushActivityLog,
   readFileAsCompressedDataUrl,
   saveState,
@@ -76,7 +77,7 @@ import {
 } from "./professions";
 import { t, tGender } from "./i18n";
 import SajraChat from "./SajraChat";
-import AppUpdaterCard, { appBiometric, appNotifications, BIOMETRIC_LOCK_STORAGE_KEY } from "./AppUpdater";
+import AppUpdaterCard, { appBiometric, appNotifications, appPrint, BIOMETRIC_LOCK_STORAGE_KEY } from "./AppUpdater";
 import { BranchPage } from "./FamilyTools";
 import type { StringKey } from "./i18n";
 
@@ -549,6 +550,7 @@ export default function App() {
   );
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [adminSection, setAdminSection] = useState<AdminSection>("overview");
+  const [logsPage, setLogsPage] = useState(0);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordChangeBusy, setPasswordChangeBusy] = useState(false);
@@ -591,6 +593,7 @@ export default function App() {
     }
   });
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const silsilaRowRef = useRef<HTMLDivElement | null>(null);
   const hydrationDoneRef = useRef(false);
   const remoteUpdatedAtRef = useRef<string | null>(null);
   // The archive as last confirmed in Supabase; used to skip no-op saves and as the base for merges.
@@ -636,6 +639,18 @@ export default function App() {
   useEffect(() => {
     trackWebPageView(route.page);
     trackNativeScreenView(route.page);
+  }, [route.page, route.memberId]);
+
+  useEffect(() => {
+    if (adminSection !== "logs") setLogsPage(0);
+  }, [adminSection]);
+
+  // Scrolls the Silsila chain to its end (the current member) by default, so on a long lineage
+  // the most relevant part is visible without the visitor having to scroll it themselves first.
+  useEffect(() => {
+    if (route.page !== "member") return;
+    const row = silsilaRowRef.current;
+    if (row) row.scrollLeft = row.scrollWidth;
   }, [route.page, route.memberId]);
 
   useEffect(() => {
@@ -1382,9 +1397,14 @@ export default function App() {
     updateState((current) => ({ ...current, profileComments: current.profileComments.filter((comment) => comment.id !== id) }));
   }
 
+  function printPage() {
+    if (Capacitor.isNativePlatform()) { void appPrint.print().catch(() => {}); return; }
+    window.print();
+  }
+
   async function shareMember(member: Member) {
     setShareNotice("");
-    const url = `${window.location.origin}${import.meta.env.BASE_URL}#/member/${member.id}`;
+    const url = publicPageUrl(`/member/${member.id}`);
     const title = displayName(member, language);
     try {
       if (Capacitor.isNativePlatform()) {
@@ -1401,7 +1421,7 @@ export default function App() {
   }
 
   async function openQrCode(member: Member) {
-    const url = `${window.location.origin}${import.meta.env.BASE_URL}#/member/${member.id}`;
+    const url = publicPageUrl(`/member/${member.id}`);
     try {
       const dataUrl = await QRCode.toDataURL(url, { width: 320, margin: 2, color: { dark: "#2e5185", light: "#ffffff" } });
       setQrCodeDataUrl(dataUrl);
@@ -2071,7 +2091,7 @@ export default function App() {
               {ancestorChain.length > 1 ? (
                 <div className="silsila-chain no-print">
                   <span className="silsila-label">{t(language, "silsilaLabel")}</span>
-                  <div className="silsila-chain-row">
+                  <div className="silsila-chain-row" ref={silsilaRowRef}>
                     {ancestorChain.map((ancestor, index) => (
                       <span key={ancestor.id} className="silsila-chain-item">
                         {ancestor.id === member.id ? (
@@ -2092,7 +2112,7 @@ export default function App() {
                 <div className="profile-meta no-print">
                   <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openTreeButton")}</button>
                   {canEditMembers ? <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editMemberButton")}</button> : null}
-                  <button className="btn-ghost" type="button" onClick={() => window.print()}>{t(language, "printProfileButton")}</button>
+                  <button className="btn-ghost" type="button" onClick={printPage}>{t(language, "printProfileButton")}</button>
                   <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor(member)}>{t(language, "suggestCorrectionButton")}</button><button className="btn-ghost" type="button" onClick={() => navigate({ page: "branch", memberId: member.id })}>{t(language, "shareFamilyBranchButton")}</button>
                   <button className="btn-ghost" type="button" onClick={() => void shareMember(member)}>{t(language, "shareProfileButton")}</button>
                   <button className="btn-ghost" type="button" onClick={() => void openQrCode(member)}>{t(language, "showQrCodeButton")}</button>
@@ -2450,9 +2470,14 @@ export default function App() {
       } else if (activeSection.key === "logs") {
         const typeLabelKeys = { member: "logTypeMember", user: "logTypeUser", gallery: "logTypeGallery" } as const;
         const actionLabelKeys = { added: "logActionAdded", updated: "logActionUpdated", deleted: "logActionDeleted" } as const;
+        const LOGS_PAGE_SIZE = 15;
+        const logsTotalPages = Math.max(1, Math.ceil(state.activityLog.length / LOGS_PAGE_SIZE));
+        const logsCurrentPage = Math.min(logsPage, logsTotalPages - 1);
+        const pagedLogs = state.activityLog.slice(logsCurrentPage * LOGS_PAGE_SIZE, (logsCurrentPage + 1) * LOGS_PAGE_SIZE);
         sectionBody = state.activityLog.length ? (
+          <>
           <div className="list">
-            {state.activityLog.map((entry) => (
+            {pagedLogs.map((entry) => (
               <div key={entry.id} className="card" style={{ padding: 14 }}>
                 <div className="tree-head">
                   <div>
@@ -2468,6 +2493,14 @@ export default function App() {
               </div>
             ))}
           </div>
+          {logsTotalPages > 1 ? (
+            <div className="actions-row" style={{ marginTop: 14, justifyContent: "center" }}>
+              <button className="btn-ghost" type="button" disabled={logsCurrentPage === 0} onClick={() => setLogsPage(logsCurrentPage - 1)}>{t(language, "previousButtonLabel")}</button>
+              <span className="tree-sub">{logsCurrentPage + 1} / {logsTotalPages}</span>
+              <button className="btn-ghost" type="button" disabled={logsCurrentPage >= logsTotalPages - 1} onClick={() => setLogsPage(logsCurrentPage + 1)}>{t(language, "nextButtonLabel")}</button>
+            </div>
+          ) : null}
+          </>
         ) : (
           <div className="empty">{t(language, "noLogEntries")}</div>
         );
@@ -3063,15 +3096,13 @@ export default function App() {
       {content}
       <SajraChat appName={state.appName} members={state.members} onOpenMember={(id) => navigate({ page: "member", memberId: id })} onFeedback={submitChatFeedback} />
 
-      <p className="footer-note">
-        {supabaseConfigured
-          ? syncStatus === "error"
+      {supabaseConfigured && (syncStatus === "error" || syncStatus === "conflict") ? (
+        <p className="footer-note">
+          {syncStatus === "error"
             ? `${t(language, "syncIssuePrefix")} ${t(language, syncMessageKey)} ${t(language, "syncIssueSuffix")}`
-            : syncStatus === "conflict"
-              ? t(language, syncMessageKey)
-              : `${t(language, "syncOnPrefix")} ${t(language, syncMessageKey)}`
-          : t(language, "localOnlyFooter")}
-      </p>
+            : t(language, syncMessageKey)}
+        </p>
+      ) : null}
 
       {isLoggedIn && saveToast ? (
         <div className={`sync-toast ${saveToast.tone}`} role="status" aria-live="polite">{t(language, saveToast.key)}</div>
@@ -3167,7 +3198,7 @@ export default function App() {
                 onChange={(e) => handleMemberPhoto(e.target.files?.[0])}
               />
             </label>
-            {isAdmin ? <label className="span-12 hero-slider-admin-toggle"><input type="checkbox" checked={memberDraft.showInHeroSlider} disabled={!memberDraft.showInHeroSlider && !(Boolean(memberDraft.photo.trim()) && isSliderProfession(normalizeProfession(memberDraft.professionChoice === PROFESSION_OTHER ? memberDraft.professionOther : memberDraft.professionChoice)))} onChange={(event) => setMemberDraft((current) => current ? { ...current, showInHeroSlider: event.target.checked } : current)} /><span><strong>{t(language, "heroSliderToggleLabel")}</strong><small>{t(language, "heroSliderToggleHint")}</small></span></label> : null}
+            {isAdmin ? <label className="span-12 hero-slider-admin-toggle"><input type="checkbox" checked={memberDraft.showInHeroSlider} disabled={!memberDraft.showInHeroSlider && !(Boolean(memberDraft.photo.trim()) && isSliderProfession(normalizeProfession(memberDraft.professionChoice === PROFESSION_OTHER ? memberDraft.professionOther : memberDraft.professionChoice)))} onChange={(event) => setMemberDraft((current) => current ? { ...current, showInHeroSlider: event.target.checked } : current)} /><span><strong>{t(language, "heroSliderToggleLabel")}</strong></span></label> : null}
             <label className="span-12">
               <span className="sr-only">{t(language, "bioLabel")}</span>
               <textarea className="textarea" placeholder={t(language, "bioLabel")} value={memberDraft.bio} onChange={(e) => setMemberDraft((current) => current ? { ...current, bio: e.target.value } : current)} />

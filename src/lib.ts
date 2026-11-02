@@ -1,5 +1,16 @@
+import { Capacitor } from "@capacitor/core";
 import type { ActivityAction, ActivityType, AppState, GalleryImage, Member, TreeNode, User } from "./types";
 import { SAJRA_SEED_STATE } from "./seedState";
+
+/**
+ * A shareable/scannable link always has to be the real public site, never window.location -
+ * inside the Android app that's an internal WebView origin (e.g. https://localhost), which isn't
+ * reachable from anywhere else and makes shared links and QR codes silently useless there.
+ */
+export function publicPageUrl(hashPath: string): string {
+  const base = Capacitor.isNativePlatform() ? "https://larrysm786786.github.io/sajra/" : `${window.location.origin}${window.location.pathname}`;
+  return `${base}#${hashPath}`;
+}
 
 export const STORAGE_KEY = "sajra-react-state-v1";
 

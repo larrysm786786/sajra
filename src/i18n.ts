@@ -305,7 +305,7 @@ const STRINGS = {
     dodLabel: "Date of death",
     birthplaceLabel: "Birthplace",
     daughtersCountLabel: "Daughters",
-    daughtersCountHint: "Number only - daughters aren't added as separate profiles in Sajra.",
+    daughtersCountHint: "Number only.",
     photoUrlLabel: "Photo link",
     uploadPhotoLabel: "Upload photo",
     bioLabel: "Bio",
@@ -322,7 +322,7 @@ const STRINGS = {
 
     editUserModalTitle: "Edit user",
     addUserModalTitle: "Add user",
-    userModalSubtitle: "Adding a user here also creates their login (email and password). Editors can add new members and photos. Contributors can also edit existing members. Only admins can delete things or see Users, Log History and Backup.",
+    userModalSubtitle: "",
     userPasswordLabel: "Login password",
     userPasswordEditLabel: "New password (leave empty to keep the current one)",
     userLoginRequired: "Please enter an email and a password to create a login.",
@@ -369,7 +369,6 @@ const STRINGS = {
     savedVersionPrefix: "Saved version:",
     restoreVersionButton: "Restore this version",
     heroSliderToggleLabel: "Show in homepage professional slider",
-    heroSliderToggleHint: "Select this member for the home page. A profile photo and a profession are required.",
     closeLabel: "Close",
 
     professionLabel: "Profession",
@@ -735,7 +734,7 @@ const STRINGS = {
     dodLabel: "تاریخ وفات",
     birthplaceLabel: "جائے پیدائش",
     daughtersCountLabel: "بیٹیاں",
-    daughtersCountHint: "صرف تعداد - بیٹیوں کو شجرہ میں الگ پروفائل کے طور پر شامل نہیں کیا جاتا۔",
+    daughtersCountHint: "صرف تعداد۔",
     photoUrlLabel: "تصویر ڈیٹا یا لنک",
     uploadPhotoLabel: "تصویر اپ لوڈ کریں",
     bioLabel: "سوانح",
@@ -752,7 +751,7 @@ const STRINGS = {
 
     editUserModalTitle: "صارف میں ترمیم کریں",
     addUserModalTitle: "صارف شامل کریں",
-    userModalSubtitle: "یہاں صارف بنانے سے اس کا لاگ ان (ای میل اور پاسورڈ) بھی بن جاتا ہے تاکہ وہ ایڈمن پینل میں سائن ان کر سکے۔ ایڈیٹر نئے ارکان اور تصاویر شامل کر سکتا ہے؛ کنٹری بیوٹر موجودہ ارکان میں ترمیم بھی کر سکتا ہے؛ حذف کرنا اور صارفین، لاگ ہسٹری، بیک اپ صرف ایڈمن کو نظر آتے ہیں۔",
+    userModalSubtitle: "",
     userPasswordLabel: "لاگ ان پاسورڈ",
     userPasswordEditLabel: "نیا پاسورڈ (موجودہ رکھنے کے لیے خالی چھوڑیں)",
     userLoginRequired: "لاگ ان بنانے کے لیے ای میل اور پاسورڈ ضروری ہیں۔",
@@ -799,7 +798,6 @@ const STRINGS = {
     savedVersionPrefix: "محفوظ شدہ ورژن:",
     restoreVersionButton: "یہ ورژن بحال کریں",
     heroSliderToggleLabel: "ہوم پیج پروفیشنل سلائیڈر میں دکھائیں",
-    heroSliderToggleHint: "اس رکن کو ہوم پیج کے لیے منتخب کریں۔ پروفائل فوٹو اور پیشہ ضروری ہیں۔",
     closeLabel: "بند کریں",
 
     professionLabel: "پیشہ",
