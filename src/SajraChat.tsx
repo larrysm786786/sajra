@@ -28,7 +28,11 @@ declare global {
 }
 
 function speechLangFor(mode: "auto" | "en" | "hinglish" | "ur"): string {
-  return mode === "ur" ? "ur-PK" : "en-US";
+  // Indian English handles code-mixed Hindi/English speech (recognition and pronunciation) more
+  // naturally than American English - there's no dedicated "Hinglish" language code to pick instead.
+  if (mode === "ur") return "ur-PK";
+  if (mode === "hinglish") return "en-IN";
+  return "en-US";
 }
 
 /** Strips markdown (bold markers, headings, code fences, list bullets) down to text worth speaking aloud. */
@@ -78,6 +82,7 @@ export default function SajraChat({ appName, members, onOpenMember, onFeedback }
   const [responseLanguage, setResponseLanguage] = useState<"auto" | "en" | "hinglish" | "ur">("auto");
   const [readAloud, setReadAloud] = useState(true);
   const [listening, setListening] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const spokenCountRef = useRef(0);
@@ -90,7 +95,15 @@ export default function SajraChat({ appName, members, onOpenMember, onFeedback }
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(cleanForSpeech(text));
     utterance.lang = speechLangFor(responseLanguage);
+    utterance.onstart = () => setSpeaking(true);
+    utterance.onend = () => setSpeaking(false);
+    utterance.onerror = () => setSpeaking(false);
     window.speechSynthesis.speak(utterance);
+  }
+
+  function stopSpeaking() {
+    window.speechSynthesis.cancel();
+    setSpeaking(false);
   }
 
   // Reads out loud only new assistant replies that arrive after the toggle is on, never the
@@ -114,11 +127,20 @@ export default function SajraChat({ appName, members, onOpenMember, onFeedback }
     if (!Ctor) return;
     const recognition = new Ctor();
     recognition.lang = speechLangFor(responseLanguage);
-    recognition.interimResults = false;
-    recognition.continuous = false;
+    // Continuous + interim: keeps listening across pauses between sentences (stops only when the
+    // mic button is tapped again) and shows words as they're recognized, not just after stopping.
+    recognition.interimResults = true;
+    recognition.continuous = true;
+    const baseDraft = draft.trim();
+    let finalTranscript = "";
     recognition.onresult = (event) => {
-      const transcript = Array.from({ length: event.results.length }, (_, index) => event.results[index][0].transcript).join(" ");
-      setDraft((current) => (current.trim() ? `${current.trim()} ${transcript}` : transcript));
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const result = event.results[i];
+        if (result.isFinal) finalTranscript = `${finalTranscript} ${result[0].transcript}`.trim();
+        else interim += result[0].transcript;
+      }
+      setDraft([baseDraft, finalTranscript, interim].filter((part) => part.trim()).join(" ").trim());
     };
     recognition.onerror = () => setListening(false);
     recognition.onend = () => setListening(false);
@@ -170,7 +192,7 @@ export default function SajraChat({ appName, members, onOpenMember, onFeedback }
         {!messages.length ? <div className="sajra-chat-welcome"><span>{"\u2726"}</span><h3>Assalamo Alaikum</h3><p>I can help you explore the {appName} family tree. What would you like to know?</p><div className="sajra-chat-chips"><button type="button" onClick={() => setDraft("How do I search the family tree?")}>Search the tree</button><button type="button" onClick={() => setDraft("How many Hafiz, Maulanas, and engineers are in the tree?")}>Family counts</button><button type="button" onClick={() => setDraft("Who are the parents of ")}>Find parents</button><button type="button" onClick={() => setDraft("How are these family members related: ")}>Find a relationship</button><button type="button" onClick={() => setDraft("Tell me about Sajra")}>About Sajra</button></div></div> : messages.map((message, index) => <div key={index} className={`sajra-chat-message ${message.role}`}>{message.role === "assistant" ? <>{renderAssistantMessage(message.content)}{members.filter((member) => member.uniqueId && message.content.includes(member.uniqueId)).map((member) => { const father = members.find((candidate) => candidate.id === member.fatherId); const mother = members.find((candidate) => candidate.id === member.motherId); return <button key={member.id} type="button" className="sajra-chat-profile-card" onClick={() => { setOpen(false); onOpenMember(member.id); }}><strong>{member.name}</strong><span>{member.uniqueId}</span>{member.profession ? <small>{member.profession}</small> : null}{father || mother ? <small>{father ? "Father: " + father.name : ""}{father && mother ? " | " : ""}{mother ? "Mother: " + mother.name : ""}</small> : null}<small>View profile</small></button>; })}{message.role === "assistant" ? <><div className="sajra-chat-source">Family tree records</div><div className="sajra-chat-feedback" aria-label="Rate this answer"><span>Was this helpful?</span><button type="button" aria-label="Helpful" aria-pressed={message.feedback === "up"} disabled={Boolean(message.feedback)} onClick={() => void submitFeedback(index, message.content, true)}>Yes</button><button type="button" aria-label="Not helpful" aria-pressed={message.feedback === "down"} disabled={Boolean(message.feedback)} onClick={() => void submitFeedback(index, message.content, false)}>No</button>{message.feedbackSent ? <small>Thanks, feedback sent to the site admins.</small> : message.feedback ? <small>Sending feedback</small> : null}</div></> : null}</> : message.content}</div>)}
         {busy ? <div className="sajra-chat-message assistant sajra-chat-typing"><i/><i/><i/></div> : null}{error ? <p className="sajra-chat-error">{error}</p> : null}<div ref={bottomRef}/>
       </div>
-      <div className="sajra-chat-settings"><label>Language<select value={responseLanguage} onChange={(event) => setResponseLanguage(event.target.value as "auto" | "en" | "hinglish" | "ur")}><option value="auto">Match my message</option><option value="en">English</option><option value="hinglish">Hinglish</option><option value="ur">Urdu</option></select></label><label>Answer<select value={answerLength} onChange={(event) => setAnswerLength(event.target.value as "concise" | "detailed")}><option value="concise">Short</option><option value="detailed">Detailed</option></select></label>{speechSynthesisSupported ? <button type="button" className={`sajra-chat-voice-toggle${readAloud ? " active" : ""}`} aria-pressed={readAloud} onClick={() => { setReadAloud((value) => !value); window.speechSynthesis.cancel(); }}>{readAloud ? "\ud83d\udd0a Read aloud" : "\ud83d\udd07 Read aloud"}</button> : null}</div><form className="sajra-chat-form" onSubmit={(event) => void send(event)}>{speechRecognitionSupported ? <button type="button" className={`sajra-chat-mic-btn${listening ? " listening" : ""}`} aria-label={listening ? "Stop listening" : "Speak your question"} aria-pressed={listening} onClick={toggleListening}>{"\ud83c\udfa4"}</button> : null}<textarea aria-label="Your message" placeholder={listening ? "Listening\u2026" : "Ask me anything\u2026"} rows={1} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(event); } }} /><button type="submit" aria-label="Send message" disabled={!draft.trim() || busy}>{"\u2191"}</button></form>
+      <div className="sajra-chat-settings"><label>Language<select value={responseLanguage} onChange={(event) => setResponseLanguage(event.target.value as "auto" | "en" | "hinglish" | "ur")}><option value="auto">Match my message</option><option value="en">English</option><option value="hinglish">Hinglish</option><option value="ur">Urdu</option></select></label><label>Answer<select value={answerLength} onChange={(event) => setAnswerLength(event.target.value as "concise" | "detailed")}><option value="concise">Short</option><option value="detailed">Detailed</option></select></label>{speechSynthesisSupported ? <>{speaking ? <button type="button" className="sajra-chat-voice-stop" onClick={stopSpeaking}>{"\u23f9\ufe0f Stop"}</button> : null}<button type="button" className={`sajra-chat-voice-toggle${readAloud ? " active" : ""}`} aria-pressed={readAloud} onClick={() => { setReadAloud((value) => !value); stopSpeaking(); }}>{readAloud ? "\ud83d\udd0a Read aloud" : "\ud83d\udd07 Read aloud"}</button></> : null}</div><form className="sajra-chat-form" onSubmit={(event) => void send(event)}>{speechRecognitionSupported ? <button type="button" className={`sajra-chat-mic-btn${listening ? " listening" : ""}`} aria-label={listening ? "Stop listening" : "Speak your question"} aria-pressed={listening} onClick={toggleListening}>{"\ud83c\udfa4"}</button> : null}<textarea aria-label="Your message" placeholder={listening ? "Listening\u2026" : "Ask me anything\u2026"} rows={1} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(event); } }} /><button type="submit" aria-label="Send message" disabled={!draft.trim() || busy}>{"\u2191"}</button></form>
       <div className="sajra-chat-footnote">AI can make mistakes. Avoid sharing private information.</div>
     </section> : null}
     <button type="button" className={`sajra-chat-launcher${open ? " active" : ""}`} aria-label={open ? "Close AI chat" : "Open AI chat"} onClick={() => setOpen((value) => !value)}>{open ? "\u00D7" : <><span>{"\u2726"}</span><span className="sajra-chat-launcher-label">Ask Anis Ai</span></>}</button>
