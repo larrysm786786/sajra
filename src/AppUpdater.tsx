@@ -92,28 +92,28 @@ export default function AppUpdaterCard({ language, isAdmin }: { language: Langua
   const updateNotifications = useTopicNotifications(
     "sajra_updates",
     "sajra_updates",
-    "Sajra updates",
-    "New Sajra features and app updates",
+    "Apna Sajra updates",
+    "New Apna Sajra features and app updates",
     "sajra-update-notifications"
   );
   const announcementNotifications = useTopicNotifications(
     "sajra_announcements",
     "sajra_announcements",
-    "Sajra announcements",
-    "Family announcements posted by the Sajra admin",
+    "Apna Sajra announcements",
+    "Family announcements posted by the Apna Sajra admin",
     "sajra-announcement-notifications"
   );
   const eventNotifications = useTopicNotifications(
     "sajra_events",
     "sajra_events",
-    "Sajra birthdays & anniversaries",
+    "Apna Sajra birthdays & anniversaries",
     "Family birthdays and remembrance days",
     "sajra-event-notifications"
   );
   const adminAlertNotifications = useTopicNotifications(
     "sajra_admin_alerts",
     "sajra_admin_alerts",
-    "Sajra admin alerts",
+    "Apna Sajra admin alerts",
     "New suggestions and guestbook messages from visitors",
     "sajra-admin-alert-notifications"
   );
@@ -213,7 +213,7 @@ export default function AppUpdaterCard({ language, isAdmin }: { language: Langua
     try {
       const result = await updater.installApk({ url: apkUrl });
       if (result.status === "permission_required") {
-        setMessage(ur ? "Android settings میں Sajra کے لیے unknown apps کی اجازت دیں، پھر دوبارہ بٹن دبائیں۔" : "Allow Sajra to install unknown apps in Android settings, then tap Download and install again.");
+        setMessage(ur ? "Android settings میں Apna Sajra کے لیے unknown apps کی اجازت دیں، پھر دوبارہ بٹن دبائیں۔" : "Allow Apna Sajra to install unknown apps in Android settings, then tap Download and install again.");
       } else {
         setDownloading(true);
         setMessage(ur ? "ڈاؤن لوڈ شروع ہو گیا ہے۔ مکمل ہونے پر Android انسٹال کی تصدیق مانگے گا۔" : "Download started. Android will ask you to confirm the installation when it finishes.");
@@ -223,11 +223,11 @@ export default function AppUpdaterCard({ language, isAdmin }: { language: Langua
   }
   return <div className="notice" style={{ marginTop: 18 }}>
     <strong>{ur ? "ایپ اپ ڈیٹ" : "App update"}</strong>
-    <p style={{ margin: "8px 0 12px" }}>{message || (ur ? "Sajra کا تازہ ترین ورژن چیک کریں۔" : "Check for the latest version of Sajra.")}</p>
+    <p style={{ margin: "8px 0 12px" }}>{message || (ur ? "Apna Sajra کا تازہ ترین ورژن چیک کریں۔" : "Check for the latest version of Apna Sajra.")}</p>
     {apkUrl ? <button className="btn-ghost" type="button" disabled={busy || downloading} onClick={() => void install()}>{busy || downloading ? (ur ? "ڈاؤن لوڈ ہو رہا ہے…" : "Downloading…") : (ur ? "ڈاؤن لوڈ اور انسٹال کریں" : "Download and install")}</button>
       : <button className="btn-ghost" type="button" disabled={busy} onClick={() => void check()}>{busy ? (ur ? "چیک ہو رہا ہے…" : "Checking…") : (ur ? "اپ ڈیٹ چیک کریں" : "Check for updates")}</button>}
     <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
-      <strong>{ur ? "نئے فیچرز کی اطلاعات" : "New feature notifications"}</strong>
+      <strong style={{ display: "block", marginBottom: 2 }}>{ur ? "نئے فیچرز کی اطلاعات" : "New feature notifications"}</strong>
       <button
         className={`btn-ghost notif-toggle-btn${updateNotifications.enabled ? " active" : ""}`}
         type="button"
@@ -240,7 +240,7 @@ export default function AppUpdaterCard({ language, isAdmin }: { language: Langua
       {updateNotifications.message ? <small style={{ display: "block", marginTop: 8 }}>{updateNotifications.message}</small> : null}
     </div>
     <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
-      <strong>{ur ? "خاندانی اعلانات کی اطلاعات" : "Family announcement notifications"}</strong>
+      <strong style={{ display: "block", marginBottom: 2 }}>{ur ? "خاندانی اعلانات کی اطلاعات" : "Family announcement notifications"}</strong>
       <button
         className={`btn-ghost notif-toggle-btn${announcementNotifications.enabled ? " active" : ""}`}
         type="button"
@@ -253,7 +253,7 @@ export default function AppUpdaterCard({ language, isAdmin }: { language: Langua
       {announcementNotifications.message ? <small style={{ display: "block", marginTop: 8 }}>{announcementNotifications.message}</small> : null}
     </div>
     <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
-      <strong>{ur ? "سالگرہ اور یادگار دن کی اطلاعات" : "Birthday & remembrance notifications"}</strong>
+      <strong style={{ display: "block", marginBottom: 2 }}>{ur ? "سالگرہ اور یادگار دن کی اطلاعات" : "Birthday & remembrance notifications"}</strong>
       <button
         className={`btn-ghost notif-toggle-btn${eventNotifications.enabled ? " active" : ""}`}
         type="button"
@@ -267,7 +267,7 @@ export default function AppUpdaterCard({ language, isAdmin }: { language: Langua
     </div>
     {isAdmin ? (
       <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
-        <strong>{ur ? "ایڈمن اطلاعات" : "Admin alerts"}</strong>
+        <strong style={{ display: "block", marginBottom: 2 }}>{ur ? "ایڈمن اطلاعات" : "Admin alerts"}</strong>
         <button
           className={`btn-ghost notif-toggle-btn${adminAlertNotifications.enabled ? " active" : ""}`}
           type="button"

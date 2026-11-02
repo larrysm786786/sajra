@@ -28,7 +28,7 @@ const PAGE_TITLES: Record<string, string> = {
   home: "Home",
   tree: "Family tree",
   gallery: "Gallery",
-  about: "About Sajra",
+  about: "About Apna Sajra",
   guide: "Guide",
   roots: "Founding branches",
   calendar: "Family calendar",
@@ -55,6 +55,6 @@ export function trackNativeScreenView(page: string): void {
   const safePage = PAGE_TITLES[page] ? page : "home";
   void FirebaseAnalytics.setScreenName({
     screenName: PAGE_TITLES[safePage],
-    nameOverride: "Sajra"
+    nameOverride: "ApnaSajra"
   }).catch(() => {});
 }
