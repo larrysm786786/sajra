@@ -159,7 +159,7 @@ function hasMeaningfulData(state: AppState): boolean {
     state.members.length ||
     state.gallery.length ||
     state.users.length > 1 ||
-    state.appName !== "Sajra" ||
+    state.appName !== "Apna Sajra" ||
     state.language !== "en" ||
     state.theme !== "light"
   );

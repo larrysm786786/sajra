@@ -3,7 +3,7 @@ import type { Gender, Language } from "./types";
 const STRINGS = {
   en: {
     signInEyebrow: "Admin access",
-    signInTitle: "Log in to manage Sajra",
+    signInTitle: "Log in to manage Apna Sajra",
     signInSubtitle: "Log in with your admin account to add relatives, upload photos and keep the family record up to date.",
     mfaChallengeTitle: "Enter your verification code",
     mfaChallengeSubtitle: "Open your authenticator app and enter the 6-digit code to finish signing in.",
@@ -218,7 +218,7 @@ const STRINGS = {
     guestbookPostButton: "Post message",
     noGuestbookEntries: "No messages yet. Be the first to leave one.",
 
-    eyebrowHero: "Sajra family archive",
+    eyebrowHero: "Apna Sajra family archive",
     heroLegacyTitleLine1: "Nine Generations.",
     heroLegacyTitleLine2: "One Legacy.",
     heroLegacyCopy: "A family bound by heritage, strengthened by unity, and carried forward through generations.",
@@ -284,9 +284,9 @@ const STRINGS = {
     syncIssuePrefix: "Sync problem:",
     syncIssueSuffix: "Your saved data on this device is fine.",
     syncOnPrefix: "Syncing with the family record.",
-    localOnlyFooter: "This copy of Sajra is working offline. Its data lives on this device only.",
+    localOnlyFooter: "This copy of Apna Sajra is working offline. Its data lives on this device only.",
 
-    loginNotConfigured: "Admin login isn't set up for this copy of Sajra yet. Please ask the family admin.",
+    loginNotConfigured: "Admin login isn't set up for this copy of Apna Sajra yet. Please ask the family admin.",
     invalidLogin: "The email or password is wrong.",
     invalidBackupFile: "That backup file doesn't look right.",
 
@@ -354,7 +354,7 @@ const STRINGS = {
     showPositionButton: "Show My Position",
     treeHint: "Tap a name to open or close its branch. Double-tap to see the profile. Scroll to zoom and drag to move around.",
     noMemberFoundPrefix: "Nobody found with the name",
-    treeSajraFallback: "Sajra",
+    treeSajraFallback: "Apna Sajra",
 
     zoomInLabel: "Zoom in",
     zoomOutLabel: "Zoom out",
@@ -431,7 +431,7 @@ const STRINGS = {
   },
   ur: {
     signInEyebrow: "ایڈمن رسائی",
-    signInTitle: "شجرہ کا انتظام کرنے کے لیے سائن ان کریں",
+    signInTitle: "اپنا شجرہ کا انتظام کرنے کے لیے سائن ان کریں",
     signInSubtitle: "رشتہ دار شامل کرنے، گیلری ترتیب دینے اور آرکائیو کو تازہ رکھنے کے لیے اپنے فیملی ایڈمنسٹریٹر اکاؤنٹ سے سائن ان کریں۔",
     mfaChallengeTitle: "اپنا تصدیقی کوڈ درج کریں",
     mfaChallengeSubtitle: "سائن ان مکمل کرنے کے لیے اپنی authenticator ایپ کھولیں اور 6 ہندسوں کا کوڈ درج کریں۔",
@@ -647,7 +647,7 @@ const STRINGS = {
     guestbookPostButton: "پیغام پوسٹ کریں",
     noGuestbookEntries: "ابھی کوئی پیغام نہیں۔ سب سے پہلے آپ لکھیں۔",
 
-    eyebrowHero: "شجرہ خاندانی آرکائیو",
+    eyebrowHero: "اپنا شجرہ خاندانی آرکائیو",
     heroLegacyTitleLine1: "نو نسلیں۔",
     heroLegacyTitleLine2: "ایک وراثت۔",
     heroLegacyCopy: "ایک ایسا خاندان جو وراثت سے جڑا، اتحاد سے مضبوط اور نسل در نسل آگے بڑھتا ہے۔",
@@ -713,9 +713,9 @@ const STRINGS = {
     syncIssuePrefix: "سنک مسئلہ:",
     syncIssueSuffix: "مقامی سٹوریج اور براؤزر بیک اپ اب بھی کام کر رہے ہیں۔",
     syncOnPrefix: "فیملی آرکائیو سنک آن ہے۔",
-    localOnlyFooter: "شجرہ کی یہ کاپی اس ڈیوائس پر صرف مقامی موڈ میں چل رہی ہے۔",
+    localOnlyFooter: "اپنا شجرہ کی یہ کاپی اس ڈیوائس پر صرف مقامی موڈ میں چل رہی ہے۔",
 
-    loginNotConfigured: "اس شجرہ کاپی کے لیے ایڈمن لاگ ان ابھی ترتیب نہیں دیا گیا۔ براہ کرم آرکائیو ایڈمنسٹریٹر سے رابطہ کریں۔",
+    loginNotConfigured: "اس اپنا شجرہ کاپی کے لیے ایڈمن لاگ ان ابھی ترتیب نہیں دیا گیا۔ براہ کرم آرکائیو ایڈمنسٹریٹر سے رابطہ کریں۔",
     invalidLogin: "غلط ای میل یا پاسورڈ۔",
     invalidBackupFile: "غلط بیک اپ فائل۔",
 
@@ -783,7 +783,7 @@ const STRINGS = {
     showPositionButton: "میری پوزیشن دکھائیں",
     treeHint: "نوڈ پر کلک کر کے کھولیں یا بند کریں۔ پروفائل کھولنے کے لیے ڈبل کلک کریں۔ زوم کے لیے سکرول کریں، منتقل کرنے کے لیے گھسیٹیں۔",
     noMemberFoundPrefix: "اس نام کا کوئی رکن نہیں ملا:",
-    treeSajraFallback: "شجرہ",
+    treeSajraFallback: "اپنا شجرہ",
 
     zoomInLabel: "زوم ان",
     zoomOutLabel: "زوم آؤٹ",

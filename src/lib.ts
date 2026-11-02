@@ -16,7 +16,7 @@ export const STORAGE_KEY = "sajra-react-state-v1";
 
 export function createEmptyState(): AppState {
   return {
-    appName: "Sajra",
+    appName: "Apna Sajra",
     language: "en",
     theme: "light",
     members: [],

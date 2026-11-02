@@ -1,7 +1,7 @@
 import type { AppState } from "./types";
 
 export const SAJRA_SEED_STATE: AppState = {
-  "appName": "Sajra",
+  "appName": "Apna Sajra",
   "language": "en",
   "theme": "light",
   "members": [
