@@ -20,6 +20,7 @@ import {
   getAncestorChain,
   getChildren,
   findDataQualityIssues,
+  formatHijriDate,
   getFamilyCalendarEvents,
   getTodayFamilyMemories,
   getParents,
@@ -2185,7 +2186,8 @@ export default function App() {
                   </h1>
                   <p className="section-subtitle" style={{ marginTop: 12 }}>
                     {member.birthplace || t(language, "noBirthplace")}
-                    {member.dod ? ` | ${t(language, "diedWord")} ${formatDate(member.dod, language)}` : ""}
+                    {member.dob ? ` | ${t(language, "bornWord")} ${formatDate(member.dob, language)} (${formatHijriDate(member.dob, language)})` : ""}
+                    {member.dod ? ` | ${t(language, "diedWord")} ${formatDate(member.dod, language)} (${formatHijriDate(member.dod, language)})` : ""}
                     {calculateAge(member.dob, member.dod) !== null ? ` | ${t(language, "ageWord")} ${calculateAge(member.dob, member.dod)}` : ""}
                     {member.daughtersCount != null ? ` | ${t(language, "daughtersCountLabel")}: ${member.daughtersCount}` : ""}
                   </p>
