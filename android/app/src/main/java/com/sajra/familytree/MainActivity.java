@@ -7,6 +7,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AppNotificationsPlugin.class);
         registerPlugin(AppBiometricPlugin.class);
         registerPlugin(AppPrintPlugin.class);
+        registerPlugin(AppSpeechPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

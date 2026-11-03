@@ -30,6 +30,15 @@ type AppPrintPlugin = {
   print(): Promise<void>;
 };
 export const appPrint = registerPlugin<AppPrintPlugin>("AppPrint");
+type AppSpeechPlugin = {
+  isAvailable(): Promise<{ available: boolean }>;
+  start(options: { language: string }): Promise<void>;
+  stop(): Promise<void>;
+  addListener(eventName: "speechResult", listener: (data: { transcript: string; isFinal: boolean }) => void): Promise<PluginListenerHandle>;
+  addListener(eventName: "speechLevel", listener: (data: { level: number }) => void): Promise<PluginListenerHandle>;
+  addListener(eventName: "speechError", listener: (data: { code: number }) => void): Promise<PluginListenerHandle>;
+};
+export const appSpeech = registerPlugin<AppSpeechPlugin>("AppSpeech");
 const releasesUrl = "https://api.github.com/repos/larrysm786786/sajra/releases/latest";
 
 function SwipeSwitch({ checked, onChange, disabled }: { checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean }) {
