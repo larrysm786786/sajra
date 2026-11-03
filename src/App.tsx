@@ -723,15 +723,25 @@ export default function App() {
     trackNativeScreenView(route.page);
   }, [route.page, route.memberId]);
 
+  // Resets only on navigating to a (possibly new) update link, not on every members-array change,
+  // so a background sync tick doesn't wipe the just-submitted "thank you" state back to the form.
+  useEffect(() => {
+    if (route.page !== "update") return;
+    setUpdateRequestSent(false);
+  }, [route.page, route.memberId]);
+
+  // Seeds the draft once the target member's real data is available. Kept on state.members too
+  // (not just route) because on a cold load the member a brand-new link points to - e.g. one just
+  // added via bulk import - may not be in the locally-cached state yet, only after Supabase syncs
+  // in; the functional guard stops that later sync from re-seeding and wiping what was typed.
   useEffect(() => {
     if (route.page !== "update" || !route.memberId) return;
     const member = state.members.find((candidate) => candidate.id === route.memberId);
     if (!member) return;
-    setUpdateRequestSent(false);
-    setUpdateRequestDraft({ memberId: member.id, photo: member.photo ?? "", bio: member.bio ?? "", contact: member.contact ?? "" });
-    // Deliberately keyed off route only, not state.members, so it doesn't re-seed (and wipe
-    // whatever the visitor just typed) on every autosave tick while they're filling the form in.
-  }, [route.page, route.memberId]);
+    setUpdateRequestDraft((current) =>
+      current && current.memberId === member.id ? current : { memberId: member.id, photo: member.photo ?? "", bio: member.bio ?? "", contact: member.contact ?? "" }
+    );
+  }, [route.page, route.memberId, state.members]);
 
   useEffect(() => {
     if (adminSection !== "logs") setLogsPage(0);
@@ -2164,15 +2174,20 @@ export default function App() {
     try {
       const text = await file.text();
       const rows = parseMembersCsv(text);
-      const result = buildMembersFromImportRows(rows, state.members);
       const actorEmail = supabaseSession?.user.email ?? null;
-      if (result.addedCount > 0) {
-        updateState((current) => pushActivityLog(
-          { ...current, members: result.members },
-          { type: "member", action: "added", label: `${t(language, "bulkImportActivityLabel")} (${result.addedCount})`, actorEmail }
-        ));
-      }
-      setBulkImportResult({ addedCount: result.addedCount, errors: result.errors });
+      // Resolved from current.members inside the updater (not the outer state.members closure),
+      // so a concurrent edit/sync landing while this file was being read isn't clobbered.
+      let result: { addedCount: number; errors: string[] } | null = null;
+      updateState((current) => {
+        const built = buildMembersFromImportRows(rows, current.members);
+        result = { addedCount: built.addedCount, errors: built.errors };
+        if (!built.addedCount) return current;
+        return pushActivityLog(
+          { ...current, members: built.members },
+          { type: "member", action: "added", label: `${t(language, "bulkImportActivityLabel")} (${built.addedCount})`, actorEmail }
+        );
+      });
+      if (result) setBulkImportResult(result);
     } catch {
       setBulkImportResult({ addedCount: 0, errors: [t(language, "invalidBackupFile")] });
     } finally {
