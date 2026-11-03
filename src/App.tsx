@@ -8,7 +8,7 @@ import QRCode from "qrcode";
 import { trackNativeScreenView, trackWebPageView } from "./analytics";
 import type { FormEvent, ReactNode, TouchEvent as ReactTouchEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
-import type { Announcement, AppState, DuaRequest, GalleryImage, Gender, Language, Member, Role, Suggestion, User, ViewKey } from "./types";
+import type { Announcement, AppState, DuaRequest, GalleryImage, Gender, Language, Member, MemberUpdateRequest, Role, Suggestion, User, ViewKey } from "./types";
 import {
   buildMembersFromImportRows,
   buildTree,
@@ -95,7 +95,7 @@ const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string
 
 type RouteState = { page: ViewKey; memberId?: number };
 
-type AdminSection = "overview" | "members" | "users" | "gallery" | "suggestions" | "logs" | "backup" | "security" | "quality" | "analytics";
+type AdminSection = "overview" | "members" | "users" | "gallery" | "suggestions" | "profileUpdates" | "logs" | "backup" | "security" | "quality" | "analytics";
 
 // Supabase reports an expired / already-used reset link through the URL hash.
 const STARTED_WITH_EXPIRED_LINK = typeof window !== "undefined" && window.location.hash.includes("error_code=otp_expired");
@@ -122,6 +122,7 @@ type MemberDraft = {
   showInHeroSlider: boolean;
   photo: string;
   bio: string;
+  contact: string;
   fatherId: string;
   motherId: string;
   spouseIds: number[];
@@ -187,7 +188,7 @@ function parseRoute(): RouteState {
   const raw = window.location.hash.replace(/^#/, "");
   if (!raw || raw === "/") return { page: "home" };
   const [page, id] = raw.split("/").filter(Boolean);
-  if ((page === "member" || page === "branch") && id) return { page, memberId: Number(id) || undefined };
+  if ((page === "member" || page === "branch" || page === "update") && id) return { page, memberId: Number(id) || undefined };
   if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots" || page === "calendar" || page === "settings" || page === "live" || page === "memory" || page === "dua") {
     return { page };
   }
@@ -242,6 +243,7 @@ function emptyMemberDraft(member?: Member): MemberDraft {
         showInHeroSlider: member.showInHeroSlider === true,
         photo: member.photo ?? "",
         bio: member.bio ?? "",
+        contact: member.contact ?? "",
         fatherId: member.fatherId ? String(member.fatherId) : "",
         motherId: member.motherId ? String(member.motherId) : "",
         spouseIds: [...member.spouseIds]
@@ -259,6 +261,7 @@ function emptyMemberDraft(member?: Member): MemberDraft {
         showInHeroSlider: false,
         photo: "",
         bio: "",
+        contact: "",
         fatherId: "",
         motherId: "",
         spouseIds: []
@@ -407,6 +410,7 @@ const ADMIN_ICONS: Record<AdminSection, string> = {
   users: "M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3Z",
   gallery: "M3 5h18v14H3V5Zm0 11 5-5 4 4 3-3 6 6M15.5 9.5h.01",
   suggestions: "M12 22s-8-4.5-8-11a8 8 0 0 1 16 0c0 6.5-8 11-8 11ZM12 8v5M12 16h.01",
+  profileUpdates: "M12 20h9M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5Z",
   logs: "M12 8v5l3 2M3 12a9 9 0 1 0 3-6.7M3 4v5h5",
   backup: "M12 3v12m0 0-4-4m4 4 4-4M4 17v3h16v-3",
   security: "M6 11V8a6 6 0 1 1 12 0v3M5 11h14v10H5V11Zm7 4v2",
@@ -605,6 +609,10 @@ export default function App() {
   const [duaDraft, setDuaDraft] = useState<DuaDraft | null>(null);
   const [duaBusy, setDuaBusy] = useState(false);
   const [duaSent, setDuaSent] = useState(false);
+  const [updateRequestDraft, setUpdateRequestDraft] = useState<{ memberId: number; photo: string; bio: string; contact: string } | null>(null);
+  const [updateRequestBusy, setUpdateRequestBusy] = useState(false);
+  const [updateRequestSent, setUpdateRequestSent] = useState(false);
+  const [updateLinkNotice, setUpdateLinkNotice] = useState("");
   const [liveUrlInput, setLiveUrlInput] = useState("");
   const [liveTitleInput, setLiveTitleInput] = useState("");
   const [liveBusy, setLiveBusy] = useState(false);
@@ -711,6 +719,16 @@ export default function App() {
   useEffect(() => {
     trackWebPageView(route.page);
     trackNativeScreenView(route.page);
+  }, [route.page, route.memberId]);
+
+  useEffect(() => {
+    if (route.page !== "update" || !route.memberId) return;
+    const member = state.members.find((candidate) => candidate.id === route.memberId);
+    if (!member) return;
+    setUpdateRequestSent(false);
+    setUpdateRequestDraft({ memberId: member.id, photo: member.photo ?? "", bio: member.bio ?? "", contact: member.contact ?? "" });
+    // Deliberately keyed off route only, not state.members, so it doesn't re-seed (and wipe
+    // whatever the visitor just typed) on every autosave tick while they're filling the form in.
   }, [route.page, route.memberId]);
 
   useEffect(() => {
@@ -1401,6 +1419,94 @@ export default function App() {
     updateState((current) => ({ ...current, duaRequests: current.duaRequests.filter((request) => request.id !== id) }));
   }
 
+  // The link an admin/editor sends a member so they can confirm/update their own photo, bio and
+  // contact without seeing (or being able to edit) anyone else's profile or the rest of the tree.
+  async function copyUpdateLink(member: Member) {
+    setUpdateLinkNotice("");
+    const url = publicPageUrl(`/update/${member.id}`);
+    try {
+      if (Capacitor.isNativePlatform()) {
+        await Share.share({ title: displayName(member, language), url });
+      } else if (navigator.share) {
+        await navigator.share({ title: displayName(member, language), url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setUpdateLinkNotice(t(language, "updateLinkCopied"));
+      }
+    } catch {
+      // User cancelled the native share sheet - not an error worth showing.
+    }
+  }
+
+  async function submitMemberUpdateRequest() {
+    if (!updateRequestDraft || updateRequestBusy) return;
+    const member = state.members.find((candidate) => candidate.id === updateRequestDraft.memberId);
+    if (!member) return;
+    setUpdateRequestBusy(true);
+    try {
+      let publishedState: AppState | null = null;
+      updateState((current) => {
+        const request: MemberUpdateRequest = {
+          id: nextId(current.memberUpdateRequests),
+          memberId: member.id,
+          memberName: member.name,
+          photo: updateRequestDraft.photo.trim() || null,
+          bio: updateRequestDraft.bio.trim() || null,
+          contact: updateRequestDraft.contact.trim() || null,
+          status: "pending",
+          createdAt: new Date().toISOString()
+        };
+        const next = { ...current, memberUpdateRequests: [request, ...current.memberUpdateRequests].slice(0, 200) };
+        publishedState = next;
+        return next;
+      });
+      // The member filling this in is never signed in, so (like Suggestions) this has to be
+      // pushed straight to Supabase instead of relying on the normal isLoggedIn-only autosave.
+      if (supabaseConfigured && publishedState) await persistToSupabase(publishedState);
+      setUpdateRequestSent(true);
+    } finally {
+      setUpdateRequestBusy(false);
+    }
+  }
+
+  function approveMemberUpdateRequest(id: number) {
+    if (!canEditMembers) return;
+    const actorEmail = supabaseSession?.user.email ?? null;
+    updateState((current) => {
+      const request = current.memberUpdateRequests.find((item) => item.id === id);
+      if (!request) return current;
+      const existingMember = current.members.find((member) => member.id === request.memberId);
+      if (!existingMember) {
+        return { ...current, memberUpdateRequests: current.memberUpdateRequests.map((item) => (item.id === id ? { ...item, status: "rejected" } : item)) };
+      }
+      const updatedMember: Member = {
+        ...existingMember,
+        photo: request.photo !== undefined ? request.photo : existingMember.photo,
+        bio: request.bio !== undefined ? request.bio : existingMember.bio,
+        contact: request.contact !== undefined ? request.contact : existingMember.contact
+      };
+      const next = {
+        ...current,
+        members: current.members.map((member) => (member.id === existingMember.id ? updatedMember : member)),
+        memberUpdateRequests: current.memberUpdateRequests.map((item) => (item.id === id ? { ...item, status: "approved" as const } : item))
+      };
+      return pushActivityLog(next, { type: "member", action: "updated", label: `${updatedMember.name} (${updatedMember.uniqueId})`, actorEmail, memberBefore: existingMember, memberAfter: updatedMember });
+    });
+  }
+
+  function rejectMemberUpdateRequest(id: number) {
+    if (!canEditMembers) return;
+    updateState((current) => ({
+      ...current,
+      memberUpdateRequests: current.memberUpdateRequests.map((item) => (item.id === id ? { ...item, status: "rejected" } : item))
+    }));
+  }
+
+  function deleteMemberUpdateRequest(id: number) {
+    if (!canEditMembers) return;
+    updateState((current) => ({ ...current, memberUpdateRequests: current.memberUpdateRequests.filter((item) => item.id !== id) }));
+  }
+
   // Everyone can read announcements; admins and contributors can always post one, editors need
   // the "Post an announcement" permission granted (see the Users admin section).
   function openAnnouncementEditor() {
@@ -1762,6 +1868,7 @@ export default function App() {
       showInHeroSlider: canAddToSlider ? memberDraft.showInHeroSlider : Boolean(existingMember?.showInHeroSlider),
       photo: memberDraft.photo.trim() || null,
       bio: memberDraft.bio.trim() || null,
+      contact: memberDraft.contact.trim() || null,
       fatherId: memberDraft.fatherId ? Number(memberDraft.fatherId) : null,
       motherId: memberDraft.motherId ? Number(memberDraft.motherId) : null,
       spouseIds,
@@ -1930,6 +2037,12 @@ export default function App() {
     if (!file || !memberDraft) return;
     const src = await readFileAsCompressedDataUrl(file);
     setMemberDraft((current) => current ? { ...current, photo: src } : current);
+  }
+
+  async function handleUpdateRequestPhoto(file?: File) {
+    if (!file || !updateRequestDraft) return;
+    const src = await readFileAsCompressedDataUrl(file);
+    setUpdateRequestDraft((current) => current ? { ...current, photo: src } : current);
   }
 
   async function handleGalleryFile(file?: File) {
@@ -2334,6 +2447,7 @@ export default function App() {
                   <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor(member)}>{t(language, "suggestCorrectionButton")}</button><button className="btn-ghost" type="button" onClick={() => navigate({ page: "branch", memberId: member.id })}>{t(language, "shareFamilyBranchButton")}</button>
                   <button className="btn-ghost" type="button" onClick={() => void shareMember(member)}>{t(language, "shareProfileButton")}</button>
                   <button className="btn-ghost" type="button" onClick={() => void openQrCode(member)}>{t(language, "showQrCodeButton")}</button>
+                  {canEditMembers ? <button className="btn-ghost" type="button" onClick={() => void copyUpdateLink(member)}>{t(language, "copyUpdateLinkButton")}</button> : null}
                   {myMemberId === member.id ? (
                     <button className="btn-ghost active" type="button" onClick={clearMyFamily}>{t(language, "thisIsMeLabel")}</button>
                   ) : (
@@ -2342,7 +2456,9 @@ export default function App() {
                 </div>
                 {suggestionSent ? <p className="hint no-print">{t(language, "suggestionSentMessage")}</p> : null}
                 {shareNotice ? <p className="hint no-print">{shareNotice}</p> : null}
+                {updateLinkNotice ? <p className="hint no-print">{updateLinkNotice}</p> : null}
                 {member.bio ? <p style={{ marginTop: 16, lineHeight: 1.8 }}>{member.bio}</p> : null}
+                {member.contact ? <p className="tree-sub" style={{ marginTop: 8 }}>{t(language, "contactLabel")}: {member.contact}</p> : null}
               </div>
 
               <div className="card-grid profile-relations-grid" style={{ marginTop: 20 }}>
@@ -2523,6 +2639,7 @@ export default function App() {
         ...(isAdmin ? [{ key: "users" as const, label: t(language, "usersLabel"), subtitle: t(language, "usersCardSubtitle") }] : []),
         { key: "gallery", label: t(language, "adminNavGallery"), subtitle: t(language, "galleryAdminSubtitle") },
         { key: "suggestions", label: t(language, "adminNavSuggestions"), subtitle: t(language, "suggestionsSubtitle") },
+        ...(canEditMembers ? [{ key: "profileUpdates" as const, label: t(language, "adminNavProfileUpdates"), subtitle: t(language, "profileUpdatesSubtitle") }] : []),
         ...(isAdmin ? [{ key: "logs" as const, label: t(language, "adminNavLogs"), subtitle: t(language, "logHistorySubtitle") }] : []),
         { key: "quality", label: t(language, "adminNavQuality"), subtitle: t(language, "adminQualitySubtitle") },
         ...(isAdmin ? [{ key: "backup" as const, label: t(language, "backupCardTitle"), subtitle: t(language, "backupCardSubtitle") }] : []),
@@ -2592,6 +2709,7 @@ export default function App() {
         sectionBody = (
           <>
             <input ref={bulkImportInputRef} type="file" accept=".csv,text/csv" hidden onChange={(e) => void handleBulkImportFile(e.target.files?.[0])} />
+            {updateLinkNotice ? <p className="hint">{updateLinkNotice}</p> : null}
             {canAddMember ? (
               <div className="notice" style={{ marginBottom: 16 }}>
                 <p className="hint">{t(language, "bulkImportHint")}</p>
@@ -2629,6 +2747,7 @@ export default function App() {
                     <div className="actions-row">
                       <button className="btn-ghost" type="button" onClick={() => navigate({ page: "member", memberId: member.id })}>{t(language, "openButton")}</button>
                       {canEditMembers ? <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editButton")}</button> : null}
+                      {canEditMembers ? <button className="btn-ghost" type="button" onClick={() => void copyUpdateLink(member)}>{t(language, "copyUpdateLinkButton")}</button> : null}
                       {isAdmin ? <button className="btn-ghost danger" type="button" onClick={() => deleteMember(member.id)}>{t(language, "deleteButton")}</button> : null}
                     </div>
                   </div>
@@ -2715,6 +2834,40 @@ export default function App() {
           </div>
         ) : (
           <div className="empty">{t(language, "noSuggestionsYet")}</div>
+        );
+      } else if (activeSection.key === "profileUpdates") {
+        sectionBody = state.memberUpdateRequests.length ? (
+          <div className="list">
+            {state.memberUpdateRequests.map((request) => (
+              <div key={request.id} className="card admin-suggestion-card" style={{ opacity: request.status === "pending" ? 1 : 0.6 }}>
+                <div className="admin-suggestion-content">
+                  <div className="tree-name">{request.memberName}</div>
+                  <div style={{ display: "flex", gap: 16, alignItems: "flex-start", marginTop: 8 }}>
+                    {request.photo ? <img className="avatar" src={photoSrc(request.photo)} alt={request.memberName} /> : null}
+                    <div>
+                      {request.bio ? <p className="admin-suggestion-message">{request.bio}</p> : null}
+                      {request.contact ? <p className="tree-sub">{t(language, "contactLabel")}: {request.contact}</p> : null}
+                    </div>
+                  </div>
+                  <div className="tree-sub admin-suggestion-meta">
+                    {formatDate(request.createdAt, language)}
+                    {request.status !== "pending" ? ` | ${request.status === "approved" ? t(language, "updateRequestApprovedLabel") : t(language, "updateRequestRejectedLabel")}` : ""}
+                  </div>
+                </div>
+                <div className="actions-row admin-suggestion-actions">
+                  {request.status === "pending" ? (
+                    <>
+                      <button className="btn-ghost" type="button" onClick={() => approveMemberUpdateRequest(request.id)}>{t(language, "approveButton")}</button>
+                      <button className="btn-ghost" type="button" onClick={() => rejectMemberUpdateRequest(request.id)}>{t(language, "rejectButton")}</button>
+                    </>
+                  ) : null}
+                  <button className="btn-ghost danger" type="button" onClick={() => deleteMemberUpdateRequest(request.id)}>{t(language, "deleteButton")}</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty">{t(language, "noProfileUpdatesYet")}</div>
         );
       } else if (activeSection.key === "logs") {
         const typeLabelKeys = { member: "logTypeMember", user: "logTypeUser", gallery: "logTypeGallery" } as const;
@@ -3157,6 +3310,55 @@ export default function App() {
               </div>
             </>
           ) : null}
+        </section>
+      );
+    }
+
+    if (route.page === "update") {
+      const targetMember = route.memberId ? state.members.find((candidate) => candidate.id === route.memberId) : undefined;
+      if (!targetMember || !updateRequestDraft || updateRequestDraft.memberId !== targetMember.id) {
+        return (
+          <section className="section">
+            <div className="empty">{t(language, "updateLinkInvalid")}</div>
+          </section>
+        );
+      }
+      return (
+        <section className="section" style={{ maxWidth: 560 }}>
+          <div className="section-head">
+            <div>
+              <span className="eyebrow">{t(language, "updateYourProfileEyebrow")}</span>
+              <h1 className="section-title">{displayName(targetMember, language)}</h1>
+              <p className="section-subtitle">{t(language, "updateYourProfileSubtitle")}</p>
+            </div>
+          </div>
+          {updateRequestSent ? (
+            <div className="notice success">{t(language, "updateRequestSentMessage")}</div>
+          ) : (
+            <div className="form-grid">
+              <div className="span-12" style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <img className="avatar" src={photoSrc(updateRequestDraft.photo)} alt={displayName(targetMember, language)} />
+                <label className="field" style={{ flex: 1 }}>
+                  <span className="sr-only">{t(language, "uploadPhotoLabel")}</span>
+                  <input type="file" accept="image/*" aria-label={t(language, "uploadPhotoLabel")} onChange={(e) => void handleUpdateRequestPhoto(e.target.files?.[0])} />
+                </label>
+              </div>
+              <label className="span-12">
+                <span className="sr-only">{t(language, "bioLabel")}</span>
+                <textarea className="textarea" placeholder={t(language, "bioLabel")} value={updateRequestDraft.bio} onChange={(e) => setUpdateRequestDraft((current) => current ? { ...current, bio: e.target.value } : current)} />
+              </label>
+              <label className="span-12">
+                <span className="sr-only">{t(language, "contactLabel")}</span>
+                <input className="field" placeholder={t(language, "contactLabel")} value={updateRequestDraft.contact} onChange={(e) => setUpdateRequestDraft((current) => current ? { ...current, contact: e.target.value } : current)} />
+              </label>
+              <div className="span-12 actions-row">
+                <button className="btn" type="button" disabled={updateRequestBusy} onClick={() => void submitMemberUpdateRequest()}>
+                  {updateRequestBusy ? t(language, "sendingSuggestion") : t(language, "sendUpdateRequestButton")}
+                </button>
+              </div>
+              <p className="span-12 hint">{t(language, "updateRequestPendingHint")}</p>
+            </div>
+          )}
         </section>
       );
     }
@@ -3612,6 +3814,10 @@ export default function App() {
             <label className="span-12">
               <span className="sr-only">{t(language, "bioLabel")}</span>
               <textarea className="textarea" placeholder={t(language, "bioLabel")} value={memberDraft.bio} onChange={(e) => setMemberDraft((current) => current ? { ...current, bio: e.target.value } : current)} />
+            </label>
+            <label className="span-12">
+              <span className="sr-only">{t(language, "contactLabel")}</span>
+              <input className="field" placeholder={t(language, "contactLabel")} value={memberDraft.contact} onChange={(e) => setMemberDraft((current) => current ? { ...current, contact: e.target.value } : current)} />
             </label>
             <div className="span-6">
               <div className="muted" style={{ marginBottom: 10, fontWeight: 700 }}>{t(language, "fatherLabel")}</div>

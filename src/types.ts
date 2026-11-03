@@ -2,7 +2,7 @@ export type Language = "en" | "ur";
 export type Theme = "light" | "dark";
 export type Gender = "male" | "female";
 export type Role = "admin" | "editor" | "contributor";
-export type ViewKey = "home" | "tree" | "gallery" | "admin" | "member" | "branch" | "calendar" | "about" | "guide" | "roots" | "settings" | "live" | "memory" | "dua";
+export type ViewKey = "home" | "tree" | "gallery" | "admin" | "member" | "branch" | "calendar" | "about" | "guide" | "roots" | "settings" | "live" | "memory" | "dua" | "update";
 
 export interface Member {
   id: number;
@@ -22,6 +22,8 @@ export interface Member {
   daughtersCount?: number | null;
   photo?: string | null;
   bio?: string | null;
+  /** Free-form phone/WhatsApp/email, shown on the profile; set by the member themselves via the "update your own profile" link, or by an admin/editor. */
+  contact?: string | null;
   fatherId?: number | null;
   motherId?: number | null;
   spouseIds: number[];
@@ -111,6 +113,23 @@ export interface ProfileComment {
   createdAt: string;
 }
 
+/**
+ * A member's self-submitted change to their own photo/bio/contact, via the no-login "update your
+ * own profile" link an admin/editor sends them. Needs an admin/editor to apply it before it
+ * changes the real member record - the link itself grants no direct write access.
+ */
+export interface MemberUpdateRequest {
+  id: number;
+  memberId: number;
+  /** Snapshot of the member's name at submission time, kept even if the member is later renamed. */
+  memberName: string;
+  photo?: string | null;
+  bio?: string | null;
+  contact?: string | null;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+}
+
 /** A prayer request posted when someone is ill or in difficulty - separate from Announcements, open to anyone to post. */
 export interface DuaRequest {
   id: number;
@@ -143,6 +162,7 @@ export interface AppState {
   liveStream: LiveStream;
   profileComments: ProfileComment[];
   duaRequests: DuaRequest[];
+  memberUpdateRequests: MemberUpdateRequest[];
 }
 
 export interface TreeNode {

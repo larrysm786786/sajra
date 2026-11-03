@@ -38,7 +38,8 @@ export function createEmptyState(): AppState {
     announcements: [],
     liveStream: { url: null, title: null, updatedAt: null },
     profileComments: [],
-    duaRequests: []
+    duaRequests: [],
+    memberUpdateRequests: []
   };
 }
 
@@ -52,7 +53,8 @@ function finalizeState(state: AppState): AppState {
     announcements: Array.isArray(state.announcements) ? state.announcements : [],
     liveStream: state.liveStream && typeof state.liveStream === "object" ? state.liveStream : { url: null, title: null, updatedAt: null },
     profileComments: Array.isArray(state.profileComments) ? state.profileComments : [],
-    duaRequests: Array.isArray(state.duaRequests) ? state.duaRequests : []
+    duaRequests: Array.isArray(state.duaRequests) ? state.duaRequests : [],
+    memberUpdateRequests: Array.isArray(state.memberUpdateRequests) ? state.memberUpdateRequests : []
   };
 }
 
