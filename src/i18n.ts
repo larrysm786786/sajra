@@ -266,6 +266,11 @@ const STRINGS = {
     viewAllButton: "View all",
     inLovingMemoryLabel: "In loving memory",
 
+    myFamilyNavLabel: "My Family",
+    myFamilyNotSetHint: "You haven't set your profile as \"My Family\" yet. Open your own profile and tap \"This is me\".",
+    thisIsMeLabel: "This is me",
+    setAsMyFamilyButton: "Set as My Family",
+
     brandSubtitle: "Family tree and record",
     ariaOpenMenu: "Open menu",
     ariaCloseMenu: "Close menu",
@@ -718,6 +723,11 @@ const STRINGS = {
     noInMemoryYet: "ابھی یہاں کوئی درج نہیں ہے۔",
     viewAllButton: "سب دیکھیں",
     inLovingMemoryLabel: "یادِ رفتگاں",
+
+    myFamilyNavLabel: "میری فیملی",
+    myFamilyNotSetHint: "آپ نے ابھی اپنی پروفائل کو \"میری فیملی\" کے طور پر سیٹ نہیں کیا۔ اپنی پروفائل کھولیں اور \"یہ میں ہوں\" پر ٹیپ کریں۔",
+    thisIsMeLabel: "یہ میں ہوں",
+    setAsMyFamilyButton: "میری فیملی کے طور پر سیٹ کریں",
 
     brandSubtitle: "شجرہ نسب اور آرکائیو",
     ariaOpenMenu: "مینو کھولیں",

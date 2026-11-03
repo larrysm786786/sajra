@@ -98,6 +98,7 @@ const STARTED_WITH_EXPIRED_LINK = typeof window !== "undefined" && window.locati
 
 // Guards the visitor-count bump so a single browser tab only counts as one visit per session.
 const VISIT_SESSION_KEY = "sajra-visit-counted";
+const MY_MEMBER_ID_KEY = "sajra-my-member-id";
 
 // When this device last downloaded a backup, local only, since "did I back up" is per-device.
 const LAST_BACKUP_KEY = "sajra-last-backup-at";
@@ -603,6 +604,11 @@ export default function App() {
   const [biometricUnlocked, setBiometricUnlocked] = useState(false);
   const [biometricUnlockError, setBiometricUnlockError] = useState("");
   const [shareNotice, setShareNotice] = useState("");
+  const [myMemberId, setMyMemberId] = useState<number | null>(() => {
+    const stored = localStorage.getItem(MY_MEMBER_ID_KEY);
+    return stored ? Number(stored) : null;
+  });
+  const [myFamilyHint, setMyFamilyHint] = useState("");
   const [lightboxImage, setLightboxImage] = useState<GalleryImage | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -1503,6 +1509,29 @@ export default function App() {
     setQrCodeDataUrl("");
   }
 
+  // "My Family" is a pure per-device preference (not tied to login or synced) - whoever is
+  // using this phone/browser picks their own profile once, then gets a one-tap shortcut back to
+  // their immediate family instead of searching the whole tree every time.
+  function setAsMyFamily(memberId: number) {
+    localStorage.setItem(MY_MEMBER_ID_KEY, String(memberId));
+    setMyMemberId(memberId);
+  }
+
+  function clearMyFamily() {
+    localStorage.removeItem(MY_MEMBER_ID_KEY);
+    setMyMemberId(null);
+  }
+
+  function goToMyFamily() {
+    if (myMemberId && state.members.some((member) => member.id === myMemberId)) {
+      navigate({ page: "member", memberId: myMemberId });
+      return;
+    }
+    setMyFamilyHint(t(language, "myFamilyNotSetHint"));
+    navigate({ page: "home" });
+    window.setTimeout(() => setMyFamilyHint(""), 5000);
+  }
+
   async function unlockAdminDashboard() {
     setBiometricUnlockError("");
     try {
@@ -2191,6 +2220,11 @@ export default function App() {
                   <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor(member)}>{t(language, "suggestCorrectionButton")}</button><button className="btn-ghost" type="button" onClick={() => navigate({ page: "branch", memberId: member.id })}>{t(language, "shareFamilyBranchButton")}</button>
                   <button className="btn-ghost" type="button" onClick={() => void shareMember(member)}>{t(language, "shareProfileButton")}</button>
                   <button className="btn-ghost" type="button" onClick={() => void openQrCode(member)}>{t(language, "showQrCodeButton")}</button>
+                  {myMemberId === member.id ? (
+                    <button className="btn-ghost active" type="button" onClick={clearMyFamily}>{t(language, "thisIsMeLabel")}</button>
+                  ) : (
+                    <button className="btn-ghost" type="button" onClick={() => setAsMyFamily(member.id)}>{t(language, "setAsMyFamilyButton")}</button>
+                  )}
                 </div>
                 {suggestionSent ? <p className="hint no-print">{t(language, "suggestionSentMessage")}</p> : null}
                 {shareNotice ? <p className="hint no-print">{shareNotice}</p> : null}
@@ -2964,6 +2998,7 @@ export default function App() {
             <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor()}>{t(language, "suggestEditButton")}</button>
           </div>
           {suggestionSent ? <p className="hint">{t(language, "suggestionSentMessage")}</p> : null}
+          {myFamilyHint ? <p className="hint">{myFamilyHint}</p> : null}
           <div className="hero-search" style={{ position: "relative" }}>
             <input className="field" placeholder={t(language, "searchMembersPlaceholder")} value={homeSearchQuery} onChange={(e) => setHomeSearchQuery(e.target.value)} onFocus={() => setHomeSearchOpen(true)} onBlur={() => setHomeSearchOpen(false)} />
             {homeSearchOpen && homeSearchQuery.trim() ? (
@@ -3196,6 +3231,7 @@ export default function App() {
             {isLoggedIn ? <NavLink active={route.page === "admin"} onClick={() => navigate({ page: "admin" })}>{t(language, "navDashboardLabel")}</NavLink> : null}
             <NavLink active={route.page === "home"} onClick={() => navigate({ page: "home" })}>{NAV_LABELS[language].home}</NavLink>
             <NavLink active={route.page === "tree"} onClick={() => navigate({ page: "tree" })}>{NAV_LABELS[language].tree}</NavLink>
+            <NavLink active={route.page === "member" && route.memberId === myMemberId} onClick={() => { goToMyFamily(); setMobileNavOpen(false); }}>{t(language, "myFamilyNavLabel")}</NavLink>
             <NavLink active={route.page === "roots"} onClick={() => navigate({ page: "roots" })}>{NAV_LABELS[language].roots}</NavLink>
             <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
             <NavLink active={route.page === "calendar"} onClick={() => navigate({ page: "calendar" })}>{t(language, "navNotificationsLabel")}</NavLink>

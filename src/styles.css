@@ -711,6 +711,12 @@ button {
   color: var(--danger);
 }
 
+.btn-ghost.active {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: #ffffff;
+}
+
 .field,
 .select,
 .textarea {
