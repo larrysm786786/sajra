@@ -10,6 +10,7 @@ import type { FormEvent, ReactNode, TouchEvent as ReactTouchEvent } from "react"
 import type { Session } from "@supabase/supabase-js";
 import type { Announcement, AppState, GalleryImage, Gender, Language, Member, Role, Suggestion, User, ViewKey } from "./types";
 import {
+  buildMembersFromImportRows,
   buildTree,
   calculateAge,
   createEmptyState,
@@ -28,8 +29,10 @@ import {
   importJson,
   isRoot,
   loadState,
+  membersCsvTemplate,
   nextId,
   nextUniqueId,
+  parseMembersCsv,
   photoSrc,
   publicPageUrl,
   pushActivityLog,
@@ -622,6 +625,9 @@ export default function App() {
     }
   });
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const bulkImportInputRef = useRef<HTMLInputElement | null>(null);
+  const [bulkImportResult, setBulkImportResult] = useState<{ addedCount: number; errors: string[] } | null>(null);
+  const [bulkImportBusy, setBulkImportBusy] = useState(false);
   const silsilaRowRef = useRef<HTMLDivElement | null>(null);
   const hydrationDoneRef = useRef(false);
   const remoteUpdatedAtRef = useRef<string | null>(null);
@@ -1954,6 +1960,44 @@ export default function App() {
     }
   }
 
+  function triggerBulkImport() {
+    setBulkImportResult(null);
+    bulkImportInputRef.current?.click();
+  }
+
+  function downloadMembersCsvTemplate() {
+    const blob = new Blob([membersCsvTemplate()], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "sajra-members-import-template.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleBulkImportFile(file?: File) {
+    if (!file || !canAddMember) return;
+    setBulkImportBusy(true);
+    try {
+      const text = await file.text();
+      const rows = parseMembersCsv(text);
+      const result = buildMembersFromImportRows(rows, state.members);
+      const actorEmail = supabaseSession?.user.email ?? null;
+      if (result.addedCount > 0) {
+        updateState((current) => pushActivityLog(
+          { ...current, members: result.members },
+          { type: "member", action: "added", label: `${t(language, "bulkImportActivityLabel")} (${result.addedCount})`, actorEmail }
+        ));
+      }
+      setBulkImportResult({ addedCount: result.addedCount, errors: result.errors });
+    } catch {
+      setBulkImportResult({ addedCount: 0, errors: [t(language, "invalidBackupFile")] });
+    } finally {
+      setBulkImportBusy(false);
+      if (bulkImportInputRef.current) bulkImportInputRef.current.value = "";
+    }
+  }
+
   function resetToEmpty() {
     if (!window.confirm(t(language, "confirmResetArchive"))) return;
     const defaults = createEmptyState();
@@ -2421,7 +2465,12 @@ export default function App() {
 
       let sectionActions: ReactNode = null;
       if (activeSection.key === "members") {
-        sectionActions = canAddMember ? <button className="btn" type="button" onClick={() => openMemberEditor()}>{t(language, "addMemberButton")}</button> : null;
+        sectionActions = canAddMember ? (
+          <div className="actions-row">
+            <button className="btn" type="button" onClick={() => openMemberEditor()}>{t(language, "addMemberButton")}</button>
+            <button className="btn-ghost" type="button" onClick={triggerBulkImport}>{t(language, "bulkImportButton")}</button>
+          </div>
+        ) : null;
       } else if (activeSection.key === "users") {
         sectionActions = <button className="btn" type="button" onClick={() => openUserEditor()}>{t(language, "addUserButton")}</button>;
       } else if (activeSection.key === "gallery") {
@@ -2474,6 +2523,26 @@ export default function App() {
       } else if (activeSection.key === "members") {
         sectionBody = (
           <>
+            <input ref={bulkImportInputRef} type="file" accept=".csv,text/csv" hidden onChange={(e) => void handleBulkImportFile(e.target.files?.[0])} />
+            {canAddMember ? (
+              <div className="notice" style={{ marginBottom: 16 }}>
+                <p className="hint">{t(language, "bulkImportHint")}</p>
+                <div className="actions-row">
+                  <button className="btn-ghost" type="button" onClick={downloadMembersCsvTemplate}>{t(language, "bulkImportTemplateButton")}</button>
+                </div>
+                {bulkImportBusy ? <p className="hint">{t(language, "loadingLabel")}</p> : null}
+                {bulkImportResult ? (
+                  <div className={`notice ${bulkImportResult.errors.length ? "danger" : "success"}`} style={{ marginTop: 10 }}>
+                    <p>{t(language, "bulkImportResultPrefix")} {bulkImportResult.addedCount}</p>
+                    {bulkImportResult.errors.length ? (
+                      <ul className="bulk-import-errors">
+                        {bulkImportResult.errors.map((message, index) => <li key={index}>{message}</li>)}
+                      </ul>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <input className="field admin-search" placeholder={t(language, "searchMembersPlaceholder")} value={memberQuery} onChange={(e) => setMemberQuery(e.target.value)} />
             <div className="list">
               {memberSearchResults.map((member) => (

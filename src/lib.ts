@@ -1,6 +1,7 @@
 import { Capacitor } from "@capacitor/core";
-import type { ActivityAction, ActivityType, AppState, GalleryImage, Member, TreeNode, User } from "./types";
+import type { ActivityAction, ActivityType, AppState, Gender, GalleryImage, Member, TreeNode, User } from "./types";
 import { SAJRA_SEED_STATE } from "./seedState";
+import { normalizeProfession } from "./professions";
 
 /**
  * A shareable/scannable link always has to be the real public site, never window.location -
@@ -448,6 +449,207 @@ export function importJson(raw: string): AppState {
     users: Array.isArray(parsed.users) ? parsed.users.map(normalizeUser) : defaults.users,
     gallery: Array.isArray(parsed.gallery) ? parsed.gallery.map(normalizeGalleryImage) : []
   });
+}
+
+/** Parses RFC4180-ish CSV text (quoted fields, embedded commas/newlines, "" escaping) into rows of cells. */
+function parseCsvRows(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+  const normalized = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  for (let i = 0; i < normalized.length; i++) {
+    const char = normalized[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (normalized[i + 1] === '"') { field += '"'; i++; } else { inQuotes = false; }
+      } else {
+        field += char;
+      }
+      continue;
+    }
+    if (char === '"') { inQuotes = true; continue; }
+    if (char === ",") { row.push(field); field = ""; continue; }
+    if (char === "\n") { row.push(field); rows.push(row); row = []; field = ""; continue; }
+    field += char;
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows.filter((cells) => cells.some((cell) => cell.trim() !== ""));
+}
+
+/** Column names recognised by {@link buildMembersFromImportRows}, used both to parse and to build the downloadable template. */
+export const MEMBERS_IMPORT_COLUMNS = [
+  "row_id", "name", "name_ur", "gender", "dob", "dod", "birthplace", "profession",
+  "daughters_count", "bio", "father_row_id", "father_unique_id", "mother_row_id", "mother_unique_id",
+  "spouse_row_ids", "spouse_unique_ids"
+] as const;
+
+export function membersCsvTemplate(): string {
+  const sample = [
+    ["1", "Example Father", "", "male", "1950-01-01", "", "Example City", "farmer", "", "", "", "", "", "", "", ""],
+    ["2", "Example Son", "", "male", "1978-05-10", "", "Example City", "", "", "", "1", "", "", "", "", ""]
+  ];
+  return [MEMBERS_IMPORT_COLUMNS.join(","), ...sample.map((row) => row.join(","))].join("\n");
+}
+
+/** Turns a parsed CSV's data rows into {header: value} objects, matching header spelling to {@link MEMBERS_IMPORT_COLUMNS}. */
+export function parseMembersCsv(text: string): Array<Record<string, string>> {
+  const table = parseCsvRows(text);
+  if (!table.length) return [];
+  const header = table[0].map((cell) => cell.trim().toLowerCase().replace(/\s+/g, "_"));
+  return table.slice(1).map((cells) => {
+    const entry: Record<string, string> = {};
+    header.forEach((key, index) => { entry[key] = (cells[index] ?? "").trim(); });
+    return entry;
+  });
+}
+
+function splitImportRefs(value?: string): string[] {
+  return (value ?? "").split(/[|,;]/).map((v) => v.trim()).filter(Boolean);
+}
+
+export interface MemberImportResult {
+  /** The full, updated member list (existing members plus the newly imported ones) to save as-is. */
+  members: Member[];
+  addedCount: number;
+  /** One message per row that was skipped or had a reference that couldn't be resolved. */
+  errors: string[];
+}
+
+/**
+ * Appends members parsed from an admin-supplied CSV to the existing tree. Each row can link to its
+ * father/mother/spouse either by another row's row_id (for people being added in this same file)
+ * or by an existing member's Sajra id like "S00012" (for attaching new people to the tree already
+ * here) - never by name, since names repeat too often in this family to resolve unambiguously.
+ */
+export function buildMembersFromImportRows(rows: Array<Record<string, string>>, existingMembers: Member[]): MemberImportResult {
+  const errors: string[] = [];
+  const members: Member[] = [...existingMembers];
+  const byUniqueId = new Map<string, number>();
+  members.forEach((member) => { if (member.uniqueId) byUniqueId.set(member.uniqueId.toLowerCase(), member.id); });
+  const rowIdToMemberId = new Map<string, number>();
+
+  interface PendingLink {
+    id: number;
+    lineNo: number;
+    name: string;
+    fatherRowId: string;
+    fatherUniqueId: string;
+    motherRowId: string;
+    motherUniqueId: string;
+    spouseRowIds: string[];
+    spouseUniqueIds: string[];
+  }
+  const pendingLinks: PendingLink[] = [];
+
+  rows.forEach((row, index) => {
+    const lineNo = index + 2;
+    const name = (row.name ?? "").trim();
+    if (!name) { errors.push(`Row ${lineNo}: missing a name, row skipped.`); return; }
+
+    const genderRaw = (row.gender ?? "").trim().toLowerCase();
+    const gender: Gender | null = genderRaw === "male" || genderRaw === "m" ? "male" : genderRaw === "female" || genderRaw === "f" ? "female" : null;
+    if (!gender) { errors.push(`Row ${lineNo} (${name}): gender must be "male" or "female", row skipped.`); return; }
+
+    const dobRaw = (row.dob ?? "").trim();
+    const dobValid = !dobRaw || !Number.isNaN(new Date(dobRaw).getTime());
+    if (dobRaw && !dobValid) errors.push(`Row ${lineNo} (${name}): dob "${dobRaw}" isn't a valid date, left blank.`);
+
+    const dodRaw = (row.dod ?? "").trim();
+    const dodValid = !dodRaw || !Number.isNaN(new Date(dodRaw).getTime());
+    if (dodRaw && !dodValid) errors.push(`Row ${lineNo} (${name}): dod "${dodRaw}" isn't a valid date, left blank.`);
+
+    const daughtersRaw = (row.daughters_count ?? "").trim();
+    const daughtersNum = daughtersRaw ? Number(daughtersRaw) : null;
+    const daughtersCount = daughtersNum !== null && Number.isFinite(daughtersNum) ? Math.max(0, Math.round(daughtersNum)) : null;
+
+    const id = nextId(members);
+    const uniqueId = nextUniqueId(members);
+    const newMember: Member = {
+      id,
+      uniqueId,
+      name,
+      nameUr: (row.name_ur ?? "").trim() || null,
+      gender,
+      dob: dobValid && dobRaw ? dobRaw : null,
+      dod: dodValid && dodRaw ? dodRaw : null,
+      birthplace: (row.birthplace ?? "").trim() || null,
+      profession: normalizeProfession(row.profession ?? ""),
+      daughtersCount,
+      photo: null,
+      bio: (row.bio ?? "").trim() || null,
+      fatherId: null,
+      motherId: null,
+      spouseIds: [],
+      createdAt: new Date().toISOString()
+    };
+    members.push(newMember);
+    byUniqueId.set(uniqueId.toLowerCase(), id);
+    const rowId = (row.row_id ?? "").trim();
+    if (rowId) rowIdToMemberId.set(rowId, id);
+
+    pendingLinks.push({
+      id,
+      lineNo,
+      name,
+      fatherRowId: (row.father_row_id ?? "").trim(),
+      fatherUniqueId: (row.father_unique_id ?? "").trim(),
+      motherRowId: (row.mother_row_id ?? "").trim(),
+      motherUniqueId: (row.mother_unique_id ?? "").trim(),
+      spouseRowIds: splitImportRefs(row.spouse_row_ids),
+      spouseUniqueIds: splitImportRefs(row.spouse_unique_ids)
+    });
+  });
+
+  function resolveRef(rowRef: string, uniqueRef: string, label: string, link: PendingLink): number | null {
+    if (rowRef) {
+      const resolved = rowIdToMemberId.get(rowRef);
+      if (resolved) return resolved;
+      errors.push(`Row ${link.lineNo} (${link.name}): ${label}_row_id "${rowRef}" doesn't match any row_id in this file.`);
+      return null;
+    }
+    if (uniqueRef) {
+      const resolved = byUniqueId.get(uniqueRef.toLowerCase());
+      if (resolved) return resolved;
+      errors.push(`Row ${link.lineNo} (${link.name}): ${label}_unique_id "${uniqueRef}" doesn't match any existing member.`);
+      return null;
+    }
+    return null;
+  }
+
+  function patchMemberAt(id: number, patch: Partial<Member>) {
+    const index = members.findIndex((member) => member.id === id);
+    if (index !== -1) members[index] = { ...members[index], ...patch };
+  }
+
+  pendingLinks.forEach((link) => {
+    const fatherId = resolveRef(link.fatherRowId, link.fatherUniqueId, "father", link);
+    const motherId = resolveRef(link.motherRowId, link.motherUniqueId, "mother", link);
+    if (fatherId) patchMemberAt(link.id, { fatherId });
+    if (motherId) patchMemberAt(link.id, { motherId });
+
+    const spouseIds = new Set<number>();
+    link.spouseRowIds.forEach((ref) => {
+      const resolved = rowIdToMemberId.get(ref);
+      if (resolved) spouseIds.add(resolved);
+      else errors.push(`Row ${link.lineNo} (${link.name}): spouse_row_id "${ref}" doesn't match any row_id in this file.`);
+    });
+    link.spouseUniqueIds.forEach((ref) => {
+      const resolved = byUniqueId.get(ref.toLowerCase());
+      if (resolved) spouseIds.add(resolved);
+      else errors.push(`Row ${link.lineNo} (${link.name}): spouse_unique_id "${ref}" doesn't match any existing member.`);
+    });
+    spouseIds.delete(link.id);
+    if (spouseIds.size) {
+      patchMemberAt(link.id, { spouseIds: [...spouseIds] });
+      spouseIds.forEach((sid) => {
+        const spouse = members.find((member) => member.id === sid);
+        if (spouse && !spouse.spouseIds.includes(link.id)) patchMemberAt(sid, { spouseIds: [...spouse.spouseIds, link.id] });
+      });
+    }
+  });
+
+  return { members, addedCount: pendingLinks.length, errors };
 }
 
 export async function readFileAsDataUrl(file: File): Promise<string> {
