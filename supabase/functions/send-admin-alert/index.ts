@@ -1,11 +1,11 @@
 // Supabase Edge Function: send-admin-alert
 //
 // Pushes a notification to admins when a visitor quietly does something that previously only
-// showed up if an admin happened to open the Suggestions section or a member's Guestbook - a new
-// suggestion or a new guestbook comment. Unlike send-announcement/send-live, this is called by
-// visitors who are NOT signed in (Suggestions and Guestbook both work without login), so it
-// can't require a caller JWT; "Verify JWT" is OFF and there is no caller-auth check in the code
-// below. Input is strictly bounded (short, fixed kinds) to limit what a spammy caller could do.
+// showed up if an admin happened to open the Suggestions/Dua section or a member's Guestbook - a
+// new suggestion, dua request, or guestbook comment. Unlike send-announcement/send-live, this is
+// called by visitors who are NOT signed in (all three work without login), so it can't require a
+// caller JWT; "Verify JWT" is OFF and there is no caller-auth check in the code below. Input is
+// strictly bounded (short, fixed kinds) to limit what a spammy caller could do.
 //
 // Deploy: Supabase dashboard -> Edge Functions -> Deploy a new function -> Via Editor,
 // name it "send-admin-alert", paste this file, turn "Verify JWT" OFF, then Deploy.
@@ -26,7 +26,7 @@ const FCM_TOPIC = "sajra_admin_alerts";
 const MAX_BODY_LENGTH = 160;
 const MAX_NAME_LENGTH = 60;
 
-type AlertKind = "suggestion" | "guestbook";
+type AlertKind = "suggestion" | "guestbook" | "dua";
 
 interface RequestBody {
   kind?: string;
@@ -95,12 +95,12 @@ Deno.serve(async (req) => {
   } catch {
     return fail("Invalid request.");
   }
-  const kind = body.kind === "suggestion" || body.kind === "guestbook" ? (body.kind as AlertKind) : null;
+  const kind = body.kind === "suggestion" || body.kind === "guestbook" || body.kind === "dua" ? (body.kind as AlertKind) : null;
   const message = (body.message ?? "").trim();
   const authorName = (body.authorName ?? "").trim().slice(0, MAX_NAME_LENGTH);
   if (!kind || !message) return fail("A valid kind and message are required.");
 
-  const title = kind === "suggestion" ? "New suggestion" : "New guestbook message";
+  const title = kind === "suggestion" ? "New suggestion" : kind === "guestbook" ? "New guestbook message" : "New dua request";
   const truncated = message.length > MAX_BODY_LENGTH ? `${message.slice(0, MAX_BODY_LENGTH - 1)}…` : message;
   const body_ = authorName ? `${authorName}: ${truncated}` : truncated;
 

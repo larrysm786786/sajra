@@ -2,7 +2,7 @@ export type Language = "en" | "ur";
 export type Theme = "light" | "dark";
 export type Gender = "male" | "female";
 export type Role = "admin" | "editor" | "contributor";
-export type ViewKey = "home" | "tree" | "gallery" | "admin" | "member" | "branch" | "calendar" | "about" | "guide" | "roots" | "settings" | "live" | "memory";
+export type ViewKey = "home" | "tree" | "gallery" | "admin" | "member" | "branch" | "calendar" | "about" | "guide" | "roots" | "settings" | "live" | "memory" | "dua";
 
 export interface Member {
   id: number;
@@ -111,6 +111,15 @@ export interface ProfileComment {
   createdAt: string;
 }
 
+/** A prayer request posted when someone is ill or in difficulty - separate from Announcements, open to anyone to post. */
+export interface DuaRequest {
+  id: number;
+  message: string;
+  requesterName?: string | null;
+  status: "open" | "fulfilled";
+  createdAt: string;
+}
+
 /** The current live video link (e.g. a YouTube stream of a family function), admin-only to set. */
 export interface LiveStream {
   url: string | null;
@@ -133,6 +142,7 @@ export interface AppState {
   announcements: Announcement[];
   liveStream: LiveStream;
   profileComments: ProfileComment[];
+  duaRequests: DuaRequest[];
 }
 
 export interface TreeNode {

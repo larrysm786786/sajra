@@ -8,7 +8,7 @@ import QRCode from "qrcode";
 import { trackNativeScreenView, trackWebPageView } from "./analytics";
 import type { FormEvent, ReactNode, TouchEvent as ReactTouchEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
-import type { Announcement, AppState, GalleryImage, Gender, Language, Member, Role, Suggestion, User, ViewKey } from "./types";
+import type { Announcement, AppState, DuaRequest, GalleryImage, Gender, Language, Member, Role, Suggestion, User, ViewKey } from "./types";
 import {
   buildMembersFromImportRows,
   buildTree,
@@ -160,6 +160,11 @@ type AnnouncementDraft = {
   expiresAt: string;
 };
 
+type DuaDraft = {
+  message: string;
+  requesterName: string;
+};
+
 /** Name prefixed with profession, so people who share a name (common in this family) can be told apart in search lists. */
 function fullLabel(member: Member, language: Language): string {
   const name = displayName(member, language);
@@ -183,7 +188,7 @@ function parseRoute(): RouteState {
   if (!raw || raw === "/") return { page: "home" };
   const [page, id] = raw.split("/").filter(Boolean);
   if ((page === "member" || page === "branch") && id) return { page, memberId: Number(id) || undefined };
-  if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots" || page === "calendar" || page === "settings" || page === "live" || page === "memory") {
+  if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots" || page === "calendar" || page === "settings" || page === "live" || page === "memory" || page === "dua") {
     return { page };
   }
   return { page: "home" };
@@ -597,6 +602,9 @@ export default function App() {
   const [announcementDraft, setAnnouncementDraft] = useState<AnnouncementDraft | null>(null);
   const [announcementBusy, setAnnouncementBusy] = useState(false);
   const [announcementNotice, setAnnouncementNotice] = useState("");
+  const [duaDraft, setDuaDraft] = useState<DuaDraft | null>(null);
+  const [duaBusy, setDuaBusy] = useState(false);
+  const [duaSent, setDuaSent] = useState(false);
   const [liveUrlInput, setLiveUrlInput] = useState("");
   const [liveTitleInput, setLiveTitleInput] = useState("");
   const [liveBusy, setLiveBusy] = useState(false);
@@ -690,6 +698,14 @@ export default function App() {
   const deceasedMembers = useMemo(
     () => state.members.filter((member) => member.dod).sort((a, b) => (b.dod ?? "").localeCompare(a.dod ?? "")),
     [state.members]
+  );
+  const openDuaRequests = useMemo(
+    () => state.duaRequests.filter((request) => request.status === "open").sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [state.duaRequests]
+  );
+  const fulfilledDuaRequests = useMemo(
+    () => state.duaRequests.filter((request) => request.status === "fulfilled").sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [state.duaRequests]
   );
 
   useEffect(() => {
@@ -1331,6 +1347,58 @@ export default function App() {
   function deleteSuggestion(id: number) {
     if (!isAdmin) return;
     updateState((current) => ({ ...current, suggestions: current.suggestions.filter((suggestion) => suggestion.id !== id) }));
+  }
+
+  // Open to anyone, logged in or not - a dua request is meant to reach the family quickly when
+  // someone is ill or in difficulty, not gated behind the editor permissions Announcements use.
+  function openDuaEditor() {
+    setDuaSent(false);
+    setDuaDraft({ message: "", requesterName: "" });
+  }
+
+  function closeDuaEditor() {
+    setDuaDraft(null);
+  }
+
+  async function submitDuaRequest() {
+    if (!duaDraft || !duaDraft.message.trim() || duaBusy) return;
+    setDuaBusy(true);
+    try {
+      let publishedState: AppState | null = null;
+      updateState((current) => {
+        const duaRequest: DuaRequest = {
+          id: nextId(current.duaRequests),
+          message: duaDraft.message.trim(),
+          requesterName: duaDraft.requesterName.trim() || null,
+          status: "open",
+          createdAt: new Date().toISOString()
+        };
+        const next = { ...current, duaRequests: [duaRequest, ...current.duaRequests].slice(0, 200) };
+        publishedState = next;
+        return next;
+      });
+      // Anonymous visitors never trigger the normal (isLoggedIn-only) autosave, so this one write
+      // is pushed straight to Supabase, the whole point of a dua board is that the family sees it.
+      if (supabaseConfigured && publishedState) await persistToSupabase(publishedState);
+      if (supabaseConfigured) void sendAdminAlertNotification("dua", duaDraft.message.trim(), duaDraft.requesterName.trim() || null);
+      setDuaSent(true);
+      setDuaDraft(null);
+    } finally {
+      setDuaBusy(false);
+    }
+  }
+
+  function markDuaFulfilled(id: number) {
+    if (!isAdmin) return;
+    updateState((current) => ({
+      ...current,
+      duaRequests: current.duaRequests.map((request) => (request.id === id ? { ...request, status: "fulfilled" } : request))
+    }));
+  }
+
+  function deleteDuaRequest(id: number) {
+    if (!isAdmin) return;
+    updateState((current) => ({ ...current, duaRequests: current.duaRequests.filter((request) => request.id !== id) }));
   }
 
   // Everyone can read announcements; admins and contributors can always post one, editors need
@@ -3037,6 +3105,62 @@ export default function App() {
       );
     }
 
+    if (route.page === "dua") {
+      return (
+        <section className="section">
+          <div className="section-head">
+            <div>
+              <span className="eyebrow">{t(language, "eyebrowDua")}</span>
+              <h1 className="section-title">{t(language, "duaBoardTitle")}</h1>
+              <p className="section-subtitle">{t(language, "duaBoardSubtitle")}</p>
+            </div>
+            <button className="btn" type="button" onClick={openDuaEditor}>{t(language, "postDuaButton")}</button>
+          </div>
+          {duaSent ? <p className="hint">{t(language, "duaSentMessage")}</p> : null}
+          {openDuaRequests.length ? (
+            <div className="list">
+              {openDuaRequests.map((request) => (
+                <div key={request.id} className="card announcement-card">
+                  <div className="announcement-card-body">
+                    <p className="announcement-message">{request.message}</p>
+                    <div className="tree-sub">
+                      {formatDate(request.createdAt, language)} | {request.requesterName || t(language, "anonymousSubmitter")}
+                    </div>
+                  </div>
+                  {isAdmin ? (
+                    <div className="actions-row">
+                      <button className="btn-ghost" type="button" onClick={() => markDuaFulfilled(request.id)}>{t(language, "markDuaFulfilledButton")}</button>
+                      <button className="btn-ghost danger" type="button" onClick={() => deleteDuaRequest(request.id)}>{t(language, "deleteButton")}</button>
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty">{t(language, "noDuaRequestsYet")}</div>
+          )}
+          {fulfilledDuaRequests.length ? (
+            <>
+              <h2 className="section-title" style={{ marginTop: 28, fontSize: "1.1rem" }}>{t(language, "duaFulfilledTitle")}</h2>
+              <div className="list">
+                {fulfilledDuaRequests.map((request) => (
+                  <div key={request.id} className="card announcement-card dua-fulfilled-card">
+                    <div className="announcement-card-body">
+                      <p className="announcement-message">{request.message}</p>
+                      <div className="tree-sub">
+                        {formatDate(request.createdAt, language)} | {request.requesterName || t(language, "anonymousSubmitter")}
+                      </div>
+                    </div>
+                    {isAdmin ? <button className="btn-ghost danger" type="button" onClick={() => deleteDuaRequest(request.id)}>{t(language, "deleteButton")}</button> : null}
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : null}
+        </section>
+      );
+    }
+
     return (
       <>
         <section className="hero">
@@ -3063,12 +3187,37 @@ export default function App() {
             </div>
           </section>
         ) : null}
+        {openDuaRequests.length ? (
+          <section className="section dua-preview">
+            <div className="section-head">
+              <div>
+                <span className="eyebrow">{t(language, "eyebrowDua")}</span>
+                <h2 className="section-title">{t(language, "duaBoardTitle")}</h2>
+              </div>
+              <button className="btn-ghost" onClick={() => navigate({ page: "dua" })}>{t(language, "viewAllButton")}</button>
+            </div>
+            <div className="list">
+              {openDuaRequests.slice(0, 3).map((request) => (
+                <div key={request.id} className="card announcement-card">
+                  <div className="announcement-card-body">
+                    <p className="announcement-message">{request.message}</p>
+                    <div className="tree-sub">
+                      {formatDate(request.createdAt, language)} | {request.requesterName || t(language, "anonymousSubmitter")}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
         <section className="hero-tools section">
           <div className="hero-actions">
             <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openFamilyTreeButton")}</button>
             <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor()}>{t(language, "suggestEditButton")}</button>
+            <button className="btn-ghost" type="button" onClick={openDuaEditor}>{t(language, "postDuaButton")}</button>
           </div>
           {suggestionSent ? <p className="hint">{t(language, "suggestionSentMessage")}</p> : null}
+          {duaSent ? <p className="hint">{t(language, "duaSentMessage")}</p> : null}
           {myFamilyHint ? <p className="hint">{myFamilyHint}</p> : null}
           <div className="hero-search" style={{ position: "relative" }}>
             <input className="field" placeholder={t(language, "searchMembersPlaceholder")} value={homeSearchQuery} onChange={(e) => setHomeSearchQuery(e.target.value)} onFocus={() => setHomeSearchOpen(true)} onBlur={() => setHomeSearchOpen(false)} />
@@ -3783,6 +3932,37 @@ export default function App() {
               {suggestionBusy ? t(language, "sendingSuggestion") : t(language, "sendSuggestionButton")}
             </button>
             <button className="btn-ghost" type="button" onClick={closeSuggestionEditor}>{t(language, "cancelButton")}</button>
+          </div>
+        </Modal>
+      ) : null}
+
+      {duaDraft ? (
+        <Modal title={t(language, "postDuaModalTitle")} subtitle={t(language, "postDuaModalSubtitle")} onClose={closeDuaEditor}>
+          <div className="form-grid">
+            <label className="span-12">
+              <span className="sr-only">{t(language, "duaMessageLabel")}</span>
+              <textarea
+                className="textarea"
+                placeholder={t(language, "duaMessagePlaceholder")}
+                value={duaDraft.message}
+                onChange={(e) => setDuaDraft((current) => current ? { ...current, message: e.target.value } : current)}
+              />
+            </label>
+            <label className="span-12">
+              <span className="sr-only">{t(language, "duaNameLabel")}</span>
+              <input
+                className="field"
+                placeholder={t(language, "duaNamePlaceholder")}
+                value={duaDraft.requesterName}
+                onChange={(e) => setDuaDraft((current) => current ? { ...current, requesterName: e.target.value } : current)}
+              />
+            </label>
+          </div>
+          <div className="actions-row" style={{ marginTop: 18 }}>
+            <button className="btn" type="button" disabled={!duaDraft.message.trim() || duaBusy} onClick={() => void submitDuaRequest()}>
+              {duaBusy ? t(language, "sendingSuggestion") : t(language, "postDuaButton")}
+            </button>
+            <button className="btn-ghost" type="button" onClick={closeDuaEditor}>{t(language, "cancelButton")}</button>
           </div>
         </Modal>
       ) : null}

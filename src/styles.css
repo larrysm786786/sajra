@@ -2249,6 +2249,7 @@ html[dir="rtl"] .select {
 .announcement-admin-badge { display: inline-flex; margin-bottom: 6px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
 .announcement-message { margin: 0 0 6px; color: var(--text); line-height: 1.65; overflow-wrap: anywhere; white-space: pre-wrap; }
 @media (max-width: 600px) { .announcement-card { flex-direction: column; gap: 10px; padding: 14px; } }
+.dua-fulfilled-card { opacity: 0.6; }
 .calendar-notification-card { display: flex; width: 100%; color: inherit; text-align: left; cursor: pointer; background: var(--surface-strong); }
 .calendar-event-chip.death-anniversary { color: #62471c; background: #f5e8c9; }
 .member-qr-row { display: flex; margin-top: 20px; }

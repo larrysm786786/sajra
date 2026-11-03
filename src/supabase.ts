@@ -262,7 +262,7 @@ export async function uploadLiveVideo(file: File): Promise<string> {
  * surfaced if an admin happened to open that section. Callers should not block the actual
  * submission on this; it's a convenience, not something the submission depends on succeeding.
  */
-export async function sendAdminAlertNotification(kind: "suggestion" | "guestbook", message: string, authorName: string | null): Promise<void> {
+export async function sendAdminAlertNotification(kind: "suggestion" | "guestbook" | "dua", message: string, authorName: string | null): Promise<void> {
   const supabase = getSupabaseClient();
   if (!supabase) return;
   try {
