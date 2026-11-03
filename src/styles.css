@@ -996,6 +996,25 @@ button {
   accent-color: var(--accent-strong);
 }
 
+.avatar-in-memory {
+  filter: sepia(0.55) saturate(0.75) contrast(0.96);
+}
+.in-memory-badge {
+  display: inline-block;
+  margin: 8px 0 0;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: color-mix(in oklab, #6b5744 16%, var(--surface-strong));
+  color: #6b5744;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+[data-theme="dark"] .in-memory-badge {
+  color: #d8c6ad;
+  background: color-mix(in oklab, #6b5744 30%, var(--surface-strong));
+}
+
 .analytics-bar-chart {
   display: flex;
   align-items: flex-end;

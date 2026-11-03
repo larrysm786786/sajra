@@ -178,7 +178,7 @@ function parseRoute(): RouteState {
   if (!raw || raw === "/") return { page: "home" };
   const [page, id] = raw.split("/").filter(Boolean);
   if ((page === "member" || page === "branch") && id) return { page, memberId: Number(id) || undefined };
-  if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots" || page === "calendar" || page === "settings" || page === "live") {
+  if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots" || page === "calendar" || page === "settings" || page === "live" || page === "memory") {
     return { page };
   }
   return { page: "home" };
@@ -434,7 +434,7 @@ function MemberCard({
 }) {
   return (
     <button type="button" className="member-card" onClick={() => onOpen(member.id)}>
-      <img className="avatar" src={photoSrc(member.photo)} alt={displayName(member, language)} />
+      <img className={`avatar${member.dod ? " avatar-in-memory" : ""}`} src={photoSrc(member.photo)} alt={displayName(member, language)} />
       <div className="member-card-text">
         <div className="tree-name">{displayName(member, language)}</div>
         <div className="tree-sub">
@@ -674,6 +674,10 @@ export default function App() {
   const qualityIssues = useMemo(() => findDataQualityIssues(state.members), [state.members]);
   const familyCalendarEvents = useMemo(() => getFamilyCalendarEvents(state.members), [state.members]);
   const todayMemories = useMemo(() => getTodayFamilyMemories(state.members, state.gallery), [state.members, state.gallery]);
+  const deceasedMembers = useMemo(
+    () => state.members.filter((member) => member.dod).sort((a, b) => (b.dod ?? "").localeCompare(a.dod ?? "")),
+    [state.members]
+  );
 
   useEffect(() => {
     trackWebPageView(route.page);
@@ -2142,9 +2146,10 @@ export default function App() {
           {member ? (
             <>
               <div className="profile-layout member-profile-layout">
-                <img className="member-photo hero-photo member-profile-photo" src={photoSrc(member.photo)} alt={displayName(member, language)} />
+                <img className={`member-photo hero-photo member-profile-photo${member.dod ? " avatar-in-memory" : ""}`} src={photoSrc(member.photo)} alt={displayName(member, language)} />
                 <div>
                   <span className="eyebrow">{tGender(language, member.gender)}</span>
+                  {member.dod ? <span className="in-memory-badge">{t(language, "inLovingMemoryLabel")}</span> : null}
                   <h1 className="section-title" style={{ marginTop: 12 }}>
                     {member.profession?.trim() ? `${professionShortLabel(language, member.profession.trim())} ` : ""}
                     {displayName(member, language)}
@@ -2904,6 +2909,29 @@ export default function App() {
       );
     }
 
+    if (route.page === "memory") {
+      return (
+        <section className="section in-memory-section">
+          <div className="section-head">
+            <div>
+              <span className="eyebrow">{t(language, "eyebrowInMemory")}</span>
+              <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "inMemoryTitle")}</h2>
+              <p className="section-subtitle">{t(language, "inMemorySubtitle")}</p>
+            </div>
+          </div>
+          {deceasedMembers.length ? (
+            <div className="roots-elders-grid">
+              {deceasedMembers.map((member) => (
+                <MemberCard key={member.id} member={member} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
+              ))}
+            </div>
+          ) : (
+            <div className="empty">{t(language, "noInMemoryYet")}</div>
+          )}
+        </section>
+      );
+    }
+
     return (
       <>
         <section className="hero">
@@ -2914,6 +2942,22 @@ export default function App() {
         </section>
 
         {todayMemories.length ? <section className="section today-memories-section"><div className="section-head"><div><span className="eyebrow">{t(language, "familyMemoriesEyebrow")}</span><h2 className="section-title">{t(language, "onThisDayTitle")}</h2></div><button className="btn-ghost" onClick={() => navigate({ page: "calendar" })}>{t(language, "openFamilyCalendarButton")}</button></div><div className="today-memory-grid">{todayMemories.map((memory) => <button className="card today-memory-card" key={memory.id} onClick={() => memory.member ? navigate({ page: "member", memberId: memory.member.id }) : navigate({ page: "gallery" })}>{memory.image ? <img src={photoSrc(memory.image.src)} alt="" /> : null}<span><strong>{memory.title}</strong><small>{memory.kind.replace(/-/g, " ")}</small></span></button>)}</div></section> : null}
+        {deceasedMembers.length ? (
+          <section className="section in-memory-preview">
+            <div className="section-head">
+              <div>
+                <span className="eyebrow">{t(language, "eyebrowInMemory")}</span>
+                <h2 className="section-title">{t(language, "inMemoryTitle")}</h2>
+              </div>
+              <button className="btn-ghost" onClick={() => navigate({ page: "memory" })}>{t(language, "viewAllButton")}</button>
+            </div>
+            <div className="member-grid">
+              {deceasedMembers.slice(0, 6).map((member) => (
+                <MemberCard key={member.id} member={member} language={language} onOpen={(id) => navigate({ page: "member", memberId: id })} />
+              ))}
+            </div>
+          </section>
+        ) : null}
         <section className="hero-tools section">
           <div className="hero-actions">
             <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openFamilyTreeButton")}</button>

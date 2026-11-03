@@ -259,6 +259,13 @@ const STRINGS = {
     openTreeLink: "Open tree",
     noRootsYet: "No founding members yet. Log in and add the first ancestor from the admin panel.",
 
+    eyebrowInMemory: "In memory",
+    inMemoryTitle: "In loving memory",
+    inMemorySubtitle: "Family members who are no longer with us, but always remembered.",
+    noInMemoryYet: "No one recorded here yet.",
+    viewAllButton: "View all",
+    inLovingMemoryLabel: "In loving memory",
+
     brandSubtitle: "Family tree and record",
     ariaOpenMenu: "Open menu",
     ariaCloseMenu: "Close menu",
@@ -704,6 +711,13 @@ const STRINGS = {
     rootsEldersTitle: "جڑیں اور بزرگ",
     openTreeLink: "شجرہ کھولیں",
     noRootsYet: "ابھی تک کوئی جڑ رکن نہیں۔ سائن ان کریں اور ایڈمن پینل سے پہلا جدِ امجد شامل کریں۔",
+
+    eyebrowInMemory: "یادِ رفتگاں",
+    inMemoryTitle: "یادِ رفتگاں",
+    inMemorySubtitle: "وہ خاندانی افراد جو ہم میں نہیں رہے، لیکن ہمیشہ یاد رہیں گے۔",
+    noInMemoryYet: "ابھی یہاں کوئی درج نہیں ہے۔",
+    viewAllButton: "سب دیکھیں",
+    inLovingMemoryLabel: "یادِ رفتگاں",
 
     brandSubtitle: "شجرہ نسب اور آرکائیو",
     ariaOpenMenu: "مینو کھولیں",
