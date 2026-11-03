@@ -41,10 +41,12 @@ import type { RelationType } from "./lib";
 import {
   confirmMfaEnrollment,
   enrollMfa,
+  fetchVisitStats,
   getSupabaseSession,
   isSupabaseConfigured,
   listMfaFactors,
   loadSupabaseState,
+  logVisit,
   manageAuthUser,
   mfaStepUpRequired,
   onSupabaseAuthChange,
@@ -54,6 +56,7 @@ import {
   MAX_VIDEO_UPLOAD_BYTES,
   sendAdminAlertNotification,
   sendLiveNotification,
+  sendPresenceHeartbeat,
   uploadLiveVideo,
   sendPasswordResetEmail,
   signInWithPassword,
@@ -63,7 +66,7 @@ import {
   updatePassword,
   verifyMfaChallenge
 } from "./supabase";
-import type { MfaFactor } from "./supabase";
+import type { MfaFactor, VisitStats } from "./supabase";
 import FamilyTreeD3 from "./FamilyTreeD3";
 import { mergeStates } from "./merge";
 import {
@@ -88,7 +91,7 @@ const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string
 
 type RouteState = { page: ViewKey; memberId?: number };
 
-type AdminSection = "overview" | "members" | "users" | "gallery" | "suggestions" | "logs" | "backup" | "security" | "quality";
+type AdminSection = "overview" | "members" | "users" | "gallery" | "suggestions" | "logs" | "backup" | "security" | "quality" | "analytics";
 
 // Supabase reports an expired / already-used reset link through the URL hash.
 const STARTED_WITH_EXPIRED_LINK = typeof window !== "undefined" && window.location.hash.includes("error_code=otp_expired");
@@ -397,7 +400,8 @@ const ADMIN_ICONS: Record<AdminSection, string> = {
   logs: "M12 8v5l3 2M3 12a9 9 0 1 0 3-6.7M3 4v5h5",
   backup: "M12 3v12m0 0-4-4m4 4 4-4M4 17v3h16v-3",
   security: "M6 11V8a6 6 0 1 1 12 0v3M5 11h14v10H5V11Zm7 4v2",
-  quality: "M12 3 3 20h18L12 3Zm0 6v5m0 3h.01"
+  quality: "M12 3 3 20h18L12 3Zm0 6v5m0 3h.01",
+  analytics: "M4 20V10m6 10V4m6 16v-7"
 };
 
 const EYE_ICON_PATH = "M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z";
@@ -566,6 +570,9 @@ export default function App() {
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [adminSection, setAdminSection] = useState<AdminSection>("overview");
   const [logsPage, setLogsPage] = useState(0);
+  const [visitStats, setVisitStats] = useState<VisitStats | null>(null);
+  const [visitStatsLoading, setVisitStatsLoading] = useState(false);
+  const [visitStatsError, setVisitStatsError] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordChangeBusy, setPasswordChangeBusy] = useState(false);
@@ -677,6 +684,18 @@ export default function App() {
     if (adminSection !== "logs") setLogsPage(0);
   }, [adminSection]);
 
+  useEffect(() => {
+    if (adminSection !== "analytics" || !isLoggedIn || !supabaseConfigured) return;
+    let cancelled = false;
+    setVisitStatsLoading(true);
+    setVisitStatsError("");
+    fetchVisitStats()
+      .then((stats) => { if (!cancelled) setVisitStats(stats); })
+      .catch((error) => { if (!cancelled) setVisitStatsError(error instanceof Error ? error.message : String(error)); })
+      .finally(() => { if (!cancelled) setVisitStatsLoading(false); });
+    return () => { cancelled = true; };
+  }, [adminSection, isLoggedIn, supabaseConfigured]);
+
   // Scrolls the Silsila chain to its end (the current member) by default, so on a long lineage
   // the most relevant part is visible without the visitor having to scroll it themselves first.
   useEffect(() => {
@@ -736,6 +755,7 @@ export default function App() {
         if (!sessionStorage.getItem(VISIT_SESSION_KEY)) {
           sessionStorage.setItem(VISIT_SESSION_KEY, "1");
           updateState((current) => ({ ...current, visitorCount: (current.visitorCount ?? 0) + 1 }));
+          void logVisit();
         }
         return;
       }
@@ -773,6 +793,7 @@ export default function App() {
         if (remote && !sessionStorage.getItem(VISIT_SESSION_KEY)) {
           sessionStorage.setItem(VISIT_SESSION_KEY, "1");
           setState((current) => ({ ...current, visitorCount: (current.visitorCount ?? 0) + 1 }));
+          void logVisit();
         }
       } catch {
         if (cancelled) return;
@@ -787,6 +808,15 @@ export default function App() {
     return () => {
       cancelled = true;
     };
+  }, [supabaseConfigured]);
+
+  // Keeps this device's "last seen" fresh for the admin Analytics section's "active now" count,
+  // for as long as the app stays open - not tied to the once-per-session visit log above.
+  useEffect(() => {
+    if (!supabaseConfigured) return;
+    void sendPresenceHeartbeat();
+    const interval = window.setInterval(() => void sendPresenceHeartbeat(), 45000);
+    return () => window.clearInterval(interval);
   }, [supabaseConfigured]);
 
   function showSaveToast(tone: "ok" | "error", key: StringKey, hideAfterMs?: number) {
@@ -2343,6 +2373,7 @@ export default function App() {
         ...(isAdmin ? [{ key: "logs" as const, label: t(language, "adminNavLogs"), subtitle: t(language, "logHistorySubtitle") }] : []),
         { key: "quality", label: t(language, "adminNavQuality"), subtitle: t(language, "adminQualitySubtitle") },
         ...(isAdmin ? [{ key: "backup" as const, label: t(language, "backupCardTitle"), subtitle: t(language, "backupCardSubtitle") }] : []),
+        { key: "analytics", label: t(language, "adminNavAnalytics"), subtitle: t(language, "analyticsSubtitle") },
         { key: "security", label: t(language, "adminNavSecurity"), subtitle: t(language, "changePasswordSubtitle") }
       ];
       const activeSection = sections.find((section) => section.key === adminSection) ?? sections[0];
@@ -2562,6 +2593,35 @@ export default function App() {
             {importError ? <div className="notice danger">{importError}</div> : null}
             <input ref={importInputRef} type="file" accept="application/json,.json" hidden onChange={(e) => handleImportFile(e.target.files?.[0])} />
           </div>
+        );
+      } else if (activeSection.key === "analytics") {
+        const maxDayCount = Math.max(1, ...(visitStats?.last7Days.map((day) => day.count) ?? [0]));
+        sectionBody = !supabaseConfigured ? (
+          <div className="empty">{t(language, "analyticsOfflineHint")}</div>
+        ) : visitStatsLoading && !visitStats ? (
+          <div className="empty">{t(language, "loadingLabel")}</div>
+        ) : visitStatsError ? (
+          <div className="notice danger">{visitStatsError}</div>
+        ) : (
+          <>
+            <div className="stat-grid">
+              <StatCard value={state.visitorCount ?? 0} label={t(language, "totalVisitorsLabel")} icon={<EyeIcon />} />
+              <StatCard value={visitStats?.today ?? 0} label={t(language, "todayVisitsLabel")} />
+              <StatCard value={visitStats?.activeNow ?? 0} label={t(language, "activeNowLabel")} />
+            </div>
+            <div className="card" style={{ marginTop: 18, padding: 18 }}>
+              <strong>{t(language, "visitsLast7DaysLabel")}</strong>
+              <div className="analytics-bar-chart">
+                {(visitStats?.last7Days ?? []).map((day) => (
+                  <div key={day.date} className="analytics-bar-col">
+                    <span className="analytics-bar-value">{day.count}</span>
+                    <div className="analytics-bar" style={{ height: `${Math.max(4, (day.count / maxDayCount) * 100)}%` }} />
+                    <small>{new Date(`${day.date}T00:00:00`).toLocaleDateString(language === "ur" ? "ur-PK" : "en", { weekday: "short" })}</small>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
         );
       } else {
         sectionBody = (

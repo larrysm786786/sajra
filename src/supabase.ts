@@ -1,4 +1,5 @@
 import { createClient, type AuthChangeEvent, type Session, type SupabaseClient } from "@supabase/supabase-js";
+import { Capacitor } from "@capacitor/core";
 import { createEmptyState, importJson } from "./lib";
 import type { AppState, Role } from "./types";
 
@@ -348,4 +349,85 @@ export async function verifyMfaChallenge(factorId: string, code: string): Promis
   if (challengeError) throw new Error(challengeError.message);
   const { error } = await supabase.auth.mfa.verify({ factorId, challengeId: challenge.id, code });
   if (error) throw new Error(error.message);
+}
+
+const VISITOR_ID_KEY = "sajra-visitor-id";
+
+/** A stable per-device id (not tied to login) so the same visitor isn't double-counted as "active now" across tabs/heartbeats. */
+function getVisitorId(): string {
+  let id = localStorage.getItem(VISITOR_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(VISITOR_ID_KEY, id);
+  }
+  return id;
+}
+
+/** Logs one row for the in-app Analytics section (separate from state.visitorCount, which only ever counts up and has no date granularity). Best-effort - a visit that fails to log is not worth surfacing an error for. */
+export async function logVisit(): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    await supabase.from("sajra_visits").insert({
+      visitor_id: getVisitorId(),
+      platform: Capacitor.isNativePlatform() ? "android" : "web"
+    });
+  } catch {
+    // Best-effort only.
+  }
+}
+
+/** Upserts a liveness ping so the Analytics section can show how many people are on the site right now. Call this once, then on an interval, while the app is open. */
+export async function sendPresenceHeartbeat(): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    await supabase.from("sajra_presence").upsert({
+      visitor_id: getVisitorId(),
+      platform: Capacitor.isNativePlatform() ? "android" : "web",
+      last_seen: new Date().toISOString()
+    });
+  } catch {
+    // Best-effort only.
+  }
+}
+
+export interface VisitStats {
+  today: number;
+  activeNow: number;
+  last7Days: { date: string; count: number }[];
+}
+
+/** Admin-only reads (see RLS on sajra_visits/sajra_presence) for the Analytics admin section. */
+export async function fetchVisitStats(): Promise<VisitStats> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const sevenDaysAgoStart = new Date(now.getTime() - 6 * 86400000);
+  sevenDaysAgoStart.setHours(0, 0, 0, 0);
+  const activeSince = new Date(now.getTime() - 2 * 60000).toISOString();
+
+  const [todayResult, weekResult, activeResult] = await Promise.all([
+    supabase.from("sajra_visits").select("id", { count: "exact", head: true }).gte("visited_at", todayStart),
+    supabase.from("sajra_visits").select("visited_at").gte("visited_at", sevenDaysAgoStart.toISOString()),
+    supabase.from("sajra_presence").select("visitor_id", { count: "exact", head: true }).gte("last_seen", activeSince)
+  ]);
+  if (todayResult.error) throw new Error(todayResult.error.message);
+  if (weekResult.error) throw new Error(weekResult.error.message);
+  if (activeResult.error) throw new Error(activeResult.error.message);
+
+  const buckets = new Map<string, number>();
+  for (const row of weekResult.data ?? []) {
+    const day = (row.visited_at as string).slice(0, 10);
+    buckets.set(day, (buckets.get(day) ?? 0) + 1);
+  }
+  const last7Days = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(sevenDaysAgoStart.getTime() + index * 86400000);
+    const key = date.toISOString().slice(0, 10);
+    return { date: key, count: buckets.get(key) ?? 0 };
+  });
+
+  return { today: todayResult.count ?? 0, activeNow: activeResult.count ?? 0, last7Days };
 }
