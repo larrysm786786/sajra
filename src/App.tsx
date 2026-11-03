@@ -26,6 +26,7 @@ import {
   getTodayFamilyMemories,
   getParents,
   getSpouses,
+  groupMembersByGeneration,
   importJson,
   isRoot,
   loadState,
@@ -189,7 +190,7 @@ function parseRoute(): RouteState {
   if (!raw || raw === "/") return { page: "home" };
   const [page, id] = raw.split("/").filter(Boolean);
   if ((page === "member" || page === "branch" || page === "update") && id) return { page, memberId: Number(id) || undefined };
-  if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots" || page === "calendar" || page === "settings" || page === "live" || page === "memory" || page === "dua") {
+  if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots" || page === "calendar" || page === "settings" || page === "live" || page === "memory" || page === "dua" || page === "familyBook") {
     return { page };
   }
   return { page: "home" };
@@ -715,6 +716,7 @@ export default function App() {
     () => state.duaRequests.filter((request) => request.status === "fulfilled").sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [state.duaRequests]
   );
+  const familyBookGroups = useMemo(() => groupMembersByGeneration(state.members), [state.members]);
 
   useEffect(() => {
     trackWebPageView(route.page);
@@ -2920,6 +2922,7 @@ export default function App() {
             ) : null}
             <button className="btn" type="button" onClick={exportState}>{t(language, "downloadBackupButton")}</button>
             <button className="btn-ghost" type="button" onClick={triggerImport}>{t(language, "importBackupButton")}</button>
+            <button className="btn-ghost" type="button" onClick={() => navigate({ page: "familyBook" })}>{t(language, "generateFamilyBookButton")}</button>
             <button className="btn-ghost danger" type="button" onClick={resetToEmpty}>{t(language, "resetArchiveButton")}</button>
             {importError ? <div className="notice danger">{importError}</div> : null}
             <input ref={importInputRef} type="file" accept="application/json,.json" hidden onChange={(e) => handleImportFile(e.target.files?.[0])} />
@@ -3359,6 +3362,62 @@ export default function App() {
               <p className="span-12 hint">{t(language, "updateRequestPendingHint")}</p>
             </div>
           )}
+        </section>
+      );
+    }
+
+    if (route.page === "familyBook") {
+      return (
+        <section className="section family-book-section">
+          <div className="section-head no-print">
+            <div>
+              <span className="eyebrow">{t(language, "familyBookEyebrow")}</span>
+              <h1 className="section-title">{t(language, "familyBookTitle")}</h1>
+              <p className="section-subtitle">{t(language, "familyBookHint")}</p>
+            </div>
+            <button className="btn" type="button" onClick={printPage}>{t(language, "printProfileButton")}</button>
+          </div>
+
+          <div className="family-book-cover">
+            <h1>{state.appName}</h1>
+            <p>{t(language, "familyBookTitle")}</p>
+            <p className="family-book-cover-meta">{formatDate(new Date().toISOString(), language)} | {t(language, "membersLabel")}: {state.members.length}</p>
+          </div>
+
+          {familyBookGroups.map((group) => (
+            <div key={group.generation} className="family-book-generation">
+              <h2 className="family-book-generation-title">{t(language, "familyBookGenerationLabel")} {group.generation}</h2>
+              <div className="family-book-entries">
+                {group.members.map((member) => {
+                  const parents = getParents(state.members, member);
+                  const spouses = getSpouses(state.members, member);
+                  const children = getChildren(state.members, member.id);
+                  return (
+                    <div key={member.id} className="family-book-entry">
+                      <img className="avatar" src={photoSrc(member.photo)} alt={displayName(member, language)} />
+                      <div className="family-book-entry-body">
+                        <div className="tree-name">
+                          {displayName(member, language)}
+                          {member.uniqueId ? <span className="id-badge">{member.uniqueId}</span> : null}
+                        </div>
+                        <div className="tree-sub">
+                          {member.birthplace || t(language, "noBirthplace")}
+                          {member.profession?.trim() ? ` | ${professionLabel(language, member.profession.trim())}` : ""}
+                        </div>
+                        {member.dob ? <div className="tree-sub">{t(language, "bornWord")} {formatDate(member.dob, language)} ({formatHijriDate(member.dob, language)})</div> : null}
+                        {member.dod ? <div className="tree-sub">{t(language, "diedWord")} {formatDate(member.dod, language)} ({formatHijriDate(member.dod, language)})</div> : null}
+                        {parents.length ? <div className="tree-sub">{t(language, "parentsTitle")}: {parents.map((parent) => displayName(parent, language)).join(", ")}</div> : null}
+                        {spouses.length ? <div className="tree-sub">{t(language, "spousesSuffix")}: {spouses.map((spouse) => displayName(spouse, language)).join(", ")}</div> : null}
+                        {children.length ? <div className="tree-sub">{t(language, "childrenSuffix")}: {children.map((child) => displayName(child, language)).join(", ")}</div> : null}
+                        {member.daughtersCount != null ? <div className="tree-sub">{t(language, "daughtersCountLabel")}: {member.daughtersCount}</div> : null}
+                        {member.bio ? <p className="family-book-bio">{member.bio}</p> : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </section>
       );
     }

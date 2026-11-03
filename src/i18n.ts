@@ -208,7 +208,13 @@ const STRINGS = {
     backupCardSubtitle: "Save the whole family record to a file, or load one back in.",
     downloadBackupButton: "Download backup",
     importBackupButton: "Import backup",
+    generateFamilyBookButton: "Generate Family Book (PDF)",
     resetArchiveButton: "Reset archive",
+
+    familyBookEyebrow: "Family book",
+    familyBookTitle: "Family book",
+    familyBookHint: "A printable record of everyone in the tree, grouped by generation. Use \"Print\" and choose \"Save as PDF\" to download it.",
+    familyBookGenerationLabel: "Generation",
 
     eyebrowAbout: "About",
     aboutTitle: "About Apna Sajra",
@@ -702,7 +708,13 @@ const STRINGS = {
     backupCardSubtitle: "مکمل فیملی آرکائیو ایکسپورٹ یا امپورٹ کریں۔",
     downloadBackupButton: "بیک اپ ڈاؤن لوڈ کریں",
     importBackupButton: "بیک اپ امپورٹ کریں",
+    generateFamilyBookButton: "فیملی بک بنائیں (PDF)",
     resetArchiveButton: "آرکائیو ری سیٹ کریں",
+
+    familyBookEyebrow: "فیملی بک",
+    familyBookTitle: "فیملی بک",
+    familyBookHint: "شجرے کے تمام افراد کا پرنٹ ایبل ریکارڈ، نسل کے لحاظ سے ترتیب دیا گیا۔ \"پرنٹ\" پر کلک کریں اور \"Save as PDF\" منتخب کر کے ڈاؤن لوڈ کریں۔",
+    familyBookGenerationLabel: "نسل",
 
     eyebrowAbout: "تعارف",
     aboutTitle: "اپنا شجرہ کے بارے میں",

@@ -2150,7 +2150,34 @@ html[dir="rtl"] .select {
     border: 1px solid #999999;
     box-shadow: none;
   }
+
+  .family-book-section,
+  .family-book-section .tree-name,
+  .family-book-section .tree-sub,
+  .family-book-section .family-book-bio,
+  .family-book-section .section-title {
+    color: #000000 !important;
+  }
+
+  .family-book-cover {
+    page-break-after: always;
+  }
+
+  .family-book-entry {
+    page-break-inside: avoid;
+    border: 1px solid #999999;
+  }
 }
+
+.family-book-cover { display: grid; place-items: center; gap: 10px; min-height: 60vh; text-align: center; }
+.family-book-cover h1 { font-size: 2rem; }
+.family-book-cover-meta { color: var(--muted); }
+.family-book-generation { margin-top: 32px; }
+.family-book-generation-title { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 14px; }
+.family-book-entries { display: grid; gap: 12px; }
+.family-book-entry { display: flex; gap: 14px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; }
+.family-book-entry-body { min-width: 0; flex: 1; }
+.family-book-bio { margin: 8px 0 0; line-height: 1.6; }
 
 /* Sajra AI chat */
 .sajra-chat-widget { position: fixed; right: 24px; bottom: 24px; z-index: 50; font-family: Inter, system-ui, sans-serif; }

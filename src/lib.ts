@@ -416,6 +416,29 @@ export function getAncestorChain(members: Member[], memberId: number): Member[] 
   return chain.reverse();
 }
 
+export interface GenerationGroup {
+  generation: number;
+  members: Member[];
+}
+
+/**
+ * Groups every member by generation (1 = a founding ancestor, counting up from there), using the
+ * same single-parent-per-generation lineage as getAncestorChain/buildTree, for the printable
+ * Family Book - reading it top to bottom tells the family's story roughly oldest-to-youngest.
+ */
+export function groupMembersByGeneration(members: Member[]): GenerationGroup[] {
+  const groups = new Map<number, Member[]>();
+  members.forEach((member) => {
+    const generation = getAncestorChain(members, member.id).length || 1;
+    const list = groups.get(generation) ?? [];
+    list.push(member);
+    groups.set(generation, list);
+  });
+  return [...groups.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([generation, list]) => ({ generation, members: [...list].sort(sortMembers) }));
+}
+
 export function sortMembers(a: Member, b: Member): number {
   return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
 }
