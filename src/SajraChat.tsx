@@ -96,7 +96,7 @@ export default function SajraChat({ appName, members, onOpenMember, onFeedback }
   const [readAloud, setReadAloud] = useState(true);
   const [listening, setListening] = useState(false);
   const [micLevel, setMicLevel] = useState(0);
-  const [nativeSpeechAvailable, setNativeSpeechAvailable] = useState(false);
+  const [nativeSpeechAvailable, setNativeSpeechAvailable] = useState<boolean | null>(null);
   const [speaking, setSpeaking] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -109,7 +109,9 @@ export default function SajraChat({ appName, members, onOpenMember, onFeedback }
   // (unlike actual Chrome), so the native build uses a real Android SpeechRecognizer plugin
   // instead (see AppSpeechPlugin.java) and only the web build falls back to the browser API.
   const webSpeechRecognitionSupported = !isNative && typeof window !== "undefined" && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
-  const micSupported = isNative ? nativeSpeechAvailable : webSpeechRecognitionSupported;
+  // Keep the mic visible in the APK even when Android has no speech provider enabled yet.
+  // The plugin can request permission and the button can show a useful error on tap.
+  const micSupported = isNative || webSpeechRecognitionSupported;
   const speechSynthesisSupported = typeof window !== "undefined" && "speechSynthesis" in window;
 
   useEffect(() => {
@@ -182,13 +184,19 @@ export default function SajraChat({ appName, members, onOpenMember, onFeedback }
 
     baseDraftRef.current = draft.trim();
     finalTranscriptRef.current = "";
+    setError("");
 
     if (isNative) {
+      if (nativeSpeechAvailable === false) {
+        setError("Voice input isn't available on this device. Enable or install an Android speech recognition service, then try again.");
+        return;
+      }
       try {
         await appSpeech.start({ language: speechLangFor(responseLanguage) });
         setListening(true);
-      } catch {
+      } catch (error) {
         setListening(false);
+        setError(error instanceof Error ? error.message : "Could not access the microphone. Check Sajra's microphone permission.");
       }
       return;
     }
