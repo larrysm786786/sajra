@@ -9,6 +9,9 @@ export interface BookPublication {
   publisher?: string | null;
   year?: string | null;
   url?: string | null;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  coverUrl?: string | null;
 }
 
 export interface Member {
