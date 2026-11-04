@@ -2317,7 +2317,13 @@ html[dir="rtl"] .select {
 .member-publications { margin-top: 22px; }
 .member-publications h2, .member-publications-editor h3, .profile-publications-editor h2 { margin: 0; color: var(--ink); font-size: 1.15rem; }
 .member-publications-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; margin-top: 12px; }
-.member-publication-card { display: grid; gap: 6px; min-width: 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-strong); }
+.member-publication-card { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: start; gap: 14px; min-width: 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-strong); }
+.member-publication-cover { display: grid; place-items: center; width: 88px; aspect-ratio: 3 / 4; overflow: hidden; border-radius: 9px; background: var(--surface); color: var(--accent-strong); font-size: 32px; }
+.member-publication-cover img { width: 100%; height: 100%; object-fit: cover; }
+.member-publication-details { display: grid; gap: 6px; min-width: 0; }
+.publication-cover-preview { display: block; width: 88px; max-height: 118px; margin-top: 8px; border-radius: 8px; object-fit: cover; }
+.publication-asset-status { margin-top: 6px; color: var(--muted); font-size: 12px; }
+.publication-upload-error { color: var(--danger, #a52828); font-size: 12px; }
 .member-publication-card strong { overflow-wrap: anywhere; }
 .member-publication-card span { color: var(--muted); font-size: 13px; }
 .member-publication-card a { width: fit-content; color: var(--accent-strong); font-weight: 650; }
@@ -2328,4 +2334,8 @@ html[dir="rtl"] .select {
 .publication-fields label { display: grid; gap: 6px; min-width: 0; color: var(--muted); font-size: 13px; }
 .publication-fields .field { width: 100%; min-width: 0; }
 .publication-fields > button { justify-self: start; }
-@media (max-width: 760px) { .publication-fields { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) {
+  .publication-fields { grid-template-columns: minmax(0, 1fr); }
+  .member-publication-card { grid-template-columns: 72px minmax(0, 1fr); gap: 10px; }
+  .member-publication-cover { width: 72px; }
+}
