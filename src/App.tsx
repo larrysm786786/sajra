@@ -8,7 +8,7 @@ import QRCode from "qrcode";
 import { trackNativeScreenView, trackWebPageView } from "./analytics";
 import type { FormEvent, ReactNode, TouchEvent as ReactTouchEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
-import type { Announcement, AppState, DuaRequest, GalleryImage, Gender, Language, Member, MemberUpdateRequest, Role, Suggestion, User, ViewKey } from "./types";
+import type { Announcement, AppState, BookPublication, DuaRequest, GalleryImage, Gender, Language, Member, MemberUpdateRequest, Role, Suggestion, User, ViewKey } from "./types";
 import {
   buildMembersFromImportRows,
   buildTree,
@@ -124,6 +124,7 @@ type MemberDraft = {
   photo: string;
   bio: string;
   contact: string;
+  publications: BookPublication[];
   fatherId: string;
   motherId: string;
   spouseIds: number[];
@@ -245,6 +246,7 @@ function emptyMemberDraft(member?: Member): MemberDraft {
         photo: member.photo ?? "",
         bio: member.bio ?? "",
         contact: member.contact ?? "",
+        publications: member.publications ?? [],
         fatherId: member.fatherId ? String(member.fatherId) : "",
         motherId: member.motherId ? String(member.motherId) : "",
         spouseIds: [...member.spouseIds]
@@ -263,6 +265,7 @@ function emptyMemberDraft(member?: Member): MemberDraft {
         photo: "",
         bio: "",
         contact: "",
+        publications: [],
         fatherId: "",
         motherId: "",
         spouseIds: []
@@ -492,6 +495,26 @@ function isSliderProfession(profession?: string | null) {
   return Boolean(profession?.trim());
 }
 
+function safePublicationUrl(value?: string | null): string | null {
+  if (!value?.trim()) return null;
+  try {
+    const parsed = new URL(value.trim());
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function PublicationFields({ item, language, onChange, onRemove }: { item: BookPublication; language: Language; onChange: (item: BookPublication) => void; onRemove: () => void }) {
+  return <div className="publication-fields card">
+    <label><span>{t(language, "publicationNameLabel")}</span><input className="field" maxLength={180} value={item.title} onChange={(event) => onChange({ ...item, title: event.target.value })} /></label>
+    <label><span>{t(language, "publicationPublisherLabel")}</span><input className="field" maxLength={120} value={item.publisher ?? ""} onChange={(event) => onChange({ ...item, publisher: event.target.value })} /></label>
+    <label><span>{t(language, "publicationYearLabel")}</span><input className="field" maxLength={12} value={item.year ?? ""} onChange={(event) => onChange({ ...item, year: event.target.value })} /></label>
+    <label><span>{t(language, "publicationUrlLabel")}</span><input className="field" type="url" maxLength={500} value={item.url ?? ""} onChange={(event) => onChange({ ...item, url: event.target.value })} /></label>
+    <button className="btn-ghost danger" type="button" onClick={onRemove}>{t(language, "removePublicationButton")}</button>
+  </div>;
+}
+
 function cleanSuggestionMessage(message: string): string {
   const prefixes = ["Chatbot feedback (helpful): ", "Chatbot feedback (not helpful): "];
   let text = message;
@@ -610,7 +633,7 @@ export default function App() {
   const [duaDraft, setDuaDraft] = useState<DuaDraft | null>(null);
   const [duaBusy, setDuaBusy] = useState(false);
   const [duaSent, setDuaSent] = useState(false);
-  const [updateRequestDraft, setUpdateRequestDraft] = useState<{ memberId: number; photo: string; bio: string; contact: string; profession: string } | null>(null);
+  const [updateRequestDraft, setUpdateRequestDraft] = useState<{ memberId: number; photo: string; bio: string; contact: string; profession: string; publications: BookPublication[] } | null>(null);
   const [updateRequestBusy, setUpdateRequestBusy] = useState(false);
   const [updateRequestSent, setUpdateRequestSent] = useState(false);
   const [updateLinkNotice, setUpdateLinkNotice] = useState("");
@@ -739,7 +762,7 @@ export default function App() {
     const member = state.members.find((candidate) => candidate.id === route.memberId);
     if (!member) return;
     setUpdateRequestDraft((current) =>
-      current && current.memberId === member.id ? current : { memberId: member.id, photo: member.photo ?? "", bio: member.bio ?? "", contact: member.contact ?? "", profession: member.profession ?? "" }
+      current && current.memberId === member.id ? current : { memberId: member.id, photo: member.photo ?? "", bio: member.bio ?? "", contact: member.contact ?? "", profession: member.profession ?? "", publications: member.publications ?? [] }
     );
   }, [route.page, route.memberId, state.members]);
 
@@ -1466,6 +1489,7 @@ export default function App() {
           bio: updateRequestDraft.bio.trim() || null,
           contact: updateRequestDraft.contact.trim() || null,
           profession: normalizeProfession(updateRequestDraft.profession),
+          publications: updateRequestDraft.publications.filter((item) => item.title.trim()).map((item) => ({ title: item.title.trim().slice(0, 180), publisher: item.publisher?.trim().slice(0, 120) || null, year: item.year?.trim().slice(0, 12) || null, url: item.url?.trim().slice(0, 500) || null })),
           status: "pending",
           createdAt: new Date().toISOString()
         };
@@ -1497,7 +1521,8 @@ export default function App() {
         photo: request.photo !== undefined ? request.photo : existingMember.photo,
         bio: request.bio !== undefined ? request.bio : existingMember.bio,
         contact: request.contact !== undefined ? request.contact : existingMember.contact,
-        profession: request.profession !== undefined ? request.profession : existingMember.profession
+        profession: request.profession !== undefined ? request.profession : existingMember.profession,
+        publications: request.publications !== undefined ? request.publications : existingMember.publications
       };
       const next = {
         ...current,
@@ -1883,6 +1908,7 @@ export default function App() {
       photo: memberDraft.photo.trim() || null,
       bio: memberDraft.bio.trim() || null,
       contact: memberDraft.contact.trim() || null,
+      publications: memberDraft.publications.filter((item) => item.title.trim()).map((item) => ({ title: item.title.trim().slice(0, 180), publisher: item.publisher?.trim().slice(0, 120) || null, year: item.year?.trim().slice(0, 12) || null, url: item.url?.trim().slice(0, 500) || null })),
       fatherId: memberDraft.fatherId ? Number(memberDraft.fatherId) : null,
       motherId: memberDraft.motherId ? Number(memberDraft.motherId) : null,
       spouseIds,
@@ -2478,6 +2504,14 @@ export default function App() {
                 {updateLinkNotice ? <p className="hint no-print">{updateLinkNotice}</p> : null}
                 {member.bio ? <p style={{ marginTop: 16, lineHeight: 1.8 }}>{member.bio}</p> : null}
                 {member.contact ? <p className="tree-sub" style={{ marginTop: 8 }}>{t(language, "contactLabel")}: {member.contact}</p> : null}
+                {member.publications?.length ? <section className="member-publications" aria-labelledby="member-publications-title">
+                  <h2 id="member-publications-title">{t(language, "publicationsTitle")}</h2>
+                  <div className="member-publications-list">{member.publications.filter((item) => item.title?.trim()).map((item, index) => <article className="member-publication-card" key={item.title + "-" + index}>
+                    <strong>{item.title}</strong>
+                    {(item.publisher || item.year) ? <span>{[item.publisher, item.year].filter(Boolean).join(" · ")}</span> : null}
+                    {safePublicationUrl(item.url) ? <a href={safePublicationUrl(item.url)!} target="_blank" rel="noreferrer">{t(language, "publicationViewLink")}</a> : null}
+                  </article>)}</div>
+                </section> : null}
               </div>
 
               <div className="card-grid profile-relations-grid" style={{ marginTop: 20 }}>
@@ -2867,6 +2901,7 @@ export default function App() {
                       {request.bio ? <p className="admin-suggestion-message">{request.bio}</p> : null}
                       {request.contact ? <p className="tree-sub">{t(language, "contactLabel")}: {request.contact}</p> : null}
                       {request.profession ? <p className="tree-sub">{t(language, "professionLabel")}: {professionLabel(language, request.profession)}</p> : null}
+                      {request.publications?.filter((item) => item.title?.trim()).map((item, index) => <p className="tree-sub" key={item.title + "-" + index}><strong>{item.title}</strong>{[item.publisher, item.year].filter(Boolean).length ? ` — ${[item.publisher, item.year].filter(Boolean).join(" · ")}` : ""}{safePublicationUrl(item.url) ? <> · <a href={safePublicationUrl(item.url)!} target="_blank" rel="noreferrer">{t(language, "publicationViewLink")}</a></> : null}</p>)}
                     </div>
                   </div>
                   <div className="tree-sub admin-suggestion-meta">
@@ -3376,6 +3411,12 @@ export default function App() {
                 <span>{t(language, "bioLabel")}</span>
                 <textarea className="textarea" placeholder={t(language, "bioLabel")} value={updateRequestDraft.bio} onChange={(e) => setUpdateRequestDraft((current) => current ? { ...current, bio: e.target.value } : current)} />
               </label>
+              <section className="profile-publications-editor profile-update-bio">
+                <div className="section-head"><div><h2>{t(language, "publicationsTitle")}</h2><p className="hint">{t(language, "publicationsHint")}</p></div>
+                  <button className="btn-ghost" type="button" disabled={updateRequestDraft.publications.length >= 12} onClick={() => setUpdateRequestDraft((current) => current ? { ...current, publications: [...current.publications, { title: "" }] } : current)}>{t(language, "addPublicationButton")}</button>
+                </div>
+                {updateRequestDraft.publications.map((item, index) => <PublicationFields key={index} item={item} language={language} onChange={(next) => setUpdateRequestDraft((current) => current ? { ...current, publications: current.publications.map((publication, i) => i === index ? next : publication) } : current)} onRemove={() => setUpdateRequestDraft((current) => current ? { ...current, publications: current.publications.filter((_, i) => i !== index) } : current)} />)}
+              </section>
               <div className="profile-update-actions">
                 <button className="btn" type="button" disabled={updateRequestBusy} onClick={() => void submitMemberUpdateRequest()}>
                   {updateRequestBusy ? t(language, "sendingSuggestion") : t(language, "sendUpdateRequestButton")}
@@ -3896,6 +3937,12 @@ export default function App() {
               <span className="sr-only">{t(language, "bioLabel")}</span>
               <textarea className="textarea" placeholder={t(language, "bioLabel")} value={memberDraft.bio} onChange={(e) => setMemberDraft((current) => current ? { ...current, bio: e.target.value } : current)} />
             </label>
+            <section className="span-12 member-publications-editor">
+              <div className="section-head"><div><h3>{t(language, "publicationsTitle")}</h3><p className="hint">{t(language, "publicationsHint")}</p></div>
+                <button className="btn-ghost" type="button" disabled={memberDraft.publications.length >= 12} onClick={() => setMemberDraft((current) => current ? { ...current, publications: [...current.publications, { title: "" }] } : current)}>{t(language, "addPublicationButton")}</button>
+              </div>
+              {memberDraft.publications.map((item, index) => <PublicationFields key={index} item={item} language={language} onChange={(next) => setMemberDraft((current) => current ? { ...current, publications: current.publications.map((publication, i) => i === index ? next : publication) } : current)} onRemove={() => setMemberDraft((current) => current ? { ...current, publications: current.publications.filter((_, i) => i !== index) } : current)} />)}
+            </section>
             <label className="span-12">
               <span className="sr-only">{t(language, "contactLabel")}</span>
               <input className="field" placeholder={t(language, "contactLabel")} value={memberDraft.contact} onChange={(e) => setMemberDraft((current) => current ? { ...current, contact: e.target.value } : current)} />
