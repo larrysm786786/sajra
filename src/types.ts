@@ -126,6 +126,7 @@ export interface MemberUpdateRequest {
   photo?: string | null;
   bio?: string | null;
   contact?: string | null;
+  profession?: string | null;
   status: "pending" | "approved" | "rejected";
   createdAt: string;
 }

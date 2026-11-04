@@ -73,7 +73,7 @@ const STRINGS = {
     updateRequestApprovedLabel: "Approved",
     updateRequestRejectedLabel: "Rejected",
     updateYourProfileEyebrow: "Update your profile",
-    updateYourProfileSubtitle: "Confirm or update your own photo, bio and contact details. An admin will review this before it goes live.",
+    updateYourProfileSubtitle: "Confirm or update your own photo, profession, bio and contact details. An admin will review this before it goes live.",
     updateLinkInvalid: "This update link isn't valid. Please ask the admin for a fresh one.",
     sendUpdateRequestButton: "Send for review",
     updateRequestPendingHint: "This won't change your profile right away - an admin will review it first.",

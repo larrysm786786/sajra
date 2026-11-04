@@ -610,7 +610,7 @@ export default function App() {
   const [duaDraft, setDuaDraft] = useState<DuaDraft | null>(null);
   const [duaBusy, setDuaBusy] = useState(false);
   const [duaSent, setDuaSent] = useState(false);
-  const [updateRequestDraft, setUpdateRequestDraft] = useState<{ memberId: number; photo: string; bio: string; contact: string } | null>(null);
+  const [updateRequestDraft, setUpdateRequestDraft] = useState<{ memberId: number; photo: string; bio: string; contact: string; profession: string } | null>(null);
   const [updateRequestBusy, setUpdateRequestBusy] = useState(false);
   const [updateRequestSent, setUpdateRequestSent] = useState(false);
   const [updateLinkNotice, setUpdateLinkNotice] = useState("");
@@ -739,7 +739,7 @@ export default function App() {
     const member = state.members.find((candidate) => candidate.id === route.memberId);
     if (!member) return;
     setUpdateRequestDraft((current) =>
-      current && current.memberId === member.id ? current : { memberId: member.id, photo: member.photo ?? "", bio: member.bio ?? "", contact: member.contact ?? "" }
+      current && current.memberId === member.id ? current : { memberId: member.id, photo: member.photo ?? "", bio: member.bio ?? "", contact: member.contact ?? "", profession: member.profession ?? "" }
     );
   }, [route.page, route.memberId, state.members]);
 
@@ -1465,6 +1465,7 @@ export default function App() {
           photo: updateRequestDraft.photo.trim() || null,
           bio: updateRequestDraft.bio.trim() || null,
           contact: updateRequestDraft.contact.trim() || null,
+          profession: normalizeProfession(updateRequestDraft.profession),
           status: "pending",
           createdAt: new Date().toISOString()
         };
@@ -1495,7 +1496,8 @@ export default function App() {
         ...existingMember,
         photo: request.photo !== undefined ? request.photo : existingMember.photo,
         bio: request.bio !== undefined ? request.bio : existingMember.bio,
-        contact: request.contact !== undefined ? request.contact : existingMember.contact
+        contact: request.contact !== undefined ? request.contact : existingMember.contact,
+        profession: request.profession !== undefined ? request.profession : existingMember.profession
       };
       const next = {
         ...current,
@@ -2864,6 +2866,7 @@ export default function App() {
                     <div>
                       {request.bio ? <p className="admin-suggestion-message">{request.bio}</p> : null}
                       {request.contact ? <p className="tree-sub">{t(language, "contactLabel")}: {request.contact}</p> : null}
+                      {request.profession ? <p className="tree-sub">{t(language, "professionLabel")}: {professionLabel(language, request.profession)}</p> : null}
                     </div>
                   </div>
                   <div className="tree-sub admin-suggestion-meta">
@@ -3342,7 +3345,7 @@ export default function App() {
         );
       }
       return (
-        <section className="section" style={{ maxWidth: 560 }}>
+        <section className="section profile-update-section">
           <div className="section-head">
             <div>
               <span className="eyebrow">{t(language, "updateYourProfileEyebrow")}</span>
@@ -3353,28 +3356,32 @@ export default function App() {
           {updateRequestSent ? (
             <div className="notice success">{t(language, "updateRequestSentMessage")}</div>
           ) : (
-            <div className="form-grid">
-              <div className="span-12" style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                <img className="avatar" src={photoSrc(updateRequestDraft.photo)} alt={displayName(targetMember, language)} />
-                <label className="field" style={{ flex: 1 }}>
-                  <span className="sr-only">{t(language, "uploadPhotoLabel")}</span>
+            <div className="profile-update-form">
+              <div className="profile-update-photo card">
+                <img className="profile-update-avatar" src={photoSrc(updateRequestDraft.photo)} alt={displayName(targetMember, language)} />
+                <label className="profile-update-label">
+                  <span>{t(language, "uploadPhotoLabel")}</span>
                   <input type="file" accept="image/*" aria-label={t(language, "uploadPhotoLabel")} onChange={(e) => void handleUpdateRequestPhoto(e.target.files?.[0])} />
                 </label>
               </div>
-              <label className="span-12">
-                <span className="sr-only">{t(language, "bioLabel")}</span>
-                <textarea className="textarea" placeholder={t(language, "bioLabel")} value={updateRequestDraft.bio} onChange={(e) => setUpdateRequestDraft((current) => current ? { ...current, bio: e.target.value } : current)} />
+              <label className="profile-update-label">
+                <span>{t(language, "professionLabel")}</span>
+                <input className="field" maxLength={80} placeholder={t(language, "professionLabel")} value={updateRequestDraft.profession} onChange={(e) => setUpdateRequestDraft((current) => current ? { ...current, profession: e.target.value } : current)} />
               </label>
-              <label className="span-12">
-                <span className="sr-only">{t(language, "contactLabel")}</span>
+              <label className="profile-update-label">
+                <span>{t(language, "contactLabel")}</span>
                 <input className="field" placeholder={t(language, "contactLabel")} value={updateRequestDraft.contact} onChange={(e) => setUpdateRequestDraft((current) => current ? { ...current, contact: e.target.value } : current)} />
               </label>
-              <div className="span-12 actions-row">
+              <label className="profile-update-label profile-update-bio">
+                <span>{t(language, "bioLabel")}</span>
+                <textarea className="textarea" placeholder={t(language, "bioLabel")} value={updateRequestDraft.bio} onChange={(e) => setUpdateRequestDraft((current) => current ? { ...current, bio: e.target.value } : current)} />
+              </label>
+              <div className="profile-update-actions">
                 <button className="btn" type="button" disabled={updateRequestBusy} onClick={() => void submitMemberUpdateRequest()}>
                   {updateRequestBusy ? t(language, "sendingSuggestion") : t(language, "sendUpdateRequestButton")}
                 </button>
+                <p className="hint">{t(language, "updateRequestPendingHint")}</p>
               </div>
-              <p className="span-12 hint">{t(language, "updateRequestPendingHint")}</p>
             </div>
           )}
         </section>

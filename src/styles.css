@@ -2291,3 +2291,24 @@ html[dir="rtl"] .select {
 @media print { body.branch-print-mode .app-shell > :not(.branch-page) { display: none !important; } body.branch-print-mode .branch-page { display: block !important; max-width: none; padding: 10mm; color: #111; background: #fff; }.branch-page .no-print { display: none !important; }.branch-print-heading { display: block; margin-bottom: 20px; }.branch-print-heading h1 { margin: 0 0 5px; font-family: "Playfair Display",serif; }.branch-member-link { color: #111; background: #fff; }.branch-member-link img { filter: grayscale(1); }.branch-tree ul { border-color: #999; }.branch-tree-node::before { border-color: #999; } }
 .brand-mark { overflow: hidden; background: #fff; }
 .brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; }
+
+
+/* Self-service profile updates: use the desktop width, while keeping a simple stacked mobile form. */
+.profile-update-section { width: min(100%, 1120px); margin-inline: auto; }
+.profile-update-form { display: grid; grid-template-columns: minmax(210px, 0.72fr) repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.profile-update-photo { grid-column: 1; grid-row: 1 / span 3; display: grid; justify-items: center; gap: 18px; padding: 22px; }
+.profile-update-avatar { width: min(100%, 220px); aspect-ratio: 1; border-radius: 18px; object-fit: cover; background: var(--surface); }
+.profile-update-label { display: grid; gap: 8px; min-width: 0; color: var(--text); font-size: 0.9rem; font-weight: 650; }
+.profile-update-label .field, .profile-update-label .textarea { width: 100%; }
+.profile-update-label input[type="file"] { width: 100%; font-weight: 400; }
+.profile-update-bio { grid-column: 2 / 4; }
+.profile-update-bio .textarea { min-height: 160px; }
+.profile-update-actions { grid-column: 2 / 4; display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
+.profile-update-actions .hint { margin: 0; }
+@media (max-width: 760px) {
+  .profile-update-form { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .profile-update-photo, .profile-update-bio, .profile-update-actions { grid-column: 1; grid-row: auto; }
+  .profile-update-photo { grid-template-columns: 88px minmax(0, 1fr); justify-items: start; align-items: center; padding: 14px; }
+  .profile-update-avatar { width: 88px; border-radius: 14px; }
+  .profile-update-actions { align-items: flex-start; flex-direction: column; }
+}
