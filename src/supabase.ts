@@ -230,6 +230,23 @@ export async function sendLiveNotification(title: string | null): Promise<void> 
 
 const VIDEO_BUCKET = "sajra-videos";
 export const MAX_VIDEO_UPLOAD_BYTES = 95 * 1024 * 1024; // Comfortably under Supabase's free-tier 100MB request-body limit.
+const MAX_BOOK_UPLOAD_BYTES = 25 * 1024 * 1024;
+const MAX_BOOK_COVER_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+/** Upload a book PDF or cover image; only the public URL is stored in the shared state row. */
+export async function uploadPublicationAsset(file: File, kind: "book" | "cover"): Promise<string> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("Sajra storage is not configured.");
+  if (kind === "book" && file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) throw new Error("Please select a PDF file for the book.");
+  if (file.size > (kind === "book" ? MAX_BOOK_UPLOAD_BYTES : MAX_BOOK_COVER_UPLOAD_BYTES)) throw new Error(kind === "book" ? "The book PDF must be 25 MB or smaller." : "The cover image must be 5 MB or smaller.");
+  const allowedCovers = ["image/jpeg", "image/png", "image/webp"];
+  if (kind === "cover" && !allowedCovers.includes(file.type)) throw new Error("Please select a JPG, PNG, or WebP image for the book cover.");
+  const extension = kind === "book" ? "pdf" : file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const path = `books/${kind}/${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage.from(VIDEO_BUCKET).upload(path, file, { cacheControl: "31536000", contentType: kind === "book" ? "application/pdf" : file.type, upsert: false });
+  if (error) throw new Error(error.message);
+  return supabase.storage.from(VIDEO_BUCKET).getPublicUrl(path).data.publicUrl;
+}
 
 /**
  * Uploads a video file (e.g. an important family moment that wasn't livestreamed) to Supabase
