@@ -67,6 +67,7 @@ import {
   signInWithPassword,
   signOutSupabase,
   StaleWriteError,
+  uploadPublicationAsset,
   unenrollMfa,
   updatePassword,
   verifyMfaChallenge
@@ -505,12 +506,47 @@ function safePublicationUrl(value?: string | null): string | null {
   }
 }
 
-function PublicationFields({ item, language, onChange, onRemove }: { item: BookPublication; language: Language; onChange: (item: BookPublication) => void; onRemove: () => void }) {
+function bookDownloadUrl(publication: BookPublication): string | null {
+  const url = safePublicationUrl(publication.fileUrl);
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set("download", publication.fileName || publication.title + ".pdf");
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function PublicationFields({ item, language, onChange, onRemove, onUploadAsset }: { item: BookPublication; language: Language; onChange: (item: BookPublication) => void; onRemove: () => void; onUploadAsset?: (file: File, kind: "book" | "cover") => Promise<string> }) {
+  const [uploading, setUploading] = useState<"book" | "cover" | null>(null);
+  const [uploadError, setUploadError] = useState("");
+  async function upload(file: File | undefined, kind: "book" | "cover") {
+    if (!file || !onUploadAsset) return;
+    setUploading(kind);
+    setUploadError("");
+    try {
+      const url = await onUploadAsset(file, kind);
+      onChange(kind === "book" ? { ...item, fileUrl: url, fileName: file.name } : { ...item, coverUrl: url });
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : t(language, "publicationUploadFailed"));
+    } finally {
+      setUploading(null);
+    }
+  }
   return <div className="publication-fields card">
     <label><span>{t(language, "publicationNameLabel")}</span><input className="field" maxLength={180} value={item.title} onChange={(event) => onChange({ ...item, title: event.target.value })} /></label>
     <label><span>{t(language, "publicationPublisherLabel")}</span><input className="field" maxLength={120} value={item.publisher ?? ""} onChange={(event) => onChange({ ...item, publisher: event.target.value })} /></label>
     <label><span>{t(language, "publicationYearLabel")}</span><input className="field" maxLength={12} value={item.year ?? ""} onChange={(event) => onChange({ ...item, year: event.target.value })} /></label>
     <label><span>{t(language, "publicationUrlLabel")}</span><input className="field" type="url" maxLength={500} value={item.url ?? ""} onChange={(event) => onChange({ ...item, url: event.target.value })} /></label>
+    {onUploadAsset ? <>
+      <label><span>{t(language, "uploadBookFileLabel")}</span><input className="field" type="file" accept="application/pdf,.pdf" disabled={Boolean(uploading)} onChange={(event) => { void upload(event.target.files?.[0], "book"); event.currentTarget.value = ""; }} /><small className="muted">{t(language, "bookUploadHint")}</small></label>
+      <label><span>{t(language, "uploadBookCoverLabel")}</span><input className="field" type="file" accept="image/jpeg,image/png,image/webp" disabled={Boolean(uploading)} onChange={(event) => { void upload(event.target.files?.[0], "cover"); event.currentTarget.value = ""; }} /><small className="muted">{t(language, "bookCoverUploadHint")}</small></label>
+      {item.fileName ? <div className="publication-asset-status"><span>{t(language, "bookFileAttachedLabel")}: {item.fileName}</span><button className="btn-ghost danger" type="button" onClick={() => onChange({ ...item, fileUrl: null, fileName: null })}>{t(language, "removeBookFileButton")}</button></div> : null}
+      {item.coverUrl ? <div className="publication-cover-preview"><img src={safePublicationUrl(item.coverUrl) ?? ""} alt={t(language, "bookCoverPreviewAlt")} /><button className="btn-ghost danger" type="button" onClick={() => onChange({ ...item, coverUrl: null })}>{t(language, "removeBookCoverButton")}</button></div> : null}
+      {uploading ? <small className="muted">{uploading === "book" ? t(language, "uploadingBookFile") : t(language, "uploadingBookCover")}</small> : null}
+      {uploadError ? <small className="publication-upload-error" role="alert">{uploadError}</small> : null}
+    </> : null}
     <button className="btn-ghost danger" type="button" onClick={onRemove}>{t(language, "removePublicationButton")}</button>
   </div>;
 }
@@ -1489,7 +1525,7 @@ export default function App() {
           bio: updateRequestDraft.bio.trim() || null,
           contact: updateRequestDraft.contact.trim() || null,
           profession: normalizeProfession(updateRequestDraft.profession),
-          publications: updateRequestDraft.publications.filter((item) => item.title.trim()).map((item) => ({ title: item.title.trim().slice(0, 180), publisher: item.publisher?.trim().slice(0, 120) || null, year: item.year?.trim().slice(0, 12) || null, url: item.url?.trim().slice(0, 500) || null })),
+          publications: updateRequestDraft.publications.filter((item) => item.title.trim()).map((item) => ({ ...item, title: item.title.trim().slice(0, 180), publisher: item.publisher?.trim().slice(0, 120) || null, year: item.year?.trim().slice(0, 12) || null, url: item.url?.trim().slice(0, 500) || null })),
           status: "pending",
           createdAt: new Date().toISOString()
         };
@@ -1908,7 +1944,7 @@ export default function App() {
       photo: memberDraft.photo.trim() || null,
       bio: memberDraft.bio.trim() || null,
       contact: memberDraft.contact.trim() || null,
-      publications: memberDraft.publications.filter((item) => item.title.trim()).map((item) => ({ title: item.title.trim().slice(0, 180), publisher: item.publisher?.trim().slice(0, 120) || null, year: item.year?.trim().slice(0, 12) || null, url: item.url?.trim().slice(0, 500) || null })),
+      publications: memberDraft.publications.filter((item) => item.title.trim()).map((item) => ({ ...item, title: item.title.trim().slice(0, 180), publisher: item.publisher?.trim().slice(0, 120) || null, year: item.year?.trim().slice(0, 12) || null, url: item.url?.trim().slice(0, 500) || null })),
       fatherId: memberDraft.fatherId ? Number(memberDraft.fatherId) : null,
       motherId: memberDraft.motherId ? Number(memberDraft.motherId) : null,
       spouseIds,
@@ -2507,9 +2543,12 @@ export default function App() {
                 {member.publications?.length ? <section className="member-publications" aria-labelledby="member-publications-title">
                   <h2 id="member-publications-title">{t(language, "publicationsTitle")}</h2>
                   <div className="member-publications-list">{member.publications.filter((item) => item.title?.trim()).map((item, index) => <article className="member-publication-card" key={item.title + "-" + index}>
-                    <strong>{item.title}</strong>
-                    {(item.publisher || item.year) ? <span>{[item.publisher, item.year].filter(Boolean).join(" · ")}</span> : null}
-                    {safePublicationUrl(item.url) ? <a href={safePublicationUrl(item.url)!} target="_blank" rel="noreferrer">{t(language, "publicationViewLink")}</a> : null}
+                    <div className="member-publication-cover">{safePublicationUrl(item.coverUrl) ? <img src={safePublicationUrl(item.coverUrl)!} alt={item.title + " " + t(language, "bookCoverPreviewAlt")} loading="lazy" /> : <span aria-hidden="true">📖</span>}</div>
+                    <div className="member-publication-details"><strong>{item.title}</strong>
+                      {(item.publisher || item.year) ? <span>{[item.publisher, item.year].filter(Boolean).join(" · ")}</span> : null}
+                      {safePublicationUrl(item.url) ? <a href={safePublicationUrl(item.url)!} target="_blank" rel="noreferrer">{t(language, "publicationViewLink")}</a> : null}
+                      {bookDownloadUrl(item) ? <a className="btn publication-download-button" href={bookDownloadUrl(item)!} download>{t(language, "downloadBookButton")}</a> : null}
+                    </div>
                   </article>)}</div>
                 </section> : null}
               </div>
@@ -3941,7 +3980,7 @@ export default function App() {
               <div className="section-head"><div><h3>{t(language, "publicationsTitle")}</h3><p className="hint">{t(language, "publicationsHint")}</p></div>
                 <button className="btn-ghost" type="button" disabled={memberDraft.publications.length >= 12} onClick={() => setMemberDraft((current) => current ? { ...current, publications: [...current.publications, { title: "" }] } : current)}>{t(language, "addPublicationButton")}</button>
               </div>
-              {memberDraft.publications.map((item, index) => <PublicationFields key={index} item={item} language={language} onChange={(next) => setMemberDraft((current) => current ? { ...current, publications: current.publications.map((publication, i) => i === index ? next : publication) } : current)} onRemove={() => setMemberDraft((current) => current ? { ...current, publications: current.publications.filter((_, i) => i !== index) } : current)} />)}
+              {memberDraft.publications.map((item, index) => <PublicationFields key={index} item={item} language={language} onChange={(next) => setMemberDraft((current) => current ? { ...current, publications: current.publications.map((publication, i) => i === index ? next : publication) } : current)} onRemove={() => setMemberDraft((current) => current ? { ...current, publications: current.publications.filter((_, i) => i !== index) } : current)} onUploadAsset={uploadPublicationAsset} />)}
             </section>
             <label className="span-12">
               <span className="sr-only">{t(language, "contactLabel")}</span>
