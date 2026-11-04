@@ -2316,26 +2316,45 @@ html[dir="rtl"] .select {
 /* Books and publications on member profiles and optional profile editors. */
 .member-publications { margin-top: 22px; }
 .member-publications h2, .member-publications-editor h3, .profile-publications-editor h2 { margin: 0; color: var(--ink); font-size: 1.15rem; }
-.member-publications-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; margin-top: 12px; }
-.member-publication-card { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: start; gap: 14px; min-width: 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-strong); }
-.member-publication-cover { display: grid; place-items: center; width: 88px; aspect-ratio: 3 / 4; overflow: hidden; border-radius: 9px; background: var(--surface); color: var(--accent-strong); font-size: 32px; }
-.member-publication-cover img { width: 100%; height: 100%; object-fit: cover; }
-.member-publication-details { display: grid; gap: 6px; min-width: 0; }
-.publication-cover-preview { display: block; width: 88px; max-height: 118px; margin-top: 8px; border-radius: 8px; object-fit: cover; }
-.publication-asset-status { margin-top: 6px; color: var(--muted); font-size: 12px; }
-.publication-upload-error { color: var(--danger, #a52828); font-size: 12px; }
-.member-publication-card strong { overflow-wrap: anywhere; }
+.member-publications-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; margin-top: 12px; }
+.member-publication-card { display: grid; grid-template-columns: 104px minmax(0, 1fr); align-items: start; gap: 16px; min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface-strong); box-shadow: 0 5px 18px rgb(21 37 74 / 5%); }
+.member-publication-cover { display: grid; width: 104px; aspect-ratio: 2 / 3; place-items: center; overflow: hidden; border-radius: 9px; color: var(--accent-strong); background: var(--bg-soft); font-size: 30px; }
+.member-publication-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.member-publication-details { display: grid; align-content: start; justify-items: start; gap: 8px; min-width: 0; padding-block: 2px; }
+.member-publication-card strong { overflow-wrap: anywhere; line-height: 1.4; }
 .member-publication-card span { color: var(--muted); font-size: 13px; }
 .member-publication-card a { width: fit-content; color: var(--accent-strong); font-weight: 650; }
+.member-publication-card .publication-download-button { max-width: 100%; white-space: normal; text-align: center; }
 .member-publications-editor .section-head, .profile-publications-editor .section-head { align-items: center; margin-bottom: 12px; }
 .member-publications-editor .section-head h3, .profile-publications-editor .section-head h2 { margin-bottom: 4px; }
 .member-publications-editor .hint, .profile-publications-editor .hint { margin: 0; }
-.publication-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 10px; padding: 14px; }
-.publication-fields label { display: grid; gap: 6px; min-width: 0; color: var(--muted); font-size: 13px; }
+.publication-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 14px; min-width: 0; margin-bottom: 12px; padding: 16px; }
+.publication-fields label { display: grid; align-content: start; gap: 7px; min-width: 0; color: var(--muted); font-size: 13px; }
 .publication-fields .field { width: 100%; min-width: 0; }
-.publication-fields > button { justify-self: start; }
+.publication-fields input[type="file"] { min-height: 46px; padding: 6px; font-size: 12px; }
+.publication-fields input[type="file"]::file-selector-button { margin-inline-end: 8px; padding: 8px 10px; border: 0; border-radius: 8px; color: var(--accent-strong); background: var(--bg-soft); font: inherit; font-weight: 650; cursor: pointer; }
+.publication-fields label small { line-height: 1.45; }
+.publication-fields > button { grid-column: 1 / -1; justify-self: end; }
+.publication-asset-status, .publication-cover-preview { display: flex; grid-column: 1 / -1; align-items: center; flex-wrap: wrap; gap: 10px 14px; min-width: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-soft); }
+.publication-asset-status span { min-width: 0; overflow-wrap: anywhere; }
+.publication-cover-preview img { width: 72px; height: 108px; border: 1px solid var(--border); border-radius: 7px; object-fit: cover; }
+.publication-upload-error { grid-column: 1 / -1; color: #b42318; overflow-wrap: anywhere; }
+.publication-download-button { width: fit-content; }
 @media (max-width: 760px) {
-  .publication-fields { grid-template-columns: minmax(0, 1fr); }
-  .member-publication-card { grid-template-columns: 72px minmax(0, 1fr); gap: 10px; }
-  .member-publication-cover { width: 72px; }
+  .profile-update-form { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .profile-update-photo, .profile-update-bio, .profile-update-actions { grid-column: 1; grid-row: auto; }
+  .profile-update-photo { grid-template-columns: 88px minmax(0, 1fr); justify-items: start; align-items: center; padding: 14px; }
+  .profile-update-avatar { width: 88px; border-radius: 14px; }
+  .profile-update-actions { align-items: flex-start; flex-direction: column; }
+  .member-publications-list { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .publication-fields { grid-template-columns: minmax(0, 1fr); gap: 11px; padding: 12px; }
+  .publication-fields > button { grid-column: 1; justify-self: stretch; min-height: 42px; }
+  .publication-fields input[type="file"] { min-height: 44px; font-size: 11px; }
+  .publication-asset-status, .publication-cover-preview { align-items: flex-start; padding: 10px; }
+  .publication-asset-status { flex-direction: column; }
+  .member-publication-card { grid-template-columns: 76px minmax(0, 1fr); gap: 12px; padding: 12px; }
+  .member-publication-cover { width: 76px; }
+  .member-publication-details { gap: 7px; }
+  .member-publication-card .publication-download-button { width: 100%; }
 }
+
