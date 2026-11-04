@@ -2940,7 +2940,13 @@ export default function App() {
                       {request.bio ? <p className="admin-suggestion-message">{request.bio}</p> : null}
                       {request.contact ? <p className="tree-sub">{t(language, "contactLabel")}: {request.contact}</p> : null}
                       {request.profession ? <p className="tree-sub">{t(language, "professionLabel")}: {professionLabel(language, request.profession)}</p> : null}
-                      {request.publications?.filter((item) => item.title?.trim()).map((item, index) => <p className="tree-sub" key={item.title + "-" + index}><strong>{item.title}</strong>{[item.publisher, item.year].filter(Boolean).length ? ` — ${[item.publisher, item.year].filter(Boolean).join(" · ")}` : ""}{safePublicationUrl(item.url) ? <> · <a href={safePublicationUrl(item.url)!} target="_blank" rel="noreferrer">{t(language, "publicationViewLink")}</a></> : null}</p>)}
+                      {request.publications?.filter((item) => item.title?.trim()).map((item, index) => <div className="admin-publication-review" key={item.title + "-" + index}>
+                        {safePublicationUrl(item.coverUrl) ? <img src={safePublicationUrl(item.coverUrl)!} alt={item.title + " " + t(language, "bookCoverPreviewAlt")} loading="lazy" /> : null}
+                        <div><p className="tree-sub"><strong>{item.title}</strong>{[item.publisher, item.year].filter(Boolean).length ? ` — ${[item.publisher, item.year].filter(Boolean).join(" · ")}` : ""}</p>
+                          {safePublicationUrl(item.url) ? <a href={safePublicationUrl(item.url)!} target="_blank" rel="noreferrer">{t(language, "publicationViewLink")}</a> : null}
+                          {safePublicationUrl(item.fileUrl) ? <a href={bookDownloadUrl(item)!} target="_blank" rel="noreferrer">{t(language, "downloadBookButton")}</a> : null}
+                        </div>
+                      </div>)}
                     </div>
                   </div>
                   <div className="tree-sub admin-suggestion-meta">
@@ -3454,7 +3460,7 @@ export default function App() {
                 <div className="section-head"><div><h2>{t(language, "publicationsTitle")}</h2><p className="hint">{t(language, "publicationsHint")}</p></div>
                   <button className="btn-ghost" type="button" disabled={updateRequestDraft.publications.length >= 12} onClick={() => setUpdateRequestDraft((current) => current ? { ...current, publications: [...current.publications, { title: "" }] } : current)}>{t(language, "addPublicationButton")}</button>
                 </div>
-                {updateRequestDraft.publications.map((item, index) => <PublicationFields key={index} item={item} language={language} onChange={(next) => setUpdateRequestDraft((current) => current ? { ...current, publications: current.publications.map((publication, i) => i === index ? next : publication) } : current)} onRemove={() => setUpdateRequestDraft((current) => current ? { ...current, publications: current.publications.filter((_, i) => i !== index) } : current)} />)}
+                {updateRequestDraft.publications.map((item, index) => <PublicationFields key={index} item={item} language={language} onChange={(next) => setUpdateRequestDraft((current) => current ? { ...current, publications: current.publications.map((publication, i) => i === index ? next : publication) } : current)} onRemove={() => setUpdateRequestDraft((current) => current ? { ...current, publications: current.publications.filter((_, i) => i !== index) } : current)} onUploadAsset={uploadPublicationAsset} />)}
               </section>
               <div className="profile-update-actions">
                 <button className="btn" type="button" disabled={updateRequestBusy} onClick={() => void submitMemberUpdateRequest()}>
