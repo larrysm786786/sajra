@@ -2312,3 +2312,20 @@ html[dir="rtl"] .select {
   .profile-update-avatar { width: 88px; border-radius: 14px; }
   .profile-update-actions { align-items: flex-start; flex-direction: column; }
 }
+
+/* Books and publications on member profiles and optional profile editors. */
+.member-publications { margin-top: 22px; }
+.member-publications h2, .member-publications-editor h3, .profile-publications-editor h2 { margin: 0; color: var(--ink); font-size: 1.15rem; }
+.member-publications-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; margin-top: 12px; }
+.member-publication-card { display: grid; gap: 6px; min-width: 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-strong); }
+.member-publication-card strong { overflow-wrap: anywhere; }
+.member-publication-card span { color: var(--muted); font-size: 13px; }
+.member-publication-card a { width: fit-content; color: var(--accent-strong); font-weight: 650; }
+.member-publications-editor .section-head, .profile-publications-editor .section-head { align-items: center; margin-bottom: 12px; }
+.member-publications-editor .section-head h3, .profile-publications-editor .section-head h2 { margin-bottom: 4px; }
+.member-publications-editor .hint, .profile-publications-editor .hint { margin: 0; }
+.publication-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 10px; padding: 14px; }
+.publication-fields label { display: grid; gap: 6px; min-width: 0; color: var(--muted); font-size: 13px; }
+.publication-fields .field { width: 100%; min-width: 0; }
+.publication-fields > button { justify-self: start; }
+@media (max-width: 760px) { .publication-fields { grid-template-columns: minmax(0, 1fr); } }
