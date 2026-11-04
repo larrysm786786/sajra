@@ -4,6 +4,13 @@ export type Gender = "male" | "female";
 export type Role = "admin" | "editor" | "contributor";
 export type ViewKey = "home" | "tree" | "gallery" | "admin" | "member" | "branch" | "calendar" | "about" | "guide" | "roots" | "settings" | "live" | "memory" | "dua" | "update" | "familyBook";
 
+export interface BookPublication {
+  title: string;
+  publisher?: string | null;
+  year?: string | null;
+  url?: string | null;
+}
+
 export interface Member {
   id: number;
   /** Stable, human-shareable identifier (e.g. "S00001"). Assigned once at creation and never reused. */
@@ -24,6 +31,8 @@ export interface Member {
   bio?: string | null;
   /** Free-form phone/WhatsApp/email, shown on the profile; set by the member themselves via the "update your own profile" link, or by an admin/editor. */
   contact?: string | null;
+  /** Optional books and other works displayed publicly on this member's profile. */
+  publications?: BookPublication[];
   fatherId?: number | null;
   motherId?: number | null;
   spouseIds: number[];
@@ -127,6 +136,7 @@ export interface MemberUpdateRequest {
   bio?: string | null;
   contact?: string | null;
   profession?: string | null;
+  publications?: BookPublication[];
   status: "pending" | "approved" | "rejected";
   createdAt: string;
 }
