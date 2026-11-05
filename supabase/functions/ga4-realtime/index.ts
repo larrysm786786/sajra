@@ -75,11 +75,17 @@ Deno.serve(async (request) => {
     });
     const report = await response.json().catch(() => ({})) as {
       rows?: { dimensionValues?: { value?: string }[]; metricValues?: { value?: string }[] }[];
-      error?: { message?: string };
+      error?: { message?: string; details?: { reason?: string }[] };
     };
     if (!response.ok) {
       const detail = report.error?.message || "Google Analytics rejected the live report.";
-      if (response.status === 403) return respond({ error: "GA4 access is not ready. Enable the Google Analytics Data API and give the service account Viewer access to property 560778321." }, 424);
+      if (response.status === 403) {
+        const apiDisabled = report.error?.details?.some((item) => item.reason === "SERVICE_DISABLED");
+        const help = apiDisabled
+          ? `Enable the Google Analytics Data API in Google Cloud project ${account.project_id}.`
+          : `In GA4 Property 560778321, add ${account.client_email} under Admin → Property access management and assign Viewer role.`;
+        return respond({ error: `GA4 access is not ready. ${help}` }, 424);
+      }
       return respond({ error: detail }, 502);
     }
     const countries = (report.rows ?? []).map((row) => ({

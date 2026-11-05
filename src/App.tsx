@@ -3092,7 +3092,6 @@ export default function App() {
               countries={liveCountries}
               loading={liveCountriesLoading}
               error={liveCountriesError}
-              activeNow={visitStats?.activeNow ?? 0}
               onRefresh={() => { void fetchLiveVisitorCountries().then(setLiveCountries).catch((error) => setLiveCountriesError(error instanceof Error ? error.message : String(error))); }}
             />
             <div className="card" style={{ marginTop: 18, padding: 18 }}>
