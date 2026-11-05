@@ -1,23 +1,19 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
+import { WORLD_COUNTRIES } from "./worldMapData";
 
 interface CountryActivity { country: string; activeUsers: number; }
-interface PointerPoint { x: number; y: number; }
+interface Point { x: number; y: number; }
+interface PanStart { point: Point; view: [number, number]; }
 
-// GA4 only returns country totals. These points mark country centroids, not visitors.
-const CENTROIDS: Record<string, [number, number]> = {
-  "United States": [-98, 39], "United Kingdom": [-3, 55], India: [79, 22], Pakistan: [69, 30],
-  Canada: [-106, 57], Australia: [134, -25], Germany: [10, 51], France: [2, 46],
-  "Saudi Arabia": [45, 24], "United Arab Emirates": [54, 24], Bangladesh: [90, 24],
-  Indonesia: [117, -2], Malaysia: [102, 4], Turkey: [35, 39], Egypt: [30, 27],
-  Nigeria: [8, 9], "South Africa": [24, -29], Brazil: [-52, -10], Mexico: [-102, 23],
-  Japan: [138, 37], China: [104, 35], "Sri Lanka": [81, 7], Nepal: [84, 28],
-  Afghanistan: [66, 34], Iraq: [44, 33], Iran: [53, 32], Italy: [12, 42],
-  Spain: [-4, 40], Netherlands: [5, 52], Russia: [90, 60],
+const COUNTRY_ALIASES: Record<string, string> = {
+  "united states": "united states of america",
+  "tanzania": "united republic of tanzania",
+  "türkiye": "turkey",
 };
 
-function mercatorPoint(longitude: number, latitude: number, worldSize: number): [number, number] {
-  const lat = Math.max(-85, Math.min(85, latitude)) * Math.PI / 180;
-  return [((longitude + 180) / 360) * worldSize, ((1 - Math.asinh(Math.tan(lat)) / Math.PI) / 2) * worldSize];
+function normalizeCountry(name: string): string {
+  const normalized = name.trim().toLocaleLowerCase();
+  return COUNTRY_ALIASES[normalized] ?? normalized;
 }
 
 interface Props {
@@ -29,47 +25,33 @@ interface Props {
 
 export default function LiveVisitorMap({ countries, loading, error, onRefresh }: Props) {
   const [zoom, setZoom] = useState(1);
-  const [center, setCenter] = useState<[number, number]>([.5, .5]);
-  const [viewport, setViewport] = useState({ width: 1000, height: 500 });
-  const viewportRef = useRef<HTMLDivElement>(null);
-  const pointersRef = useRef(new Map<number, PointerPoint>());
-  const panStartRef = useRef<{ point: PointerPoint; center: [number, number] } | null>(null);
+  const [view, setView] = useState<[number, number]>([0, 0]);
+  const pointersRef = useRef(new Map<number, Point>());
+  const panStartRef = useRef<PanStart | null>(null);
   const pinchStartRef = useRef<{ distance: number; zoom: number } | null>(null);
   const maxUsers = Math.max(1, ...countries.map((item) => item.activeUsers));
-  const tileZoom = Math.max(1, Math.min(6, 2 + Math.floor(Math.log2(zoom))));
-  const tileCount = 2 ** tileZoom;
-  const worldSize = 256 * tileCount;
-  const scale = viewport.width * zoom / worldSize;
-  const offsetX = viewport.width / 2 - center[0] * worldSize * scale;
-  const offsetY = viewport.height / 2 - center[1] * worldSize * scale;
-  const visibleTiles = useMemo(() => {
-    const left = Math.max(0, Math.floor((-offsetX / scale) / 256));
-    const right = Math.min(tileCount - 1, Math.floor(((viewport.width - offsetX) / scale) / 256));
-    const top = Math.max(0, Math.floor((-offsetY / scale) / 256));
-    const bottom = Math.min(tileCount - 1, Math.floor(((viewport.height - offsetY) / scale) / 256));
-    const tiles: { x: number; y: number }[] = [];
-    for (let y = top; y <= bottom; y++) for (let x = left; x <= right; x++) tiles.push({ x, y });
-    return tiles;
-  }, [offsetX, offsetY, scale, tileCount, viewport.height, viewport.width]);
+  const activityByCountry = new Map(countries.map((item) => [normalizeCountry(item.country), item]));
+  const viewWidth = 1000 / zoom;
+  const viewHeight = 500 / zoom;
 
-  function clampCenter(next: [number, number], nextZoom = zoom): [number, number] {
-    const halfW = .5 / nextZoom;
-    const halfH = viewport.height / (2 * viewport.width * nextZoom);
-    return [Math.max(halfW, Math.min(1 - halfW, next[0])), Math.max(halfH, Math.min(1 - halfH, next[1]))];
+  function clampView(next: [number, number], nextZoom = zoom): [number, number] {
+    const width = 1000 / nextZoom;
+    const height = 500 / nextZoom;
+    return [Math.max(0, Math.min(1000 - width, next[0])), Math.max(0, Math.min(500 - height, next[1]))];
   }
-  function setZoomAround(nextZoom: number) {
-    const bounded = Math.max(.75, Math.min(8, nextZoom));
-    setCenter((current) => clampCenter(current, bounded));
+  function setZoomAround(next: number) {
+    const bounded = Math.max(1, Math.min(6, next));
+    const oldCenter: [number, number] = [view[0] + viewWidth / 2, view[1] + viewHeight / 2];
+    const width = 1000 / bounded;
+    const height = 500 / bounded;
+    setView(clampView([oldCenter[0] - width / 2, oldCenter[1] - height / 2], bounded));
     setZoom(bounded);
   }
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    const rect = event.currentTarget.getBoundingClientRect();
-    setViewport({ width: rect.width, height: rect.height });
     event.currentTarget.setPointerCapture(event.pointerId);
     pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    if (pointersRef.current.size === 1) {
-      panStartRef.current = { point: { x: event.clientX, y: event.clientY }, center };
-    } else if (pointersRef.current.size === 2) {
+    if (pointersRef.current.size === 1) panStartRef.current = { point: { x: event.clientX, y: event.clientY }, view };
+    if (pointersRef.current.size === 2) {
       const [a, b] = [...pointersRef.current.values()];
       pinchStartRef.current = { distance: Math.hypot(a.x - b.x, a.y - b.y), zoom };
       panStartRef.current = null;
@@ -87,9 +69,9 @@ export default function LiveVisitorMap({ countries, loading, error, onRefresh }:
     if (pointersRef.current.size === 1 && panStartRef.current) {
       const rect = event.currentTarget.getBoundingClientRect();
       const start = panStartRef.current;
-      const dx = (event.clientX - start.point.x) / (rect.width * zoom);
-      const dy = (event.clientY - start.point.y) / (rect.width * zoom);
-      setCenter(clampCenter([start.center[0] - dx, start.center[1] - dy]));
+      const dx = (event.clientX - start.point.x) * (1000 / (rect.width * zoom));
+      const dy = (event.clientY - start.point.y) * (500 / (rect.height * zoom));
+      setView(clampView([start.view[0] - dx, start.view[1] - dy]));
     }
   }
   function onPointerEnd(event: React.PointerEvent<HTMLDivElement>) {
@@ -97,8 +79,8 @@ export default function LiveVisitorMap({ countries, loading, error, onRefresh }:
     pinchStartRef.current = null;
     panStartRef.current = null;
     if (pointersRef.current.size === 1) {
-      const [[, point]] = [...pointersRef.current.entries()];
-      panStartRef.current = { point, center };
+      const [point] = [...pointersRef.current.values()];
+      panStartRef.current = { point, view };
     }
   }
 
@@ -109,8 +91,7 @@ export default function LiveVisitorMap({ countries, loading, error, onRefresh }:
     </div>
     {error ? <div className="notice danger live-map-error">{error}</div> : null}
     <div
-      className="live-map-wrap"
-      ref={viewportRef}
+      className="live-map-wrap live-vector-map"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerEnd}
@@ -120,23 +101,44 @@ export default function LiveVisitorMap({ countries, loading, error, onRefresh }:
       role="region"
       aria-label="Interactive world map. Pinch to zoom and drag to move."
     >
-      <div className="live-map-layer" style={{ width: worldSize, height: worldSize, transform: `translate(${offsetX}px, ${offsetY}px) scale(${scale})` }}>
-        {visibleTiles.map(({ x, y }) => <img className="live-map-tile" key={`${tileZoom}/${x}/${y}`} src={`https://tile.openstreetmap.org/${tileZoom}/${x}/${y}.png`} alt="" draggable={false} style={{ left: x * 256, top: y * 256 }} />)}
-        {countries.map((item) => {
-          const coordinates = CENTROIDS[item.country];
-          if (!coordinates) return null;
-          const [x, y] = mercatorPoint(coordinates[0], coordinates[1], worldSize);
-          const size = 10 + 10 * item.activeUsers / maxUsers;
-          return <span key={item.country} className="live-map-marker" style={{ left: x, top: y, width: size, height: size }} title={`${item.country}: ${item.activeUsers} active users`} />;
-        })}
-      </div>
+      <svg className="live-vector-world" viewBox={`${view[0]} ${view[1]} ${viewWidth} ${viewHeight}`} preserveAspectRatio="xMidYMid meet" role="img" aria-label="World map with active countries highlighted">
+        <defs>
+          <linearGradient id="visitor-ocean" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#eef5ff" /><stop offset="1" stopColor="#dceaff" /></linearGradient>
+          <radialGradient id="visitor-pulse"><stop offset="0" stopColor="#2e67ad" stopOpacity=".34" /><stop offset="1" stopColor="#4c8de0" stopOpacity="0" /></radialGradient>
+          <filter id="visitor-land-shadow" x="-10%" y="-10%" width="120%" height="120%"><feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#45658c" floodOpacity=".12" /></filter>
+        </defs>
+        <rect x="0" y="0" width="1000" height="500" fill="url(#visitor-ocean)" />
+        <g className="live-map-graticule">
+          <path d="M0 100H1000 M0 200H1000 M0 300H1000 M0 400H1000 M200 0V500 M400 0V500 M600 0V500 M800 0V500" />
+        </g>
+        <g filter="url(#visitor-land-shadow)">
+          {WORLD_COUNTRIES.map((shape, index) => {
+            const activity = activityByCountry.get(normalizeCountry(shape.name));
+            return <path key={`${shape.name}-${index}`} className={activity ? "live-map-country is-active" : "live-map-country"} d={shape.d}>
+              <title>{shape.name}{activity ? `: ${activity.activeUsers} active visitors` : ""}</title>
+            </path>;
+          })}
+        </g>
+        <g className="live-map-country-markers">
+          {WORLD_COUNTRIES.map((shape, index) => {
+            const activity = activityByCountry.get(normalizeCountry(shape.name));
+            if (!activity) return null;
+            const radius = 5 + 7 * activity.activeUsers / maxUsers;
+            return <g key={`${shape.name}-marker-${index}`} className="live-map-country-marker">
+              <circle className="live-map-marker-halo" cx={shape.x} cy={shape.y} r={radius * 3.1} />
+              <circle className="live-map-marker-dot" cx={shape.x} cy={shape.y} r={radius} />
+              <title>{shape.name}: {activity.activeUsers} active visitors</title>
+            </g>;
+          })}
+        </g>
+      </svg>
       <div className="live-map-controls" aria-label="Map zoom controls">
         <button type="button" aria-label="Zoom in" onPointerDown={(e) => e.stopPropagation()} onClick={() => setZoomAround(zoom * 1.5)}>+</button>
         <button type="button" aria-label="Zoom out" onPointerDown={(e) => e.stopPropagation()} onClick={() => setZoomAround(zoom / 1.5)}>−</button>
-        <button type="button" aria-label="Reset map view" onPointerDown={(e) => e.stopPropagation()} onClick={() => { setZoom(1); setCenter([.5, .5]); }}>↺</button>
+        <button type="button" aria-label="Reset map view" onPointerDown={(e) => e.stopPropagation()} onClick={() => { setZoom(1); setView([0, 0]); }}>↺</button>
       </div>
       {!loading && !countries.length && !error ? <div className="live-map-empty">No active visitor locations reported right now.</div> : null}
-      <a className="live-map-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a>
+      <small className="live-map-attribution">Map data: Natural Earth</small>
     </div>
     {countries.length ? <div className="live-country-list">{countries.slice(0, 8).map((item) => <div key={item.country}><span>{item.country}</span><strong>{item.activeUsers}</strong></div>)}</div> : null}
     <small className="live-map-note">Google Analytics reports approximate country totals for active users. Individual locations are not shown.</small>

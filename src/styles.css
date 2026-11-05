@@ -1129,16 +1129,20 @@ input[type="file"]:not([hidden]):focus-visible {
 .live-visitor-heading small { grid-column: 2; color: var(--muted); font-size: .78rem; margin-top: 3px; }
 .live-indicator { width: 9px; height: 9px; border-radius: 50%; background: #23a66d; box-shadow: 0 0 0 4px color-mix(in oklab, #23a66d 17%, transparent); }
 .live-refresh { padding: 7px 12px; }
-.live-map-wrap { position: relative; margin-top: 14px; aspect-ratio: 2 / 1; min-height: 230px; max-height: 560px; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: #e8eef3; cursor: grab; touch-action: none; user-select: none; }
+.live-map-wrap { position: relative; margin-top: 14px; aspect-ratio: 2 / 1; min-height: 230px; max-height: 560px; border: 1px solid #d7e2ef; border-radius: 16px; overflow: hidden; background: #e7f0fc; cursor: grab; touch-action: none; user-select: none; }
 .live-map-wrap:active { cursor: grabbing; }
-.live-map-layer { position: absolute; left: 0; top: 0; transform-origin: top left; will-change: transform; }
-.live-map-tile { position: absolute; display: block; width: 256px; height: 256px; max-width: none; pointer-events: none; }
-.live-map-marker { position: absolute; transform: translate(-50%, -50%); border: 2px solid #fff; border-radius: 50%; background: #315b92; box-shadow: 0 0 0 6px #6ca8f566, 0 1px 5px #142b4a80; }
+.live-vector-world { display: block; width: 100%; height: 100%; }
+.live-map-graticule { fill: none; stroke: #c4d8ee; stroke-width: .7; stroke-dasharray: 2 5; opacity: .65; }
+.live-map-country { fill: #f8fbff; stroke: #c2d2e4; stroke-width: .8; stroke-linejoin: round; vector-effect: non-scaling-stroke; transition: fill .2s ease, stroke .2s ease; }
+.live-map-country.is-active { fill: #afd0f8; stroke: #6f9ed2; stroke-width: 1.15; }
+.live-map-country-marker { pointer-events: none; }
+.live-map-marker-halo { fill: url(#visitor-pulse); animation: visitor-marker-pulse 2.2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+.live-map-marker-dot { fill: #275b97; stroke: #fff; stroke-width: 1.6; vector-effect: non-scaling-stroke; filter: drop-shadow(0 1px 2px #17385d55); }
+@keyframes visitor-marker-pulse { 0% { opacity: .78; transform: scale(.55); } 100% { opacity: 0; transform: scale(1.35); } }
 .live-map-controls { position: absolute; z-index: 2; top: 10px; right: 10px; display: grid; gap: 5px; }
 .live-map-controls button { width: 36px; height: 36px; padding: 0; border: 1px solid #ccd5df; border-radius: 9px; background: #fff; color: #294f82; box-shadow: 0 1px 4px #182b421f; font-size: 20px; font-weight: 700; line-height: 1; cursor: pointer; }
 .live-map-controls button:last-child { font-size: 18px; }
-.live-map-attribution { position: absolute; z-index: 2; right: 5px; bottom: 4px; padding: 3px 5px; border-radius: 4px; background: #ffffffd9; color: #245487; font-size: 10px; text-decoration: none; }
-.live-map-attribution:hover { text-decoration: underline; }
+.live-map-attribution { position: absolute; z-index: 2; right: 6px; bottom: 6px; padding: 4px 7px; border-radius: 6px; background: #ffffffd9; color: #50708f; font-size: 10px; }
 .live-map-error { overflow-wrap: anywhere; }
 .live-country-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
 .live-country-list > div { display: flex; justify-content: space-between; gap: 8px; min-width: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; font-size: .82rem; }
@@ -1148,7 +1152,7 @@ input[type="file"]:not([hidden]):focus-visible {
 .live-map-empty { position: absolute; inset: auto 10px 10px; text-align: center; padding: 7px; border-radius: 8px; background: color-mix(in oklab, var(--surface-strong) 90%, transparent); color: var(--muted); font-size: .82rem; }
 @media (max-width: 640px) {
   .live-visitor-card { padding: 13px; }
-  .live-map-wrap { min-height: 200px; aspect-ratio: 1.45 / 1; }
+  .live-map-wrap { min-height: 200px; aspect-ratio: 2 / 1; }
   .live-country-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .live-visitor-heading { align-items: center; }
 }
