@@ -41,6 +41,17 @@ type AppSpeechPlugin = {
 export const appSpeech = registerPlugin<AppSpeechPlugin>("AppSpeech");
 const releasesUrl = "https://api.github.com/repos/larrysm786786/sajra/releases/latest";
 
+export async function checkForAppUpdate(): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) return false;
+  try {
+    const [app, response] = await Promise.all([updater.getAppInfo(), fetch(releasesUrl, { headers: { Accept: "application/vnd.github+json" } })]);
+    if (!response.ok) return false;
+    const release = await response.json() as { tag_name?: string; assets?: Array<{ name?: string }> };
+    const code = Number(release.tag_name?.match(/v\d+\.\d+\.(\d+)/)?.[1] ?? 0);
+    return code > app.versionCode && Boolean(release.assets?.some((asset) => asset.name === "Sajra.apk"));
+  } catch { return false; }
+}
+
 function SwipeSwitch({ checked, onChange, disabled }: { checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean }) {
   return <label className="swipe-switch">
     <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
@@ -85,7 +96,7 @@ function useTopicNotifications(topic: string, channelId: string, channelName: st
   return { enabled, busy, message, toggle };
 }
 
-export default function AppUpdaterCard({ language, isAdmin }: { language: Language; isAdmin?: boolean }) {
+export default function AppUpdaterCard({ language, isAdmin, canUseBiometric }: { language: Language; isAdmin?: boolean; canUseBiometric?: boolean }) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -314,10 +325,10 @@ export default function AppUpdaterCard({ language, isAdmin }: { language: Langua
 
       {deliveryMessage ? <small style={{ display: "block", marginTop: 8 }}>{deliveryMessage}</small> : null}
     </div>
-    <div className="swipe-switch-row" style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
-      <strong>{ur ? "ایڈمن ڈیش بورڈ کے لیے فنگر پرنٹ لاک" : "Fingerprint lock for Admin Dashboard"}</strong>
+    {canUseBiometric ? <div className="swipe-switch-row" style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
+      <strong>{ur ? "ایڈمن/ایڈیٹر کے لیے فنگر پرنٹ لاک" : "Fingerprint lock for Admin/Editor"}</strong>
       <SwipeSwitch checked={biometricLockEnabled} onChange={(checked) => void toggleBiometricLock(checked)} />
-    </div>
-    {biometricMessage ? <small style={{ display: "block", marginTop: 8 }}>{biometricMessage}</small> : null}
+    </div> : null}
+    {canUseBiometric && biometricMessage ? <small style={{ display: "block", marginTop: 8 }}>{biometricMessage}</small> : null}
   </div>;
 }
