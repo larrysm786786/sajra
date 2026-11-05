@@ -2337,7 +2337,32 @@ html[dir="rtl"] .select {
 .admin-suggestion-message { margin: 8px 0 0; color: var(--text); line-height: 1.65; overflow-wrap: anywhere; white-space: pre-wrap; }
 .admin-suggestion-meta { margin-top: 8px; overflow-wrap: anywhere; }
 .admin-suggestion-actions { flex: 0 0 auto; }
+.admin-profile-update-card, .admin-profile-update-card .admin-suggestion-content { min-width: 0; max-width: 100%; }
+.admin-profile-update-card .tree-name { overflow-wrap: anywhere; }
+.admin-profile-update-body { display: grid; grid-template-columns: 72px minmax(0, 1fr); align-items: start; gap: 12px; min-width: 0; margin-top: 8px; }
+.admin-profile-update-body.no-photo { grid-template-columns: minmax(0, 1fr); }
+.admin-profile-update-avatar { width: 72px; height: 72px; flex: 0 0 72px; }
+.admin-profile-update-details { min-width: 0; overflow-wrap: anywhere; }
+.admin-profile-update-details > p { max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }
+.admin-profile-update-details a { max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }
+.admin-profile-update-publication { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: start; gap: 10px; min-width: 0; max-width: 100%; margin-top: 10px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-soft); }
+.admin-profile-update-publication > img { width: 52px; height: 76px; object-fit: cover; border-radius: 6px; }
+.admin-profile-update-publication > div { min-width: 0; overflow-wrap: anywhere; }
+.admin-profile-update-publication p { margin: 0 0 5px; overflow-wrap: anywhere; }
+.admin-profile-update-actions { max-width: 100%; }
+.admin-profile-update-actions .btn-ghost { max-width: 100%; min-height: 42px; white-space: normal; overflow-wrap: anywhere; }
 @media (max-width: 600px) { .admin-suggestion-card { flex-direction: column; gap: 12px; padding: 14px; }.admin-suggestion-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; } }
+@media (max-width: 600px) {
+  .admin-profile-update-card { gap: 10px; padding: 12px; }
+  .admin-profile-update-body { grid-template-columns: 56px minmax(0, 1fr); gap: 10px; }
+  .admin-profile-update-avatar { width: 56px; height: 56px; flex-basis: 56px; }
+  .admin-profile-update-details { font-size: 14px; line-height: 1.5; }
+  .admin-profile-update-publication { grid-template-columns: 44px minmax(0, 1fr); gap: 8px; padding: 8px; }
+  .admin-profile-update-publication > img { width: 44px; height: 64px; }
+  .admin-profile-update-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .admin-profile-update-actions .btn-ghost { min-width: 0; padding: 8px; }
+  .admin-profile-update-actions .btn-ghost.danger { grid-column: 1 / -1; }
+}
 .announcements-section { margin-top: 18px; }
 .announcement-card { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px; }
 .announcement-card-body { min-width: 0; flex: 1; }

@@ -2953,16 +2953,16 @@ export default function App() {
         sectionBody = state.memberUpdateRequests.length ? (
           <div className="list">
             {state.memberUpdateRequests.map((request) => (
-              <div key={request.id} className="card admin-suggestion-card" style={{ opacity: request.status === "pending" ? 1 : 0.6 }}>
+              <div key={request.id} className="card admin-suggestion-card admin-profile-update-card" style={{ opacity: request.status === "pending" ? 1 : 0.6 }}>
                 <div className="admin-suggestion-content">
                   <div className="tree-name">{request.memberName}</div>
-                  <div style={{ display: "flex", gap: 16, alignItems: "flex-start", marginTop: 8 }}>
-                    {request.photo ? <img className="avatar" src={photoSrc(request.photo)} alt={request.memberName} /> : null}
-                    <div>
+                  <div className={`admin-profile-update-body${request.photo ? "" : " no-photo"}`}>
+                    {request.photo ? <img className="avatar admin-profile-update-avatar" src={photoSrc(request.photo)} alt={request.memberName} /> : null}
+                    <div className="admin-profile-update-details">
                       {request.bio ? <p className="admin-suggestion-message">{request.bio}</p> : null}
                       {request.contact ? <p className="tree-sub">{t(language, "contactLabel")}: {request.contact}</p> : null}
                       {request.profession ? <p className="tree-sub">{t(language, "professionLabel")}: {professionLabel(language, request.profession)}</p> : null}
-                      {request.publications?.filter((item) => item.title?.trim()).map((item, index) => <div className="admin-publication-review" key={item.title + "-" + index}>
+                      {request.publications?.filter((item) => item.title?.trim()).map((item, index) => <div className="admin-publication-review admin-profile-update-publication" key={item.title + "-" + index}>
                         {safePublicationUrl(item.coverUrl) ? <img src={safePublicationUrl(item.coverUrl)!} alt={item.title + " " + t(language, "bookCoverPreviewAlt")} loading="lazy" /> : null}
                         <div><p className="tree-sub"><strong>{item.title}</strong>{[item.publisher, item.year].filter(Boolean).length ? ` — ${[item.publisher, item.year].filter(Boolean).join(" · ")}` : ""}</p>
                           {safePublicationUrl(item.url) ? <a href={safePublicationUrl(item.url)!} target="_blank" rel="noreferrer">{t(language, "publicationViewLink")}</a> : null}
@@ -2976,7 +2976,7 @@ export default function App() {
                     {request.status !== "pending" ? ` | ${request.status === "approved" ? t(language, "updateRequestApprovedLabel") : t(language, "updateRequestRejectedLabel")}` : ""}
                   </div>
                 </div>
-                <div className="actions-row admin-suggestion-actions">
+                <div className="actions-row admin-suggestion-actions admin-profile-update-actions">
                   {request.status === "pending" ? (
                     <>
                       <button className="btn-ghost" type="button" onClick={() => approveMemberUpdateRequest(request.id)}>{t(language, "approveButton")}</button>
