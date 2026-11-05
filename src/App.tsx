@@ -3463,7 +3463,7 @@ export default function App() {
                 <textarea className="textarea" placeholder={t(language, "bioLabel")} value={updateRequestDraft.bio} onChange={(e) => setUpdateRequestDraft((current) => current ? { ...current, bio: e.target.value } : current)} />
               </label>
               <section className="profile-publications-editor profile-update-bio">
-                <div className="section-head"><div><h2>{t(language, "publicationsTitle")}</h2><p className="hint">{t(language, "publicationsHint")}</p></div>
+                <div className="section-head"><div><h2>{t(language, "publicationsTitle")}</h2></div>
                   <button className="btn-ghost" type="button" disabled={updateRequestDraft.publications.length >= 12} onClick={() => setUpdateRequestDraft((current) => current ? { ...current, publications: [...current.publications, { title: "" }] } : current)}>{t(language, "addPublicationButton")}</button>
                 </div>
                 {updateRequestDraft.publications.map((item, index) => <PublicationFields key={index} item={item} language={language} onChange={(next) => setUpdateRequestDraft((current) => current ? { ...current, publications: current.publications.map((publication, i) => i === index ? next : publication) } : current)} onRemove={() => setUpdateRequestDraft((current) => current ? { ...current, publications: current.publications.filter((_, i) => i !== index) } : current)} onUploadAsset={uploadPublicationAsset} />)}
@@ -3989,7 +3989,7 @@ export default function App() {
               <textarea className="textarea" placeholder={t(language, "bioLabel")} value={memberDraft.bio} onChange={(e) => setMemberDraft((current) => current ? { ...current, bio: e.target.value } : current)} />
             </label>
             <section className="span-12 member-publications-editor">
-              <div className="section-head"><div><h3>{t(language, "publicationsTitle")}</h3><p className="hint">{t(language, "publicationsHint")}</p></div>
+              <div className="section-head"><div><h3>{t(language, "publicationsTitle")}</h3></div>
                 <button className="btn-ghost" type="button" disabled={memberDraft.publications.length >= 12} onClick={() => setMemberDraft((current) => current ? { ...current, publications: [...current.publications, { title: "" }] } : current)}>{t(language, "addPublicationButton")}</button>
               </div>
               {memberDraft.publications.map((item, index) => <PublicationFields key={index} item={item} language={language} onChange={(next) => setMemberDraft((current) => current ? { ...current, publications: current.publications.map((publication, i) => i === index ? next : publication) } : current)} onRemove={() => setMemberDraft((current) => current ? { ...current, publications: current.publications.filter((_, i) => i !== index) } : current)} onUploadAsset={uploadPublicationAsset} />)}
