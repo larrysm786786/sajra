@@ -1538,7 +1538,7 @@ input[type="file"]:not([hidden]):focus-visible {
 
 /* Sits under the photo/name row; on desktop it lines up with the text column, on phones it spans the full width. */
 .profile-actions-bio {
-  padding-inline-start: 178px;
+  padding-inline-start: 0;
 }
 
 .tree-head {
