@@ -2314,9 +2314,9 @@ html[dir="rtl"] .select {
 }
 
 /* Books and publications on member profiles and optional profile editors. */
-.member-publications { margin-top: 22px; }
+.member-publications { width: 100%; min-width: 0; margin-top: 22px; }
 .member-publications h2, .member-publications-editor h3, .profile-publications-editor h2 { margin: 0; color: var(--ink); font-size: 1.15rem; }
-.member-publications-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; margin-top: 12px; }
+.member-publications-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; width: 100%; min-width: 0; margin-top: 12px; }
 .member-publication-card { display: grid; grid-template-columns: 104px minmax(0, 1fr); align-items: start; gap: 16px; min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface-strong); box-shadow: 0 5px 18px rgb(21 37 74 / 5%); }
 .member-publication-cover { display: grid; width: 104px; aspect-ratio: 2 / 3; place-items: center; overflow: hidden; border-radius: 9px; color: var(--accent-strong); background: var(--bg-soft); font-size: 30px; }
 .member-publication-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
@@ -2324,7 +2324,8 @@ html[dir="rtl"] .select {
 .member-publication-card strong { overflow-wrap: anywhere; line-height: 1.4; }
 .member-publication-card span { color: var(--muted); font-size: 13px; }
 .member-publication-card a { width: fit-content; color: var(--accent-strong); font-weight: 650; }
-.member-publication-card .publication-download-button { max-width: 100%; white-space: normal; text-align: center; }
+.member-publication-card a.publication-download-button { display: inline-flex; align-items: center; justify-content: center; width: fit-content; max-width: 100%; min-height: 44px; padding: 10px 20px; border-radius: 999px; color: #fff !important; background: var(--accent-strong); box-shadow: var(--shadow-sm); font-weight: 700; line-height: 1.25; text-align: center; text-decoration: none; white-space: normal; }
+.member-publication-card a.publication-download-button:hover, .member-publication-card a.publication-download-button:focus-visible { color: #fff !important; background: var(--accent); }
 .member-publications-editor .section-head, .profile-publications-editor .section-head { align-items: center; margin-bottom: 12px; }
 .member-publications-editor .section-head h3, .profile-publications-editor .section-head h2 { margin-bottom: 4px; }
 .member-publications-editor .hint, .profile-publications-editor .hint { margin: 0; }
