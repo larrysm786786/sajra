@@ -115,7 +115,6 @@ button {
   padding: calc(16px + env(safe-area-inset-top, 0px)) max(20px, calc((100vw - 1240px) / 2)) 16px;
   background: #2e5185;
   border-bottom: 1px solid color-mix(in oklab, var(--accent) 30%, transparent);
-  box-shadow: var(--shadow);
 }
 
 .brand {
