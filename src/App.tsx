@@ -86,7 +86,7 @@ import {
 } from "./professions";
 import { t, tGender } from "./i18n";
 import SajraChat from "./SajraChat";
-import AppUpdaterCard, { appBiometric, appNotifications, appPrint, BIOMETRIC_LOCK_STORAGE_KEY } from "./AppUpdater";
+import AppUpdaterCard, { appBiometric, appNotifications, appPrint, BIOMETRIC_LOCK_STORAGE_KEY, checkForAppUpdate } from "./AppUpdater";
 import { BranchPage } from "./FamilyTools";
 import type { StringKey } from "./i18n";
 
@@ -336,15 +336,17 @@ function Card({
 function NavLink({
   active,
   children,
-  onClick
+  onClick,
+  badge
 }: {
   active?: boolean;
   children: ReactNode;
   onClick: () => void;
+  badge?: number;
 }) {
   return (
     <button type="button" className={`navlink ${active ? "active" : ""}`} onClick={onClick}>
-      {children}
+      <span>{children}</span>{badge ? <span className="nav-badge">{badge > 99 ? "99+" : badge}</span> : null}
     </button>
   );
 }
@@ -682,6 +684,10 @@ export default function App() {
   const [qrCodeMember, setQrCodeMember] = useState<Member | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState("");
   const [biometricUnlocked, setBiometricUnlocked] = useState(false);
+  const [seenAnnouncementIds, setSeenAnnouncementIds] = useState<number[]>(() => {
+    try { return JSON.parse(localStorage.getItem("sajra-seen-announcements") || "[]") as number[]; } catch { return []; }
+  });
+  const [appUpdateAvailable, setAppUpdateAvailable] = useState(false);
   const [biometricUnlockError, setBiometricUnlockError] = useState("");
   const [shareNotice, setShareNotice] = useState("");
   const [myMemberId, setMyMemberId] = useState<number | null>(() => {
@@ -733,6 +739,7 @@ export default function App() {
   // Accounts made with the "editor" or "contributor" role can manage members and the gallery but not
   // users or backups. Accounts without a role (e.g. created by hand in the Supabase dashboard) count as admins.
   const isAdmin = isLoggedIn && userRole !== "editor" && userRole !== "contributor";
+  const canUseBiometric = isLoggedIn && (isAdmin || userRole === "editor");
   // Contributors (and admins) may edit members that were already added; plain editors may only add new ones.
   const canEditMembers = isAdmin || userRole === "contributor";
   // Per-account extra permissions an admin can grant a specific editor (see the Users admin
@@ -754,7 +761,7 @@ export default function App() {
   const canAddMember = editorPermission("addMember", true);
   // A locally-set preference (see Settings), not synced to other devices - gates the Admin
   // Dashboard behind the device's own fingerprint/face/PIN prompt, on top of the normal login.
-  const biometricLockRequired = Capacitor.isNativePlatform() && localStorage.getItem(BIOMETRIC_LOCK_STORAGE_KEY) === "1";
+  const biometricLockRequired = Capacitor.isNativePlatform() && canUseBiometric && localStorage.getItem(BIOMETRIC_LOCK_STORAGE_KEY) === "1";
   const language = state.language;
   const members = useMemo(() => [...state.members].sort(sortMembers), [state.members]);
   const memberMap = useMemo(() => new Map(state.members.map((member) => [member.id, member])), [state.members]);
@@ -2310,6 +2317,36 @@ export default function App() {
     const today = new Date().toISOString().slice(0, 10);
     return state.announcements.filter((announcement) => !announcement.expiresAt || announcement.expiresAt >= today);
   }, [state.announcements]);
+  const pendingProfileUpdateCount = isAdmin ? state.memberUpdateRequests.filter((request) => request.status === "pending").length : 0;
+  const unseenAnnouncementCount = activeAnnouncements.filter((announcement) => !seenAnnouncementIds.includes(announcement.id)).length;
+  const notificationBadgeCount = unseenAnnouncementCount + pendingProfileUpdateCount;
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let cancelled = false;
+    const check = () => { void checkForAppUpdate().then((available) => { if (!cancelled) setAppUpdateAvailable(available); }); };
+    check();
+    const interval = window.setInterval(check, 30 * 60 * 1000);
+    window.addEventListener("focus", check);
+    const onVisibilityChange = () => { if (document.visibilityState === "visible") check(); };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", check);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (route.page !== "calendar") return;
+    const ids = activeAnnouncements.map((announcement) => announcement.id);
+    setSeenAnnouncementIds((previous) => {
+      const next = [...new Set([...previous, ...ids])].slice(-500);
+      localStorage.setItem("sajra-seen-announcements", JSON.stringify(next));
+      return next;
+    });
+  }, [route.page, activeAnnouncements]);
 
   const content = (() => {
     // A recovery link signs the user in with a temporary session, so this must not depend on !isLoggedIn.
@@ -2414,6 +2451,7 @@ export default function App() {
                   </button>
                   {loginError ? <div className="notice danger">{loginError}</div> : null}
                   <button className="btn" type="submit" disabled={loginBusy}>{loginBusy ? t(language, "signingIn") : t(language, "loginButton")}</button>
+                  {Capacitor.isNativePlatform() && localStorage.getItem(BIOMETRIC_LOCK_STORAGE_KEY) === "1" ? <div className="login-biometric-hint">Fingerprint unlock will appear after an Admin or Editor signs in.</div> : null}
                 </form>
               </Card>
             )}
@@ -3142,6 +3180,7 @@ export default function App() {
                 >
                   <AdminIcon section={section.key} />
                   <span>{section.label}</span>
+                  {section.key === "profileUpdates" && pendingProfileUpdateCount > 0 ? <span className="nav-badge">{pendingProfileUpdateCount > 99 ? "99+" : pendingProfileUpdateCount}</span> : null}
                 </button>
               ))}
             </nav>
@@ -3180,7 +3219,7 @@ export default function App() {
           <span className="eyebrow">{t(language, "eyebrowSettings")}</span>
           <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "settingsTitle")}</h2>
           <p className="section-subtitle" style={{ marginTop: 12 }}>{t(language, "settingsSubtitle")}</p>
-          <AppUpdaterCard language={language} isAdmin={isAdmin} />
+          <AppUpdaterCard language={language} isAdmin={isAdmin} canUseBiometric={isLoggedIn && (isAdmin || userRole === "editor")} />
         </section>
       );
     }
@@ -3756,12 +3795,14 @@ export default function App() {
   // On mobile, the hamburger menu becomes a direct shortcut list into the Dashboard for
   // logged-in accounts, instead of the public site links - admins get the full set of
   // sections they can reach, editors/contributors a smaller one matching what they can do.
-  const mobileAdminLinks: { key: string; label: string; onClick: () => void }[] = isLoggedIn
+  const mobileAdminLinks: { key: string; label: string; onClick: () => void; badge?: number }[] = isLoggedIn
     ? [
         { key: "dashboard", label: t(language, "adminNavOverview"), onClick: () => { navigate({ page: "admin" }); setAdminSection("overview"); } },
         ...(canAddMember ? [{ key: "addMember", label: t(language, "addMemberButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); openMemberEditor(); } }] : []),
         ...(isAdmin ? [{ key: "addUser", label: t(language, "addUserButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("users"); openUserEditor(); } }] : []),
         ...(canAddAnnouncement ? [{ key: "postAnnouncement", label: t(language, "postAnnouncementButton"), onClick: () => { navigate({ page: "calendar" }); openAnnouncementEditor(); } }] : []),
+        { key: "notifications", label: t(language, "navNotificationsLabel"), badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) },
+        ...(canEditMembers ? [{ key: "profileUpdates", label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("profileUpdates"); } }] : []),
         { key: "live", label: canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel"), onClick: () => navigate({ page: "live" }) },
         { key: "gallery", label: t(language, "adminNavGallery"), onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } },
         { key: "suggestions", label: t(language, "adminNavSuggestions"), onClick: () => { navigate({ page: "admin" }); setAdminSection("suggestions"); } },
@@ -3769,7 +3810,7 @@ export default function App() {
         { key: "quality", label: t(language, "adminNavQuality"), onClick: () => { navigate({ page: "admin" }); setAdminSection("quality"); } },
         ...(isAdmin ? [{ key: "backup", label: t(language, "backupCardTitle"), onClick: () => { navigate({ page: "admin" }); setAdminSection("backup"); } }] : []),
         { key: "security", label: t(language, "adminNavSecurity"), onClick: () => { navigate({ page: "admin" }); setAdminSection("security"); } },
-        ...(Capacitor.isNativePlatform() ? [{ key: "settings", label: t(language, "navSettingsLabel"), onClick: () => navigate({ page: "settings" }) }] : [])
+        ...(Capacitor.isNativePlatform() ? [{ key: "settings", label: t(language, "navSettingsLabel"), badge: appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }] : [])
       ]
     : [];
 
@@ -3817,7 +3858,7 @@ export default function App() {
                   className="navlink"
                   onClick={() => { link.onClick(); setMobileNavOpen(false); }}
                 >
-                  {link.label}
+                  <span>{link.label}</span>{link.badge ? <span className="nav-badge">{link.badge > 99 ? "99+" : link.badge}</span> : null}
                 </button>
               ))}
             </div>
@@ -3829,11 +3870,11 @@ export default function App() {
             <NavLink active={route.page === "member" && route.memberId === myMemberId} onClick={() => { goToMyFamily(); setMobileNavOpen(false); }}>{t(language, "myFamilyNavLabel")}</NavLink>
             <NavLink active={route.page === "roots"} onClick={() => navigate({ page: "roots" })}>{NAV_LABELS[language].roots}</NavLink>
             <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
-            <NavLink active={route.page === "calendar"} onClick={() => navigate({ page: "calendar" })}>{t(language, "navNotificationsLabel")}</NavLink>
+            <NavLink active={route.page === "calendar"} badge={notificationBadgeCount} onClick={() => navigate({ page: "calendar" })}>{t(language, "navNotificationsLabel")}</NavLink>
             <NavLink active={route.page === "live"} onClick={() => navigate({ page: "live" })}>{canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel")}</NavLink>
             <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
             <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
-            {Capacitor.isNativePlatform() ? <NavLink active={route.page === "settings"} onClick={() => navigate({ page: "settings" })}>{t(language, "navSettingsLabel")}</NavLink> : null}
+            {Capacitor.isNativePlatform() ? <NavLink active={route.page === "settings"} badge={appUpdateAvailable ? 1 : 0} onClick={() => navigate({ page: "settings" })}>{t(language, "navSettingsLabel")}</NavLink> : null}
           </div>
           <div className="topnav-actions-mobile">
             <button
