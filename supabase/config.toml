@@ -1,2 +1,5 @@
 [functions.profile-updates]
 verify_jwt = false
+
+[functions.ga4-realtime]
+verify_jwt = true

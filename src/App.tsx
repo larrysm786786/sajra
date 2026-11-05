@@ -6,6 +6,7 @@ import { Share } from "@capacitor/share";
 import { Badge } from "@capawesome/capacitor-badge";
 import QRCode from "qrcode";
 import { trackNativeScreenView, trackWebPageView } from "./analytics";
+import LiveVisitorMap from "./LiveVisitorMap";
 import type { FormEvent, ReactNode, TouchEvent as ReactTouchEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { Announcement, AppState, BookPublication, DuaRequest, GalleryImage, Gender, Language, Member, MemberUpdateRequest, Role, Suggestion, User, ViewKey } from "./types";
@@ -48,6 +49,7 @@ import {
   createProfileUpdateLink,
   enrollMfa,
   fetchVisitStats,
+  fetchLiveVisitorCountries,
   getSupabaseSession,
   isSupabaseConfigured,
   listMfaFactors,
@@ -653,6 +655,9 @@ export default function App() {
   const [visitStats, setVisitStats] = useState<VisitStats | null>(null);
   const [visitStatsLoading, setVisitStatsLoading] = useState(false);
   const [visitStatsError, setVisitStatsError] = useState("");
+  const [liveCountries, setLiveCountries] = useState<{ country: string; activeUsers: number }[]>([]);
+  const [liveCountriesLoading, setLiveCountriesLoading] = useState(false);
+  const [liveCountriesError, setLiveCountriesError] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordChangeBusy, setPasswordChangeBusy] = useState(false);
@@ -842,6 +847,26 @@ export default function App() {
       .catch((error) => { if (!cancelled) setVisitStatsError(error instanceof Error ? error.message : String(error)); })
       .finally(() => { if (!cancelled) setVisitStatsLoading(false); });
     return () => { cancelled = true; };
+  }, [adminSection, isLoggedIn, supabaseConfigured]);
+
+  useEffect(() => {
+    if (adminSection !== "analytics" || !isLoggedIn || !supabaseConfigured) return;
+    let cancelled = false;
+    const refresh = async () => {
+      setLiveCountriesLoading(true);
+      setLiveCountriesError("");
+      try {
+        const countries = await fetchLiveVisitorCountries();
+        if (!cancelled) setLiveCountries(countries);
+      } catch (error) {
+        if (!cancelled) setLiveCountriesError(error instanceof Error ? error.message : String(error));
+      } finally {
+        if (!cancelled) setLiveCountriesLoading(false);
+      }
+    };
+    void refresh();
+    const interval = window.setInterval(() => void refresh(), 60000);
+    return () => { cancelled = true; window.clearInterval(interval); };
   }, [adminSection, isLoggedIn, supabaseConfigured]);
 
   // Scrolls the Silsila chain to its end (the current member) by default, so on a long lineage
@@ -3063,6 +3088,13 @@ export default function App() {
               <StatCard value={visitStats?.today ?? 0} label={t(language, "todayVisitsLabel")} />
               <StatCard value={visitStats?.activeNow ?? 0} label={t(language, "activeNowLabel")} />
             </div>
+            <LiveVisitorMap
+              countries={liveCountries}
+              loading={liveCountriesLoading}
+              error={liveCountriesError}
+              activeNow={visitStats?.activeNow ?? 0}
+              onRefresh={() => { void fetchLiveVisitorCountries().then(setLiveCountries).catch((error) => setLiveCountriesError(error instanceof Error ? error.message : String(error))); }}
+            />
             <div className="card" style={{ marginTop: 18, padding: 18 }}>
               <strong>{t(language, "visitsLast7DaysLabel")}</strong>
               <div className="analytics-bar-chart">

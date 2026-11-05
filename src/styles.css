@@ -1123,6 +1123,31 @@ input[type="file"]:not([hidden]):focus-visible {
   font-size: 0.72rem;
 }
 
+.live-visitor-card { margin-top: 18px; padding: 18px; overflow: hidden; }
+.live-visitor-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.live-visitor-heading > div { display: grid; grid-template-columns: 10px 1fr; align-items: center; column-gap: 8px; }
+.live-visitor-heading small { grid-column: 2; color: var(--muted); font-size: .78rem; margin-top: 3px; }
+.live-indicator { width: 9px; height: 9px; border-radius: 50%; background: #23a66d; box-shadow: 0 0 0 4px color-mix(in oklab, #23a66d 17%, transparent); }
+.live-refresh { padding: 7px 12px; }
+.live-map-wrap { position: relative; margin-top: 14px; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: color-mix(in oklab, var(--accent) 4%, var(--surface-strong)); }
+.live-world-map { display: block; width: 100%; height: auto; min-height: 190px; }
+.live-map-land { fill: color-mix(in oklab, var(--accent) 15%, var(--surface-strong)); stroke: color-mix(in oklab, var(--accent) 24%, var(--border)); stroke-width: 2; stroke-linejoin: round; }
+.live-map-dot { fill: #315b92; stroke: #fff; stroke-width: 2; }
+.live-map-pulse { fill: color-mix(in oklab, #6ca8f5 35%, transparent); animation: live-map-pulse 2s ease-out infinite; transform-origin: center; }
+@keyframes live-map-pulse { 0% { opacity: .75; transform: scale(.55); } 100% { opacity: 0; transform: scale(1.5); } }
+.live-country-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.live-country-list > div { display: flex; justify-content: space-between; gap: 8px; min-width: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; font-size: .82rem; }
+.live-country-list span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.live-country-list strong { color: var(--accent-strong); }
+.live-map-note { display: block; margin-top: 10px; color: var(--muted); font-size: .74rem; }
+.live-map-empty { position: absolute; inset: auto 10px 10px; text-align: center; padding: 7px; border-radius: 8px; background: color-mix(in oklab, var(--surface-strong) 90%, transparent); color: var(--muted); font-size: .82rem; }
+@media (max-width: 640px) {
+  .live-visitor-card { padding: 13px; }
+  .live-world-map { min-height: 145px; }
+  .live-country-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .live-visitor-heading { align-items: center; }
+}
+
 .silsila-chain {
   margin-top: 16px;
   padding: 12px 14px;
