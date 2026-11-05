@@ -3446,12 +3446,18 @@ export default function App() {
               </div>
               <label className="profile-update-label">
                 <span>{t(language, "professionLabel")}</span>
-                <input className="field" maxLength={80} placeholder={t(language, "professionLabel")} value={updateRequestDraft.profession} onChange={(e) => setUpdateRequestDraft((current) => current ? { ...current, profession: e.target.value } : current)} />
+                <select className="select" value={professionDraftFields(updateRequestDraft.profession).professionChoice} onChange={(e) => setUpdateRequestDraft((current) => current ? { ...current, profession: e.target.value === PROFESSION_OTHER ? (professionDraftFields(current.profession).professionChoice === PROFESSION_OTHER ? current.profession : "") : e.target.value } : current)}>
+                  <option value="">{t(language, "professionLabel")}, {t(language, "professionNone")}</option>
+                  {PROFESSION_KEYS.map((key) => {
+                    const short = professionShortLabel(language, key);
+                    const full = professionLabel(language, key);
+                    return <option key={key} value={key}>{short !== full ? `${short}   ${full}` : full}</option>;
+                  })}
+                  <option value={PROFESSION_OTHER}>{t(language, "professionOther")}</option>
+                </select>
+                {professionDraftFields(updateRequestDraft.profession).professionChoice === PROFESSION_OTHER ? <input className="field" maxLength={80} placeholder={t(language, "professionOtherPlaceholder")} value={professionDraftFields(updateRequestDraft.profession).professionOther} onChange={(e) => setUpdateRequestDraft((current) => current ? { ...current, profession: e.target.value } : current)} /> : null}
               </label>
-              <label className="profile-update-label">
-                <span>{t(language, "contactLabel")}</span>
-                <input className="field" placeholder={t(language, "contactLabel")} value={updateRequestDraft.contact} onChange={(e) => setUpdateRequestDraft((current) => current ? { ...current, contact: e.target.value } : current)} />
-              </label>
+
               <label className="profile-update-label profile-update-bio">
                 <span>{t(language, "bioLabel")}</span>
                 <textarea className="textarea" placeholder={t(language, "bioLabel")} value={updateRequestDraft.bio} onChange={(e) => setUpdateRequestDraft((current) => current ? { ...current, bio: e.target.value } : current)} />
@@ -3988,10 +3994,7 @@ export default function App() {
               </div>
               {memberDraft.publications.map((item, index) => <PublicationFields key={index} item={item} language={language} onChange={(next) => setMemberDraft((current) => current ? { ...current, publications: current.publications.map((publication, i) => i === index ? next : publication) } : current)} onRemove={() => setMemberDraft((current) => current ? { ...current, publications: current.publications.filter((_, i) => i !== index) } : current)} onUploadAsset={uploadPublicationAsset} />)}
             </section>
-            <label className="span-12">
-              <span className="sr-only">{t(language, "contactLabel")}</span>
-              <input className="field" placeholder={t(language, "contactLabel")} value={memberDraft.contact} onChange={(e) => setMemberDraft((current) => current ? { ...current, contact: e.target.value } : current)} />
-            </label>
+
             <div className="span-6">
               <div className="muted" style={{ marginBottom: 10, fontWeight: 700 }}>{t(language, "fatherLabel")}</div>
               {memberDraft.fatherId ? (
