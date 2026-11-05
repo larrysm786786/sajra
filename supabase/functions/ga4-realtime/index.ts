@@ -1,4 +1,4 @@
-// Reads aggregate, country-level active-user counts from GA4. The Google service
+// Reads aggregate, city-level active-user counts from GA4. The Google service
 // account key stays in Supabase secrets and is never included in web/APK bundles.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -67,7 +67,7 @@ Deno.serve(async (request) => {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        dimensions: [{ name: "country" }],
+        dimensions: [{ name: "city" }, { name: "country" }],
         metrics: [{ name: "activeUsers" }],
         limit: "100",
         orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }]
@@ -88,11 +88,12 @@ Deno.serve(async (request) => {
       }
       return respond({ error: detail }, 502);
     }
-    const countries = (report.rows ?? []).map((row) => ({
-      country: row.dimensionValues?.[0]?.value ?? "Unknown",
+    const cities = (report.rows ?? []).map((row) => ({
+      city: row.dimensionValues?.[0]?.value ?? "Unknown",
+      country: row.dimensionValues?.[1]?.value ?? "Unknown",
       activeUsers: Number(row.metricValues?.[0]?.value ?? 0)
-    })).filter((row) => row.country !== "Unknown" && row.activeUsers > 0);
-    return respond({ countries, generatedAt: new Date().toISOString() });
+    })).filter((row) => row.city !== "Unknown" && row.city !== "(not set)" && row.country !== "Unknown" && row.activeUsers > 0);
+    return respond({ cities, generatedAt: new Date().toISOString() });
   } catch (error) {
     console.error("GA4 realtime request failed:", error);
     return respond({ error: error instanceof Error ? error.message : "Unable to fetch Google Analytics realtime data." }, 502);

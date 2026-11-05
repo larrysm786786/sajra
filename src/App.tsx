@@ -49,7 +49,7 @@ import {
   createProfileUpdateLink,
   enrollMfa,
   fetchVisitStats,
-  fetchLiveVisitorCountries,
+  fetchLiveVisitorCities,
   getSupabaseSession,
   isSupabaseConfigured,
   listMfaFactors,
@@ -655,9 +655,9 @@ export default function App() {
   const [visitStats, setVisitStats] = useState<VisitStats | null>(null);
   const [visitStatsLoading, setVisitStatsLoading] = useState(false);
   const [visitStatsError, setVisitStatsError] = useState("");
-  const [liveCountries, setLiveCountries] = useState<{ country: string; activeUsers: number }[]>([]);
-  const [liveCountriesLoading, setLiveCountriesLoading] = useState(false);
-  const [liveCountriesError, setLiveCountriesError] = useState("");
+  const [liveCities, setLiveCities] = useState<{ city: string; country: string; activeUsers: number }[]>([]);
+  const [liveCitiesLoading, setLiveCitiesLoading] = useState(false);
+  const [liveCitiesError, setLiveCitiesError] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordChangeBusy, setPasswordChangeBusy] = useState(false);
@@ -853,15 +853,15 @@ export default function App() {
     if (adminSection !== "analytics" || !isLoggedIn || !supabaseConfigured) return;
     let cancelled = false;
     const refresh = async () => {
-      setLiveCountriesLoading(true);
-      setLiveCountriesError("");
+      setLiveCitiesLoading(true);
+      setLiveCitiesError("");
       try {
-        const countries = await fetchLiveVisitorCountries();
-        if (!cancelled) setLiveCountries(countries);
+        const cities = await fetchLiveVisitorCities();
+        if (!cancelled) setLiveCities(cities);
       } catch (error) {
-        if (!cancelled) setLiveCountriesError(error instanceof Error ? error.message : String(error));
+        if (!cancelled) setLiveCitiesError(error instanceof Error ? error.message : String(error));
       } finally {
-        if (!cancelled) setLiveCountriesLoading(false);
+        if (!cancelled) setLiveCitiesLoading(false);
       }
     };
     void refresh();
@@ -3089,10 +3089,10 @@ export default function App() {
               <StatCard value={visitStats?.activeNow ?? 0} label={t(language, "activeNowLabel")} />
             </div>
             <LiveVisitorMap
-              countries={liveCountries}
-              loading={liveCountriesLoading}
-              error={liveCountriesError}
-              onRefresh={() => { void fetchLiveVisitorCountries().then(setLiveCountries).catch((error) => setLiveCountriesError(error instanceof Error ? error.message : String(error))); }}
+              cities={liveCities}
+              loading={liveCitiesLoading}
+              error={liveCitiesError}
+              onRefresh={() => { void fetchLiveVisitorCities().then(setLiveCities).catch((error) => setLiveCitiesError(error instanceof Error ? error.message : String(error))); }}
             />
             <div className="card" style={{ marginTop: 18, padding: 18 }}>
               <strong>{t(language, "visitsLast7DaysLabel")}</strong>

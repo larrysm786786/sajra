@@ -456,7 +456,7 @@ export interface VisitStats {
   today: number;
   activeNow: number;
   last7Days: { date: string; count: number }[];
-  liveCountries?: { country: string; activeUsers: number }[];
+  liveCities?: { city: string; country: string; activeUsers: number }[];
 }
 
 /** Admin-only reads (see RLS on sajra_visits/sajra_presence) for the Analytics admin section. */
@@ -493,7 +493,7 @@ export async function fetchVisitStats(): Promise<VisitStats> {
   return { today: todayResult.count ?? 0, activeNow: activeResult.count ?? 0, last7Days };
 }
 
-export async function fetchLiveVisitorCountries(): Promise<{ country: string; activeUsers: number }[]> {
+export async function fetchLiveVisitorCities(): Promise<{ city: string; country: string; activeUsers: number }[]> {
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error("Supabase is not configured.");
   const { data, error } = await supabase.functions.invoke("ga4-realtime", { body: {} });
@@ -506,6 +506,6 @@ export async function fetchLiveVisitorCountries(): Promise<{ country: string; ac
     }
     throw new Error(message);
   }
-  if (!Array.isArray(data?.countries)) throw new Error("The live analytics service returned an invalid response.");
-  return data.countries as { country: string; activeUsers: number }[];
+  if (!Array.isArray(data?.cities)) throw new Error("The live analytics service returned an invalid response.");
+  return data.cities as { city: string; country: string; activeUsers: number }[];
 }
