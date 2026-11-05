@@ -52,15 +52,24 @@ create table if not exists public.sajra_state (
 
 alter table public.sajra_state enable row level security;
 
-create policy "Allow public read" on public.sajra_state
-  for select using (true);
+revoke all on public.sajra_state from public, anon, authenticated;
+grant select on public.sajra_state to anon, authenticated;
+grant insert, update on public.sajra_state to authenticated;
 
-create policy "Allow public insert" on public.sajra_state
-  for insert with check (true);
+create policy "Public can read Sajra archive" on public.sajra_state
+  for select to anon, authenticated using (true);
 
-create policy "Allow public update" on public.sajra_state
-  for update using (true) with check (true);
+create policy "Staff can initialize Sajra archive" on public.sajra_state
+  for insert to authenticated
+  with check (coalesce(auth.jwt() -> 'app_metadata' ->> 'role', 'admin') in ('admin', 'editor', 'contributor'));
+
+create policy "Staff can update Sajra archive" on public.sajra_state
+  for update to authenticated
+  using (coalesce(auth.jwt() -> 'app_metadata' ->> 'role', 'admin') in ('admin', 'editor', 'contributor'))
+  with check (coalesce(auth.jwt() -> 'app_metadata' ->> 'role', 'admin') in ('admin', 'editor', 'contributor'));
 ```
+
+For an existing project, apply the migration in [`supabase/migrations/20261105090000_secure_profile_updates.sql`](./supabase/migrations/20261105090000_secure_profile_updates.sql) and deploy the `profile-updates` Edge Function before publishing the matching web app. The migration removes legacy public write policies. Anonymous suggestions, dua requests, guestbook posts, and profile correction requests are then appended through that server function; profile links require a random, expiring, single-use token.
 
 If you want to run it locally, create a `.env` file:
 

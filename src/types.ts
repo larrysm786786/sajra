@@ -42,6 +42,19 @@ export interface Member {
   createdAt: string;
 }
 
+export interface BookPublication {
+  title: string;
+  publisher?: string | null;
+  year?: string | null;
+  /** External publisher or book information link. */
+  url?: string | null;
+  /** Public Supabase Storage URL for an uploaded PDF book. */
+  fileUrl?: string | null;
+  fileName?: string | null;
+  /** Public Supabase Storage URL for the cover thumbnail. */
+  coverUrl?: string | null;
+}
+
 /**
  * Extra abilities an admin can grant to a specific "editor" account, on top of what the editor
  * role gets by default. Admins and contributors are never affected by these - only checked when

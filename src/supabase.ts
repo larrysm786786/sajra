@@ -103,6 +103,49 @@ export async function publishInitialState(state: AppState): Promise<string> {
   return nextUpdatedAt;
 }
 
+async function invokeProfileUpdates(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data, error } = await supabase.functions.invoke("profile-updates", { body });
+  if (error) {
+    let message = error.message;
+    const response = (error as { context?: Response }).context;
+    if (response && typeof response.json === "function") {
+      const result = await response.json().catch(() => null);
+      if (result?.error) message = String(result.error);
+    }
+    throw new Error(message);
+  }
+  if (!data || typeof data !== "object") throw new Error("The profile update service returned an invalid response.");
+  if ("error" in data && data.error) throw new Error(String(data.error));
+  return data as Record<string, unknown>;
+}
+
+export async function createProfileUpdateLink(memberId: number): Promise<string> {
+  const result = await invokeProfileUpdates({ action: "create_link", memberId });
+  if (typeof result.token !== "string") throw new Error("Could not create the secure profile link.");
+  return result.token;
+}
+
+export async function validateProfileUpdateLink(memberId: number, token: string): Promise<boolean> {
+  const result = await invokeProfileUpdates({ action: "validate_link", memberId, token });
+  return result.valid === true;
+}
+
+export async function submitProfileUpdateLink(payload: {
+  memberId: number; token: string; photo: string; bio: string; contact: string; profession: string; publications: AppState["members"][number]["publications"];
+}): Promise<AppState["memberUpdateRequests"][number]> {
+  const result = await invokeProfileUpdates({ action: "submit_update", ...payload });
+  if (!result.request || typeof result.request !== "object") throw new Error("Could not save the profile request.");
+  return result.request as AppState["memberUpdateRequests"][number];
+}
+
+export async function submitPublicSajraAction(action: "suggestion" | "feedback" | "dua" | "guestbook", payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const result = await invokeProfileUpdates({ action, ...payload });
+  if (!result.item || typeof result.item !== "object") throw new Error("Could not save your message.");
+  return result.item as Record<string, unknown>;
+}
+
 export async function signInWithPassword(email: string, password: string): Promise<void> {
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error("Supabase is not configured.");

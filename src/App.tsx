@@ -45,6 +45,7 @@ import {
 import type { RelationType } from "./lib";
 import {
   confirmMfaEnrollment,
+  createProfileUpdateLink,
   enrollMfa,
   fetchVisitStats,
   getSupabaseSession,
@@ -62,6 +63,8 @@ import {
   sendAdminAlertNotification,
   sendLiveNotification,
   sendPresenceHeartbeat,
+  submitProfileUpdateLink,
+  submitPublicSajraAction,
   uploadLiveVideo,
   sendPasswordResetEmail,
   signInWithPassword,
@@ -70,6 +73,7 @@ import {
   uploadPublicationAsset,
   unenrollMfa,
   updatePassword,
+  validateProfileUpdateLink,
   verifyMfaChallenge
 } from "./supabase";
 import type { MfaFactor, VisitStats } from "./supabase";
@@ -95,7 +99,7 @@ const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string
   ur: { home: "ہوم", tree: "شجرہ", gallery: "گیلری", about: "تعارف", guide: "رہنمائی", roots: "بانی شاخیں" }
 };
 
-type RouteState = { page: ViewKey; memberId?: number };
+type RouteState = { page: ViewKey; memberId?: number; updateToken?: string };
 
 type AdminSection = "overview" | "members" | "users" | "gallery" | "suggestions" | "profileUpdates" | "logs" | "backup" | "security" | "quality" | "analytics";
 
@@ -188,10 +192,10 @@ function hasMeaningfulData(state: AppState): boolean {
 }
 
 function parseRoute(): RouteState {
-  const raw = window.location.hash.replace(/^#/, "");
+  const [raw, query = ""] = window.location.hash.replace(/^#/, "").split("?");
   if (!raw || raw === "/") return { page: "home" };
   const [page, id] = raw.split("/").filter(Boolean);
-  if ((page === "member" || page === "branch" || page === "update") && id) return { page, memberId: Number(id) || undefined };
+  if ((page === "member" || page === "branch" || page === "update") && id) return { page, memberId: Number(id) || undefined, ...(page === "update" ? { updateToken: new URLSearchParams(query).get("token") ?? undefined } : {}) };
   if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots" || page === "calendar" || page === "settings" || page === "live" || page === "memory" || page === "dua" || page === "familyBook") {
     return { page };
   }
@@ -674,6 +678,7 @@ export default function App() {
   const [updateRequestDraft, setUpdateRequestDraft] = useState<{ memberId: number; photo: string; bio: string; contact: string; profession: string; publications: BookPublication[] } | null>(null);
   const [updateRequestBusy, setUpdateRequestBusy] = useState(false);
   const [updateRequestSent, setUpdateRequestSent] = useState(false);
+  const [updateLinkValid, setUpdateLinkValid] = useState(false);
   const [updateLinkNotice, setUpdateLinkNotice] = useState("");
   const [liveUrlInput, setLiveUrlInput] = useState("");
   const [liveTitleInput, setLiveTitleInput] = useState("");
@@ -794,20 +799,34 @@ export default function App() {
   useEffect(() => {
     if (route.page !== "update") return;
     setUpdateRequestSent(false);
-  }, [route.page, route.memberId]);
+    setUpdateLinkValid(false);
+    setUpdateLinkNotice("");
+  }, [route.page, route.memberId, route.updateToken]);
+
+  useEffect(() => {
+    if (route.page !== "update" || !route.memberId || !route.updateToken) {
+      setUpdateLinkValid(false);
+      return;
+    }
+    let cancelled = false;
+    void validateProfileUpdateLink(route.memberId, route.updateToken)
+      .then((valid) => { if (!cancelled) setUpdateLinkValid(valid); })
+      .catch(() => { if (!cancelled) setUpdateLinkValid(false); });
+    return () => { cancelled = true; };
+  }, [route.page, route.memberId, route.updateToken]);
 
   // Seeds the draft once the target member's real data is available. Kept on state.members too
   // (not just route) because on a cold load the member a brand-new link points to - e.g. one just
   // added via bulk import - may not be in the locally-cached state yet, only after Supabase syncs
   // in; the functional guard stops that later sync from re-seeding and wiping what was typed.
   useEffect(() => {
-    if (route.page !== "update" || !route.memberId) return;
+    if (route.page !== "update" || !route.memberId || !updateLinkValid) return;
     const member = state.members.find((candidate) => candidate.id === route.memberId);
     if (!member) return;
     setUpdateRequestDraft((current) =>
       current && current.memberId === member.id ? current : { memberId: member.id, photo: member.photo ?? "", bio: member.bio ?? "", contact: member.contact ?? "", profession: member.profession ?? "", publications: member.publications ?? [] }
     );
-  }, [route.page, route.memberId, state.members]);
+  }, [route.page, route.memberId, route.updateToken, updateLinkValid, state.members]);
 
   useEffect(() => {
     if (adminSection !== "logs") setLogsPage(0);
@@ -1384,28 +1403,17 @@ export default function App() {
   async function submitSuggestion() {
     if (!suggestionDraft || !suggestionDraft.message.trim() || suggestionBusy) return;
     const memberId = suggestionDraft.memberId ? Number(suggestionDraft.memberId) : null;
-    const member = memberId ? state.members.find((candidate) => candidate.id === memberId) : undefined;
-
     setSuggestionBusy(true);
     try {
-      let publishedState: AppState | null = null;
-      updateState((current) => {
-        const suggestion: Suggestion = {
-          id: nextId(current.suggestions),
-          memberId,
-          memberName: member ? member.name : null,
-          message: suggestionDraft.message.trim(),
-          submitterName: suggestionDraft.submitterName.trim() || null,
-          status: "pending",
-          createdAt: new Date().toISOString()
-        };
-        const next = { ...current, suggestions: [suggestion, ...current.suggestions].slice(0, 200) };
-        publishedState = next;
-        return next;
-      });
-      // Anonymous visitors never trigger the normal (isLoggedIn-only) autosave, so this one write
-      // is pushed straight to Supabase, the whole point of a suggestion box is that it reaches the admin.
-      if (supabaseConfigured && publishedState) await persistToSupabase(publishedState);
+      let suggestion: Suggestion;
+      if (supabaseConfigured) {
+        suggestion = await submitPublicSajraAction("suggestion", { memberId, message: suggestionDraft.message.trim(), submitterName: suggestionDraft.submitterName.trim() || null }) as unknown as Suggestion;
+        setState((current) => ({ ...current, suggestions: [suggestion, ...current.suggestions].slice(0, 200) }));
+      } else {
+        const member = memberId ? state.members.find((candidate) => candidate.id === memberId) : undefined;
+        suggestion = { id: nextId(state.suggestions), memberId, memberName: member?.name ?? null, message: suggestionDraft.message.trim(), submitterName: suggestionDraft.submitterName.trim() || null, status: "pending", createdAt: new Date().toISOString() };
+        updateState((current) => ({ ...current, suggestions: [suggestion, ...current.suggestions].slice(0, 200) }));
+      }
       if (supabaseConfigured) void sendAdminAlertNotification("suggestion", suggestionDraft.message.trim(), suggestionDraft.submitterName.trim() || null);
       setSuggestionSent(true);
       setSuggestionDraft(null);
@@ -1415,22 +1423,14 @@ export default function App() {
   }
 
   async function submitChatFeedback(answer: string, helpful: boolean): Promise<void> {
-    let publishedState: AppState | null = null;
-    setState((current) => {
-      const suggestion: Suggestion = {
-        id: nextId(current.suggestions),
-        memberId: null,
-        memberName: null,
-        message: `Chatbot feedback (${helpful ? "helpful" : "not helpful"}): ${answer.slice(0, 280)}`,
-        submitterName: "Anis Ai visitor feedback",
-        status: "pending",
-        createdAt: new Date().toISOString()
-      };
-      const next = { ...current, suggestions: [suggestion, ...current.suggestions].slice(0, 200) };
-      publishedState = next;
-      return next;
-    });
-    if (supabaseConfigured && publishedState) await persistToSupabase(publishedState);
+    const message = `Chatbot feedback (${helpful ? "helpful" : "not helpful"}): ${answer.slice(0, 280)}`;
+    if (supabaseConfigured) {
+      const suggestion = await submitPublicSajraAction("feedback", { message }) as unknown as Suggestion;
+      setState((current) => ({ ...current, suggestions: [suggestion, ...current.suggestions].slice(0, 200) }));
+    } else {
+      const suggestion: Suggestion = { id: nextId(state.suggestions), memberId: null, memberName: null, message, submitterName: "Anis Ai visitor feedback", status: "pending", createdAt: new Date().toISOString() };
+      updateState((current) => ({ ...current, suggestions: [suggestion, ...current.suggestions].slice(0, 200) }));
+    }
   }
   function resolveSuggestion(id: number) {
     if (!isAdmin) return;
@@ -1460,22 +1460,13 @@ export default function App() {
     if (!duaDraft || !duaDraft.message.trim() || duaBusy) return;
     setDuaBusy(true);
     try {
-      let publishedState: AppState | null = null;
-      updateState((current) => {
-        const duaRequest: DuaRequest = {
-          id: nextId(current.duaRequests),
-          message: duaDraft.message.trim(),
-          requesterName: duaDraft.requesterName.trim() || null,
-          status: "open",
-          createdAt: new Date().toISOString()
-        };
-        const next = { ...current, duaRequests: [duaRequest, ...current.duaRequests].slice(0, 200) };
-        publishedState = next;
-        return next;
-      });
-      // Anonymous visitors never trigger the normal (isLoggedIn-only) autosave, so this one write
-      // is pushed straight to Supabase, the whole point of a dua board is that the family sees it.
-      if (supabaseConfigured && publishedState) await persistToSupabase(publishedState);
+      if (supabaseConfigured) {
+        const duaRequest = await submitPublicSajraAction("dua", { message: duaDraft.message.trim(), requesterName: duaDraft.requesterName.trim() || null }) as unknown as DuaRequest;
+        setState((current) => ({ ...current, duaRequests: [duaRequest, ...current.duaRequests].slice(0, 200) }));
+      } else {
+        const duaRequest: DuaRequest = { id: nextId(state.duaRequests), message: duaDraft.message.trim(), requesterName: duaDraft.requesterName.trim() || null, status: "open", createdAt: new Date().toISOString() };
+        updateState((current) => ({ ...current, duaRequests: [duaRequest, ...current.duaRequests].slice(0, 200) }));
+      }
       if (supabaseConfigured) void sendAdminAlertNotification("dua", duaDraft.message.trim(), duaDraft.requesterName.trim() || null);
       setDuaSent(true);
       setDuaDraft(null);
@@ -1501,8 +1492,9 @@ export default function App() {
   // contact without seeing (or being able to edit) anyone else's profile or the rest of the tree.
   async function copyUpdateLink(member: Member) {
     setUpdateLinkNotice("");
-    const url = publicPageUrl(`/update/${member.id}`);
     try {
+      const token = await createProfileUpdateLink(member.id);
+      const url = publicPageUrl(`/update/${member.id}?token=${encodeURIComponent(token)}`);
       if (Capacitor.isNativePlatform()) {
         await Share.share({ title: displayName(member, language), url });
       } else if (navigator.share) {
@@ -1512,38 +1504,31 @@ export default function App() {
         setUpdateLinkNotice(t(language, "updateLinkCopied"));
       }
     } catch {
-      // User cancelled the native share sheet - not an error worth showing.
+      setUpdateLinkNotice("Could not create a secure profile link. Please sign in and try again.");
     }
   }
 
   async function submitMemberUpdateRequest() {
-    if (!updateRequestDraft || updateRequestBusy) return;
+    if (!updateRequestDraft || updateRequestBusy || !route.memberId || !route.updateToken || !updateLinkValid) return;
     const member = state.members.find((candidate) => candidate.id === updateRequestDraft.memberId);
     if (!member) return;
     setUpdateRequestBusy(true);
     try {
-      let publishedState: AppState | null = null;
-      updateState((current) => {
-        const request: MemberUpdateRequest = {
-          id: nextId(current.memberUpdateRequests),
-          memberId: member.id,
-          memberName: member.name,
-          photo: updateRequestDraft.photo.trim() || null,
-          bio: updateRequestDraft.bio.trim() || null,
-          contact: updateRequestDraft.contact.trim() || null,
-          profession: normalizeProfession(updateRequestDraft.profession),
-          publications: updateRequestDraft.publications.filter((item) => item.title.trim()).map((item) => ({ ...item, title: item.title.trim().slice(0, 180), publisher: item.publisher?.trim().slice(0, 120) || null, year: item.year?.trim().slice(0, 12) || null, url: item.url?.trim().slice(0, 500) || null })),
-          status: "pending",
-          createdAt: new Date().toISOString()
-        };
-        const next = { ...current, memberUpdateRequests: [request, ...current.memberUpdateRequests].slice(0, 200) };
-        publishedState = next;
-        return next;
+      const request = await submitProfileUpdateLink({
+        memberId: member.id,
+        token: route.updateToken,
+        photo: updateRequestDraft.photo.trim(),
+        bio: updateRequestDraft.bio.trim(),
+        contact: updateRequestDraft.contact.trim(),
+        profession: normalizeProfession(updateRequestDraft.profession) ?? "",
+        publications: updateRequestDraft.publications.filter((item) => item.title.trim()).map((item) => ({ ...item, title: item.title.trim().slice(0, 180), publisher: item.publisher?.trim().slice(0, 120) || null, year: item.year?.trim().slice(0, 12) || null, url: item.url?.trim().slice(0, 500) || null }))
       });
-      // The member filling this in is never signed in, so (like Suggestions) this has to be
-      // pushed straight to Supabase instead of relying on the normal isLoggedIn-only autosave.
-      if (supabaseConfigured && publishedState) await persistToSupabase(publishedState);
+      setState((current) => ({ ...current, memberUpdateRequests: [request, ...current.memberUpdateRequests.filter((item) => item.id !== request.id)].slice(0, 200) }));
+      setUpdateLinkValid(false);
       setUpdateRequestSent(true);
+    } catch (error) {
+      setUpdateLinkValid(false);
+      setUpdateLinkNotice(error instanceof Error ? error.message : "This profile link is invalid or has expired.");
     } finally {
       setUpdateRequestBusy(false);
     }
@@ -1712,17 +1697,16 @@ export default function App() {
 
   // Anyone (no login needed) can leave a message on a member's profile, like Suggestions; only
   // an admin can remove one.
-  function submitGuestbookComment(memberId: number) {
+  async function submitGuestbookComment(memberId: number) {
     const message = guestbookMessage.trim();
     if (!message) return;
     const authorName = guestbookAuthorName.trim() || null;
-    updateState((current) => ({
-      ...current,
-      profileComments: [
-        { id: nextId(current.profileComments), memberId, message, authorName, createdAt: new Date().toISOString() },
-        ...current.profileComments
-      ].slice(0, 2000)
-    }));
+    if (supabaseConfigured) {
+      const comment = await submitPublicSajraAction("guestbook", { memberId, message, authorName });
+      setState((current) => ({ ...current, profileComments: [comment as unknown as AppState["profileComments"][number], ...current.profileComments].slice(0, 2000) }));
+    } else {
+      updateState((current) => ({ ...current, profileComments: [{ id: nextId(current.profileComments), memberId, message, authorName, createdAt: new Date().toISOString() }, ...current.profileComments].slice(0, 2000) }));
+    }
     if (supabaseConfigured) void sendAdminAlertNotification("guestbook", message, authorName);
     setGuestbookMessage("");
     setGuestbookAuthorName("");
@@ -3456,10 +3440,10 @@ export default function App() {
 
     if (route.page === "update") {
       const targetMember = route.memberId ? state.members.find((candidate) => candidate.id === route.memberId) : undefined;
-      if (!targetMember || !updateRequestDraft || updateRequestDraft.memberId !== targetMember.id) {
+      if (!targetMember || (!updateLinkValid && !updateRequestSent) || !updateRequestDraft || updateRequestDraft.memberId !== targetMember.id) {
         return (
           <section className="section">
-            <div className="empty">{t(language, "updateLinkInvalid")}</div>
+            <div className="empty">{updateLinkNotice || t(language, "updateLinkInvalid")}</div>
           </section>
         );
       }
@@ -3508,7 +3492,7 @@ export default function App() {
                 {updateRequestDraft.publications.map((item, index) => <PublicationFields key={index} item={item} language={language} onChange={(next) => setUpdateRequestDraft((current) => current ? { ...current, publications: current.publications.map((publication, i) => i === index ? next : publication) } : current)} onRemove={() => setUpdateRequestDraft((current) => current ? { ...current, publications: current.publications.filter((_, i) => i !== index) } : current)} onUploadAsset={uploadPublicationAsset} />)}
               </section>
               <div className="profile-update-actions">
-                <button className="btn" type="button" disabled={updateRequestBusy} onClick={() => void submitMemberUpdateRequest()}>
+                <button className="btn" type="button" disabled={updateRequestBusy || !updateLinkValid} onClick={() => void submitMemberUpdateRequest()}>
                   {updateRequestBusy ? t(language, "sendingSuggestion") : t(language, "sendUpdateRequestButton")}
                 </button>
                 <p className="hint">{t(language, "updateRequestPendingHint")}</p>
