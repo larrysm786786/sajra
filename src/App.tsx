@@ -580,6 +580,29 @@ function cleanSuggestionMessage(message: string): string {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
+function ProfessionPhotoBio({ bio, language }: { bio: string; language: Language }) {
+  const paragraphRef = useRef<HTMLParagraphElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+
+  useEffect(() => {
+    const paragraph = paragraphRef.current;
+    if (!paragraph) return;
+    const checkOverflow = () => {
+      if (!expanded) setHasMore(paragraph.scrollHeight > paragraph.clientHeight + 1);
+    };
+    checkOverflow();
+    const observer = new ResizeObserver(checkOverflow);
+    observer.observe(paragraph);
+    return () => observer.disconnect();
+  }, [bio, expanded]);
+
+  return <div className="profession-photo-bio">
+    <p ref={paragraphRef} className={expanded ? undefined : "is-collapsed"}>{bio}</p>
+    {hasMore ? <button type="button" className="profession-photo-read-more" onClick={() => setExpanded((value) => !value)}>{expanded ? t(language, "readLessLabel") : `…${t(language, "readMoreLabel")}`}</button> : null}
+  </div>;
+}
+
 function ProfessionPhotoSlider({ members, language, onOpen }: { members: Member[]; language: Language; onOpen: (memberId: number) => void }) {
   const photoMembers = useMemo(() => members.filter((member) => {
     return member.showInHeroSlider === true && Boolean(member.photo?.trim()) && isSliderProfession(member.profession);
@@ -603,7 +626,7 @@ function ProfessionPhotoSlider({ members, language, onOpen }: { members: Member[
         <strong>{displayName(member, language)}</strong>
         {member.uniqueId ? <small>{member.uniqueId}</small> : null}
       </div>
-      {bio ? <div className="profession-photo-bio"><p>{bio}</p></div> : null}
+      {bio ? <ProfessionPhotoBio key={member.id} bio={bio} language={language} /> : null}
     </div>
     {photoMembers.length > 1 ? <div className="profession-photo-controls"><button type="button" aria-label={t(language, "previousProfileLabel")} onClick={() => setSlideIndex((index) => (index - 1 + photoMembers.length) % photoMembers.length)}>{t(language, "previousButtonLabel")}</button><span>{slideIndex + 1} / {photoMembers.length}</span><button type="button" aria-label={t(language, "nextProfileLabel")} onClick={() => setSlideIndex((index) => (index + 1) % photoMembers.length)}>{t(language, "nextButtonLabel")}</button></div> : null}
   </div>;
@@ -3858,7 +3881,6 @@ export default function App() {
           <div className="brand-mark"><img src={import.meta.env.BASE_URL + "logo.jpg"} alt="" /></div>
           <div className="brand-title">
             <strong>{state.appName}</strong>
-            <span>{t(language, "brandSubtitle")}</span>
           </div>
         </a>
         <span className="visitor-counter visitor-counter-mobile" title={t(language, "totalVisitorsLabel")} aria-label={`${t(language, "totalVisitorsLabel")}: ${state.visitorCount ?? 0}`}>

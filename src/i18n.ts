@@ -334,7 +334,6 @@ const STRINGS = {
     thisIsMeLabel: "This is me",
     setAsMyFamilyButton: "Set as My Family",
 
-    brandSubtitle: "Family tree and record",
     ariaOpenMenu: "Open menu",
     ariaCloseMenu: "Close menu",
     logoutButton: "Logout",
@@ -855,7 +854,6 @@ const STRINGS = {
     thisIsMeLabel: "یہ میں ہوں",
     setAsMyFamilyButton: "میری فیملی کے طور پر سیٹ کریں",
 
-    brandSubtitle: "شجرہ نسب اور آرکائیو",
     ariaOpenMenu: "مینو کھولیں",
     ariaCloseMenu: "مینو بند کریں",
     logoutButton: "لاگ آؤٹ",
