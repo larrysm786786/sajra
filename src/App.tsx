@@ -580,16 +580,14 @@ function cleanSuggestionMessage(message: string): string {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
-function ProfessionPhotoBio({ bio, language }: { bio: string; language: Language }) {
+function ProfessionPhotoBio({ bio, language, onOpen }: { bio: string; language: Language; onOpen: () => void }) {
   const paragraphRef = useRef<HTMLParagraphElement>(null);
-  const [expanded, setExpanded] = useState(false);
   const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
     const paragraph = paragraphRef.current;
     if (!paragraph) return;
     const checkOverflow = () => {
-      if (expanded) return;
       const parent = paragraph.parentElement;
       if (!parent) return;
       const fullParagraph = paragraph.cloneNode(true) as HTMLParagraphElement;
@@ -614,11 +612,11 @@ function ProfessionPhotoBio({ bio, language }: { bio: string; language: Language
     const observer = new ResizeObserver(checkOverflow);
     observer.observe(paragraph);
     return () => observer.disconnect();
-  }, [bio, expanded]);
+  }, [bio]);
 
   return <div className="profession-photo-bio">
-    <p ref={paragraphRef} className={expanded ? undefined : "is-collapsed"}>{bio}</p>
-    {hasMore ? <button type="button" className="profession-photo-read-more" onClick={() => setExpanded((value) => !value)}>{expanded ? t(language, "readLessLabel") : `…${t(language, "readMoreLabel")}`}</button> : null}
+    <p ref={paragraphRef} className="is-collapsed">{bio}</p>
+    {hasMore ? <button type="button" className="profession-photo-read-more" onClick={onOpen}>{`…${t(language, "readMoreLabel")}`}</button> : null}
   </div>;
 }
 
@@ -645,7 +643,7 @@ function ProfessionPhotoSlider({ members, language, onOpen }: { members: Member[
         <strong>{displayName(member, language)}</strong>
         {member.uniqueId ? <small>{member.uniqueId}</small> : null}
       </div>
-      {bio ? <ProfessionPhotoBio key={member.id} bio={bio} language={language} /> : null}
+      {bio ? <ProfessionPhotoBio key={member.id} bio={bio} language={language} onOpen={() => onOpen(member.id)} /> : null}
     </div>
     {photoMembers.length > 1 ? <div className="profession-photo-controls"><button type="button" aria-label={t(language, "previousProfileLabel")} onClick={() => setSlideIndex((index) => (index - 1 + photoMembers.length) % photoMembers.length)}>{t(language, "previousButtonLabel")}</button><span>{slideIndex + 1} / {photoMembers.length}</span><button type="button" aria-label={t(language, "nextProfileLabel")} onClick={() => setSlideIndex((index) => (index + 1) % photoMembers.length)}>{t(language, "nextButtonLabel")}</button></div> : null}
   </div>;
