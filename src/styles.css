@@ -54,7 +54,6 @@ body {
   color: var(--text);
   background:
     radial-gradient(ellipse 900px 500px at 15% -10%, color-mix(in oklab, var(--ink) 8%, transparent), transparent 60%),
-    radial-gradient(circle at 100% 0%, color-mix(in oklab, var(--accent) 10%, transparent), transparent 40%),
     linear-gradient(180deg, var(--bg), var(--bg-soft));
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
