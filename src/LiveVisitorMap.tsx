@@ -147,6 +147,5 @@ export default function LiveVisitorMap({ cities, loading, error, onRefresh }: Pr
       <small className="live-map-attribution">Map data: Natural Earth</small>
     </div>
     {cities.length ? <div className="live-city-list">{cities.slice(0, 12).map((item, index) => <div key={`${item.city}-${item.country}-${index}`}><span><strong>{item.city}</strong><small>{item.country}</small></span><b>{item.activeUsers}</b></div>)}</div> : null}
-    <small className="live-map-note">Google Analytics provides approximate city-level totals. Map markers are shown for recognized major cities; exact device locations are not available.</small>
   </section>;
 }

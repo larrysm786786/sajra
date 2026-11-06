@@ -1122,15 +1122,15 @@ input[type="file"]:not([hidden]):focus-visible {
   font-size: 0.72rem;
 }
 
-.live-visitor-card { margin-top: 18px; padding: 18px; overflow: hidden; }
+.live-visitor-card { min-width: 0; max-width: 100%; margin-top: 18px; padding: 18px; overflow: hidden; }
 .live-visitor-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .live-visitor-heading > div { display: grid; grid-template-columns: 10px 1fr; align-items: center; column-gap: 8px; }
 .live-visitor-heading small { grid-column: 2; color: var(--muted); font-size: .78rem; margin-top: 3px; }
 .live-indicator { width: 9px; height: 9px; border-radius: 50%; background: #23a66d; box-shadow: 0 0 0 4px color-mix(in oklab, #23a66d 17%, transparent); }
 .live-refresh { padding: 7px 12px; }
-.live-map-wrap { position: relative; margin-top: 14px; aspect-ratio: 2 / 1; min-height: 230px; max-height: 560px; border: 1px solid #d7e2ef; border-radius: 16px; overflow: hidden; background: #e7f0fc; cursor: grab; touch-action: none; user-select: none; }
+.live-map-wrap { position: relative; width: 100%; min-width: 0; max-width: 100%; margin-top: 14px; aspect-ratio: 2 / 1; min-height: 230px; max-height: 560px; border: 1px solid #d7e2ef; border-radius: 16px; overflow: hidden; background: #e7f0fc; cursor: grab; touch-action: none; user-select: none; }
 .live-map-wrap:active { cursor: grabbing; }
-.live-vector-world { display: block; width: 100%; height: 100%; }
+.live-vector-world { display: block; width: 100%; max-width: 100%; min-width: 0; height: 100%; }
 .live-map-graticule { fill: none; stroke: #c4d8ee; stroke-width: .7; stroke-dasharray: 2 5; opacity: .65; }
 .live-map-country { fill: #f8fbff; stroke: #c2d2e4; stroke-width: .8; stroke-linejoin: round; vector-effect: non-scaling-stroke; transition: fill .2s ease, stroke .2s ease; }
 .live-map-city-marker { pointer-events: none; }
@@ -1148,7 +1148,6 @@ input[type="file"]:not([hidden]):focus-visible {
 .live-city-list strong, .live-city-list small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .live-city-list small { color: var(--muted); font-size: .72rem; }
 .live-city-list b { color: var(--accent-strong); }
-.live-map-note { display: block; margin-top: 10px; color: var(--muted); font-size: .74rem; }
 .live-map-empty { position: absolute; inset: auto 10px 10px; text-align: center; padding: 7px; border-radius: 8px; background: color-mix(in oklab, var(--surface-strong) 90%, transparent); color: var(--muted); font-size: .82rem; }
 @media (max-width: 640px) {
   .live-visitor-card { padding: 13px; }
