@@ -1748,6 +1748,10 @@ input[type="file"]:not([hidden]):focus-visible {
 }
 
 @media (max-width: 860px) {
+  .hero {
+    box-shadow: none;
+  }
+
   .visitor-counter-mobile {
     display: inline-flex;
     margin-inline-start: auto;
