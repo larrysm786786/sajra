@@ -2827,16 +2827,6 @@ export default function App() {
               {isAdmin ? <StatCard value={stats.visitors} label={t(language, "totalVisitorsLabel")} icon={<EyeIcon />} /> : null}
             </div>
             <div style={{ marginTop: 18 }}>
-              <Card title={t(language, "quickActionsTitle")} subtitle={t(language, "quickActionsSubtitle")}>
-                <div className="actions-row">
-                  {canAddMember ? <button className="btn" type="button" onClick={() => openMemberEditor()}>{t(language, "addMemberButton")}</button> : null}
-                  {isAdmin ? <button className="btn-ghost" type="button" onClick={() => openUserEditor()}>{t(language, "addUserButton")}</button> : null}
-                  {canAddGalleryPhoto ? <button className="btn-ghost" type="button" onClick={() => openGalleryEditor()}>{t(language, "addGalleryPhotoButton")}</button> : null}
-                  {isAdmin ? <button className="btn-ghost" type="button" onClick={exportState}>{t(language, "downloadBackupButton")}</button> : null}
-                </div>
-              </Card>
-            </div>
-            <div style={{ marginTop: 18 }}>
               <div className="section-head">
                 <div>
                   <span className="eyebrow">{t(language, "eyebrowFamilyTree")}</span>
@@ -2865,7 +2855,6 @@ export default function App() {
             {updateLinkNotice ? <p className="hint">{updateLinkNotice}</p> : null}
             {canAddMember ? (
               <div className="notice" style={{ marginBottom: 16 }}>
-                <p className="hint">{t(language, "bulkImportHint")}</p>
                 <div className="actions-row">
                   <button className="btn-ghost" type="button" onClick={downloadMembersCsvTemplate}>{t(language, "bulkImportTemplateButton")}</button>
                 </div>
@@ -3234,6 +3223,16 @@ export default function App() {
           <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "settingsTitle")}</h2>
           <p className="section-subtitle" style={{ marginTop: 12 }}>{t(language, "settingsSubtitle")}</p>
           <AppUpdaterCard language={language} isAdmin={isAdmin} canUseBiometric={isLoggedIn && (isAdmin || userRole === "editor")} />
+          {Capacitor.isNativePlatform() && isLoggedIn ? (
+            <button
+              className="btn-ghost"
+              type="button"
+              style={{ marginTop: 16 }}
+              onClick={() => { navigate({ page: "admin" }); setAdminSection("security"); setPasswordChangeError(""); setPasswordChangeSuccess(false); }}
+            >
+              {t(language, "adminNavSecurity")}
+            </button>
+          ) : null}
         </section>
       );
     }
@@ -3808,20 +3807,26 @@ export default function App() {
 
   // On mobile, the hamburger menu contains direct links to every admin section and the
   // permitted quick actions. The same section links live in the desktop navbar dropdown.
+  const isNativeApp = Capacitor.isNativePlatform();
+  const nativeAdminLabels: Partial<Record<AdminSection, string>> = {
+    members: "Add Members",
+    users: "Add Users",
+    gallery: "Add Photos"
+  };
   const mobileAdminLinks: { key: string; label: string; onClick: () => void; badge?: number }[] = isLoggedIn
     ? [
-        ...adminNavMenuItems.map((item) => ({
+        ...adminNavMenuItems.filter((item) => !(isNativeApp && item.key === "security")).map((item) => ({
           key: `admin-${item.key}`,
-          label: item.label,
+          label: isNativeApp ? nativeAdminLabels[item.key] ?? item.label : item.label,
           badge: item.badge,
           onClick: () => { navigate({ page: "admin" }); setAdminSection(item.key); setPasswordChangeError(""); setPasswordChangeSuccess(false); }
         })),
-        ...(canAddMember ? [{ key: "addMember", label: t(language, "addMemberButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); openMemberEditor(); } }] : []),
-        ...(isAdmin ? [{ key: "addUser", label: t(language, "addUserButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("users"); openUserEditor(); } }] : []),
-        ...(canAddAnnouncement ? [{ key: "postAnnouncement", label: t(language, "postAnnouncementButton"), onClick: () => { navigate({ page: "calendar" }); openAnnouncementEditor(); } }] : []),
-        { key: "notifications", label: t(language, "navNotificationsLabel"), badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) },
+        ...(!isNativeApp && canAddMember ? [{ key: "addMember", label: t(language, "addMemberButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); openMemberEditor(); } }] : []),
+        ...(!isNativeApp && isAdmin ? [{ key: "addUser", label: t(language, "addUserButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("users"); openUserEditor(); } }] : []),
+        ...(!isNativeApp && canAddAnnouncement ? [{ key: "postAnnouncement", label: t(language, "postAnnouncementButton"), onClick: () => { navigate({ page: "calendar" }); openAnnouncementEditor(); } }] : []),
+        { key: "notifications", label: isNativeApp ? "Post Announcement" : t(language, "navNotificationsLabel"), badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) },
         { key: "live", label: canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel"), onClick: () => navigate({ page: "live" }) },
-        ...(Capacitor.isNativePlatform() ? [{ key: "settings", label: t(language, "navSettingsLabel"), badge: appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }] : [])
+        ...(isNativeApp ? [{ key: "settings", label: t(language, "navSettingsLabel"), badge: appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }] : [])
       ]
     : [];
 
