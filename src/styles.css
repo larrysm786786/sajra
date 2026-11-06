@@ -1748,6 +1748,10 @@ input[type="file"]:not([hidden]):focus-visible {
 }
 
 @media (max-width: 860px) {
+  body {
+    background: linear-gradient(180deg, var(--bg), var(--bg-soft));
+  }
+
   .hero {
     box-shadow: none;
   }
@@ -2464,4 +2468,8 @@ html[dir="rtl"] .select {
   .member-publication-details { gap: 7px; }
   .member-publication-card .publication-download-button { width: 100%; }
 }
+
+/* Temporarily disable shadows site-wide for visual inspection. */
+*, *::before, *::after { box-shadow: none !important; }
+.live-map-city-dot, .org-card { filter: none !important; }
 
