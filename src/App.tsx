@@ -589,7 +589,26 @@ function ProfessionPhotoBio({ bio, language }: { bio: string; language: Language
     const paragraph = paragraphRef.current;
     if (!paragraph) return;
     const checkOverflow = () => {
-      if (!expanded) setHasMore(paragraph.scrollHeight > paragraph.clientHeight + 1);
+      if (expanded) return;
+      const parent = paragraph.parentElement;
+      if (!parent) return;
+      const fullParagraph = paragraph.cloneNode(true) as HTMLParagraphElement;
+      fullParagraph.classList.remove("is-collapsed");
+      fullParagraph.setAttribute("aria-hidden", "true");
+      Object.assign(fullParagraph.style, {
+        position: "absolute",
+        visibility: "hidden",
+        display: "block",
+        width: `${paragraph.clientWidth}px`,
+        height: "auto",
+        maxHeight: "none",
+        overflow: "visible",
+        pointerEvents: "none",
+      });
+      parent.appendChild(fullParagraph);
+      const hasOverflow = fullParagraph.getBoundingClientRect().height > paragraph.getBoundingClientRect().height + 1;
+      fullParagraph.remove();
+      setHasMore(hasOverflow);
     };
     checkOverflow();
     const observer = new ResizeObserver(checkOverflow);

@@ -2320,11 +2320,12 @@ html[dir="rtl"] .select {
 .profession-photo-caption span { color: var(--accent-strong); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
 .profession-photo-caption strong { color: var(--ink); font-family: "Playfair Display", serif; font-size: clamp(1.2rem, 2.5vw, 1.8rem); overflow-wrap: anywhere; }
 .profession-photo-caption small { color: var(--muted); font-size: 13px; }
-.profession-photo-bio { width: 100%; color: var(--muted); font-size: 14px; line-height: 1.7; }
+.profession-photo-bio { position: relative; width: 100%; color: var(--muted); font-size: 14px; line-height: 1.7; text-align: start; }
 .profession-photo-bio p { margin: 0; white-space: pre-line; }
 .profession-photo-bio p.is-collapsed { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
 .profession-photo-read-more { margin-top: 6px; padding: 0; border: 0; color: var(--accent-strong); background: transparent; font: inherit; font-weight: 700; cursor: pointer; }
 .profession-photo-read-more:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 3px; border-radius: 2px; }
+html[dir="rtl"] .profession-photo-bio { direction: rtl; text-align: right; }
 .profession-photo-controls { position: absolute; right: 16px; bottom: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .profession-photo-controls span { color: var(--muted); font-size: 13px; }
 .profession-photo-controls button { padding: 7px 9px; border: 1px solid var(--border); border-radius: 9px; color: var(--text); background: var(--surface); font-size: 12px; cursor: pointer; }
