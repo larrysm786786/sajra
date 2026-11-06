@@ -5,6 +5,8 @@ import { PushNotifications } from "@capacitor/push-notifications";
 import { Share } from "@capacitor/share";
 import { Badge } from "@capawesome/capacitor-badge";
 import QRCode from "qrcode";
+import Lenis from "lenis";
+import "lenis/dist/lenis.css";
 import { trackNativeScreenView, trackWebPageView } from "./analytics";
 import LiveVisitorMap from "./LiveVisitorMap";
 import type { FormEvent, ReactNode, TouchEvent as ReactTouchEvent } from "react";
@@ -103,7 +105,7 @@ const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string
 
 type RouteState = { page: ViewKey; memberId?: number; updateToken?: string };
 
-type AdminSection = "overview" | "members" | "users" | "gallery" | "suggestions" | "profileUpdates" | "logs" | "backup" | "security" | "quality" | "analytics";
+type AdminSection = "overview" | "members" | "users" | "gallery" | "suggestions" | "profileUpdates" | "logs" | "backup" | "quality" | "analytics";
 
 // Supabase reports an expired / already-used reset link through the URL hash.
 const STARTED_WITH_EXPIRED_LINK = typeof window !== "undefined" && window.location.hash.includes("error_code=otp_expired");
@@ -426,7 +428,6 @@ const ADMIN_ICONS: Record<AdminSection, string> = {
   profileUpdates: "M12 20h9M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5Z",
   logs: "M12 8v5l3 2M3 12a9 9 0 1 0 3-6.7M3 4v5h5",
   backup: "M12 3v12m0 0-4-4m4 4 4-4M4 17v3h16v-3",
-  security: "M6 11V8a6 6 0 1 1 12 0v3M5 11h14v10H5V11Zm7 4v2",
   quality: "M12 3 3 20h18L12 3Zm0 6v5m0 3h.01",
   analytics: "M4 20V10m6 10V4m6 16v-7"
 };
@@ -721,6 +722,7 @@ export default function App() {
   const [bulkImportResult, setBulkImportResult] = useState<{ addedCount: number; errors: string[] } | null>(null);
   const [bulkImportBusy, setBulkImportBusy] = useState(false);
   const silsilaRowRef = useRef<HTMLDivElement | null>(null);
+  const lenisRef = useRef<Lenis | null>(null);
   const hydrationDoneRef = useRef(false);
   const remoteUpdatedAtRef = useRef<string | null>(null);
   // The archive as last confirmed in Supabase; used to skip no-op saves and as the base for merges.
@@ -795,6 +797,24 @@ export default function App() {
   const familyBookGroups = useMemo(() => groupMembersByGeneration(state.members), [state.members]);
 
   useEffect(() => {
+    const lenis = new Lenis({
+      autoRaf: true,
+      anchors: true,
+      allowNestedScroll: true,
+      smoothWheel: true,
+      syncTouch: true,
+      touchInertiaExponent: 1.2,
+      stopInertiaOnNavigate: true
+    });
+    lenisRef.current = lenis;
+    return () => {
+      lenis.destroy();
+      lenisRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    lenisRef.current?.scrollTo(0, { immediate: true });
     trackWebPageView(route.page);
     trackNativeScreenView(route.page);
   }, [route.page, route.memberId]);
@@ -1209,14 +1229,11 @@ export default function App() {
     };
   }, []);
 
-  // The app icon's red badge count is bumped natively (AppMessagingService.java) when an
-  // announcement push arrives, since that has to work even if the app is closed in the
-  // background - a JS-side pushNotificationReceived listener only fires while the app is open.
-  // This just clears it once the user actually reads the Notifications page.
+  // Load account security settings when an authenticated user opens Settings.
   useEffect(() => {
-    if (!isLoggedIn || route.page !== "admin" || adminSection !== "security") return;
+    if (!isLoggedIn || route.page !== "settings") return;
     void listMfaFactors().then(setMfaFactors).catch(() => {});
-  }, [isLoggedIn, route.page, adminSection]);
+  }, [isLoggedIn, route.page]);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform() || route.page !== "calendar") return;
@@ -1322,7 +1339,7 @@ export default function App() {
       setPasswordChangeSuccess(true);
       setNewPassword("");
       setConfirmPassword("");
-      if (recoveryMode) setAdminSection("security");
+      if (recoveryMode) navigate({ page: "settings" });
       setRecoveryMode(false);
     } catch (error) {
       setPasswordChangeError(error instanceof Error ? error.message : t(language, "passwordChangeFailed"));
@@ -1378,6 +1395,83 @@ export default function App() {
     } finally {
       setMfaSetupBusy(false);
     }
+  }
+
+  function renderAccountSecuritySettings(): ReactNode {
+    return (
+      <div className="card" style={{ marginTop: 24, padding: 20 }}>
+        <h3 style={{ marginTop: 0 }}>{t(language, "adminNavSecurity")}</h3>
+        <p className="hint">{t(language, "changePasswordSubtitle")}</p>
+        <div className="admin-form-narrow">
+          <form className="form-stack" onSubmit={handleChangePasswordSubmit}>
+            <label>
+              {t(language, "newPasswordLabel")}
+              <PasswordField value={newPassword} onChange={setNewPassword} autoComplete="new-password" language={language} />
+            </label>
+            <label>
+              {t(language, "confirmPasswordLabel")}
+              <PasswordField value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" language={language} />
+            </label>
+            {passwordChangeError ? <div className="notice danger">{passwordChangeError}</div> : null}
+            {passwordChangeSuccess ? <div className="notice">{t(language, "passwordChangedSuccess")}</div> : null}
+            <button className="btn" type="submit" disabled={passwordChangeBusy}>{passwordChangeBusy ? t(language, "savingPassword") : t(language, "savePasswordButton")}</button>
+          </form>
+
+          <div style={{ marginTop: 28, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
+            <strong>{t(language, "mfaSectionTitle")}</strong>
+            <p className="hint" style={{ marginTop: 6 }}>
+              {mfaFactors.some((factor) => factor.status === "verified") ? t(language, "mfaSectionSubtitleOn") : t(language, "mfaSectionSubtitleOff")}
+            </p>
+            {mfaEnrollment ? (
+              <div style={{ marginTop: 12 }}>
+                <p className="hint">{t(language, "mfaScanInstruction")}</p>
+                {mfaEnrollment.qrCode.startsWith("data:") ? (
+                  <img src={mfaEnrollment.qrCode} alt="" style={{ width: 180, height: 180, margin: "10px 0" }} />
+                ) : (
+                  <div style={{ width: 180, margin: "10px 0" }} dangerouslySetInnerHTML={{ __html: mfaEnrollment.qrCode }} />
+                )}
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className="field"
+                  value={mfaSetupCode}
+                  onChange={(event) => setMfaSetupCode(event.target.value)}
+                  maxLength={6}
+                  style={{ maxWidth: 160 }}
+                />
+                {mfaSetupError ? <div className="notice danger" style={{ marginTop: 8 }}>{mfaSetupError}</div> : null}
+                <div className="actions-row" style={{ marginTop: 10 }}>
+                  <button className="btn" type="button" disabled={mfaSetupBusy || mfaSetupCode.trim().length < 6} onClick={() => void confirmMfaSetup()}>
+                    {mfaSetupBusy ? t(language, "verifyingCode") : t(language, "mfaConfirmButton")}
+                  </button>
+                  <button className="btn-ghost" type="button" onClick={cancelMfaSetup}>{t(language, "mfaCancelButton")}</button>
+                </div>
+              </div>
+            ) : mfaFactors.some((factor) => factor.status === "verified") ? (
+              <div style={{ marginTop: 12 }}>
+                {mfaSetupError ? <div className="notice danger" style={{ marginBottom: 8 }}>{mfaSetupError}</div> : null}
+                <button
+                  className="btn-ghost danger"
+                  type="button"
+                  disabled={mfaSetupBusy}
+                  onClick={() => {
+                    const factor = mfaFactors.find((item) => item.status === "verified");
+                    if (factor) void disableMfa(factor.id);
+                  }}
+                >
+                  {t(language, "mfaDisableButton")}
+                </button>
+              </div>
+            ) : (
+              <div style={{ marginTop: 12 }}>
+                {mfaSetupError ? <div className="notice danger" style={{ marginBottom: 8 }}>{mfaSetupError}</div> : null}
+                <button className="btn-ghost" type="button" onClick={() => void startMfaEnrollment()}>{t(language, "mfaEnableButton")}</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Editors may only add new members; contributors and admins may also edit existing ones.
@@ -2339,8 +2433,7 @@ export default function App() {
     ...(isAdmin ? [{ key: "logs" as const, label: t(language, "adminNavLogs") }] : []),
     { key: "quality", label: t(language, "adminNavQuality") },
     ...(isAdmin ? [{ key: "backup" as const, label: t(language, "backupCardTitle") }] : []),
-    { key: "analytics", label: t(language, "adminNavAnalytics") },
-    { key: "security", label: t(language, "adminNavSecurity") }
+    { key: "analytics", label: t(language, "adminNavAnalytics") }
   ] : [];
 
   useEffect(() => {
@@ -2795,8 +2888,7 @@ export default function App() {
         logs: t(language, "logHistorySubtitle"),
         quality: t(language, "adminQualitySubtitle"),
         backup: t(language, "backupCardSubtitle"),
-        analytics: t(language, "analyticsSubtitle"),
-        security: t(language, "changePasswordSubtitle")
+        analytics: t(language, "analyticsSubtitle")
       };
       const sections = adminNavMenuItems.map((item) => ({ ...item, subtitle: sectionSubtitles[item.key] }));
       const activeSection = sections.find((section) => section.key === adminSection) ?? sections[0];
@@ -3111,77 +3203,6 @@ export default function App() {
             </div>
           </>
         );
-      } else {
-        sectionBody = (
-          <div className="admin-form-narrow">
-            <form className="form-stack" onSubmit={handleChangePasswordSubmit}>
-              <label>
-                {t(language, "newPasswordLabel")}
-                <PasswordField value={newPassword} onChange={setNewPassword} autoComplete="new-password" language={language} />
-              </label>
-              <label>
-                {t(language, "confirmPasswordLabel")}
-                <PasswordField value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" language={language} />
-              </label>
-              {passwordChangeError ? <div className="notice danger">{passwordChangeError}</div> : null}
-              {passwordChangeSuccess ? <div className="notice">{t(language, "passwordChangedSuccess")}</div> : null}
-              <button className="btn" type="submit" disabled={passwordChangeBusy}>{passwordChangeBusy ? t(language, "savingPassword") : t(language, "savePasswordButton")}</button>
-            </form>
-
-            <div style={{ marginTop: 28, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
-              <strong>{t(language, "mfaSectionTitle")}</strong>
-              <p className="hint" style={{ marginTop: 6 }}>
-                {mfaFactors.some((f) => f.status === "verified") ? t(language, "mfaSectionSubtitleOn") : t(language, "mfaSectionSubtitleOff")}
-              </p>
-              {mfaEnrollment ? (
-                <div style={{ marginTop: 12 }}>
-                  <p className="hint">{t(language, "mfaScanInstruction")}</p>
-                  {mfaEnrollment.qrCode.startsWith("data:") ? (
-                    <img src={mfaEnrollment.qrCode} alt="" style={{ width: 180, height: 180, margin: "10px 0" }} />
-                  ) : (
-                    <div style={{ width: 180, margin: "10px 0" }} dangerouslySetInnerHTML={{ __html: mfaEnrollment.qrCode }} />
-                  )}
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    className="field"
-                    value={mfaSetupCode}
-                    onChange={(e) => setMfaSetupCode(e.target.value)}
-                    maxLength={6}
-                    style={{ maxWidth: 160 }}
-                  />
-                  {mfaSetupError ? <div className="notice danger" style={{ marginTop: 8 }}>{mfaSetupError}</div> : null}
-                  <div className="actions-row" style={{ marginTop: 10 }}>
-                    <button className="btn" type="button" disabled={mfaSetupBusy || mfaSetupCode.trim().length < 6} onClick={() => void confirmMfaSetup()}>
-                      {mfaSetupBusy ? t(language, "verifyingCode") : t(language, "mfaConfirmButton")}
-                    </button>
-                    <button className="btn-ghost" type="button" onClick={cancelMfaSetup}>{t(language, "mfaCancelButton")}</button>
-                  </div>
-                </div>
-              ) : mfaFactors.some((f) => f.status === "verified") ? (
-                <div style={{ marginTop: 12 }}>
-                  {mfaSetupError ? <div className="notice danger" style={{ marginBottom: 8 }}>{mfaSetupError}</div> : null}
-                  <button
-                    className="btn-ghost danger"
-                    type="button"
-                    disabled={mfaSetupBusy}
-                    onClick={() => {
-                      const factor = mfaFactors.find((f) => f.status === "verified");
-                      if (factor) void disableMfa(factor.id);
-                    }}
-                  >
-                    {t(language, "mfaDisableButton")}
-                  </button>
-                </div>
-              ) : (
-                <div style={{ marginTop: 12 }}>
-                  {mfaSetupError ? <div className="notice danger" style={{ marginBottom: 8 }}>{mfaSetupError}</div> : null}
-                  <button className="btn-ghost" type="button" onClick={() => void startMfaEnrollment()}>{t(language, "mfaEnableButton")}</button>
-                </div>
-              )}
-            </div>
-          </div>
-        );
       }
 
       return (
@@ -3221,18 +3242,9 @@ export default function App() {
         <section className="section">
           <span className="eyebrow">{t(language, "eyebrowSettings")}</span>
           <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "settingsTitle")}</h2>
-          <p className="section-subtitle" style={{ marginTop: 12 }}>{t(language, "settingsSubtitle")}</p>
-          <AppUpdaterCard language={language} isAdmin={isAdmin} canUseBiometric={isLoggedIn && (isAdmin || userRole === "editor")} />
-          {Capacitor.isNativePlatform() && isLoggedIn ? (
-            <button
-              className="btn-ghost"
-              type="button"
-              style={{ marginTop: 16 }}
-              onClick={() => { navigate({ page: "admin" }); setAdminSection("security"); setPasswordChangeError(""); setPasswordChangeSuccess(false); }}
-            >
-              {t(language, "adminNavSecurity")}
-            </button>
-          ) : null}
+          <p className="section-subtitle" style={{ marginTop: 12 }}>{Capacitor.isNativePlatform() ? t(language, "settingsSubtitle") : t(language, "changePasswordSubtitle")}</p>
+          {Capacitor.isNativePlatform() ? <AppUpdaterCard language={language} isAdmin={isAdmin} canUseBiometric={isLoggedIn && (isAdmin || userRole === "editor")} /> : null}
+          {isLoggedIn ? renderAccountSecuritySettings() : null}
         </section>
       );
     }
@@ -3815,7 +3827,7 @@ export default function App() {
   };
   const mobileAdminLinks: { key: string; label: string; onClick: () => void; badge?: number }[] = isLoggedIn
     ? [
-        ...adminNavMenuItems.filter((item) => !(isNativeApp && item.key === "security")).map((item) => ({
+        ...adminNavMenuItems.map((item) => ({
           key: `admin-${item.key}`,
           label: isNativeApp ? nativeAdminLabels[item.key] ?? item.label : item.label,
           badge: item.badge,
@@ -3826,7 +3838,7 @@ export default function App() {
         ...(!isNativeApp && canAddAnnouncement ? [{ key: "postAnnouncement", label: t(language, "postAnnouncementButton"), onClick: () => { navigate({ page: "calendar" }); openAnnouncementEditor(); } }] : []),
         { key: "notifications", label: isNativeApp ? "Post Announcement" : t(language, "navNotificationsLabel"), badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) },
         { key: "live", label: canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel"), onClick: () => navigate({ page: "live" }) },
-        ...(isNativeApp ? [{ key: "settings", label: t(language, "navSettingsLabel"), badge: appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }] : [])
+        { key: "settings", label: t(language, "navSettingsLabel"), badge: isNativeApp && appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }
       ]
     : [];
 
@@ -3915,7 +3927,7 @@ export default function App() {
             <NavLink active={route.page === "live"} onClick={() => navigate({ page: "live" })}>{canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel")}</NavLink>
             <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
             <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
-            {Capacitor.isNativePlatform() ? <NavLink active={route.page === "settings"} badge={appUpdateAvailable ? 1 : 0} onClick={() => navigate({ page: "settings" })}>{t(language, "navSettingsLabel")}</NavLink> : null}
+            {isLoggedIn ? <NavLink active={route.page === "settings"} badge={isNativeApp && appUpdateAvailable ? 1 : 0} onClick={() => navigate({ page: "settings" })}>{t(language, "navSettingsLabel")}</NavLink> : null}
           </div>
           <div className="topnav-actions-mobile">
             <button
