@@ -2329,6 +2329,19 @@ export default function App() {
   const pendingProfileUpdateCount = isAdmin ? state.memberUpdateRequests.filter((request) => request.status === "pending").length : 0;
   const unseenAnnouncementCount = activeAnnouncements.filter((announcement) => !seenAnnouncementIds.includes(announcement.id)).length;
   const notificationBadgeCount = unseenAnnouncementCount + pendingProfileUpdateCount;
+  const adminNavMenuItems: { key: AdminSection; label: string; badge?: number }[] = isLoggedIn ? [
+    { key: "overview", label: t(language, "adminNavOverview") },
+    { key: "members", label: t(language, "membersLabel") },
+    ...(isAdmin ? [{ key: "users" as const, label: t(language, "usersLabel") }] : []),
+    { key: "gallery", label: t(language, "adminNavGallery") },
+    { key: "suggestions", label: t(language, "adminNavSuggestions") },
+    ...(canEditMembers ? [{ key: "profileUpdates" as const, label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount }] : []),
+    ...(isAdmin ? [{ key: "logs" as const, label: t(language, "adminNavLogs") }] : []),
+    { key: "quality", label: t(language, "adminNavQuality") },
+    ...(isAdmin ? [{ key: "backup" as const, label: t(language, "backupCardTitle") }] : []),
+    { key: "analytics", label: t(language, "adminNavAnalytics") },
+    { key: "security", label: t(language, "adminNavSecurity") }
+  ] : [];
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -2772,19 +2785,20 @@ export default function App() {
 
     if (route.page === "admin") {
       const sortedUsers = [...state.users].sort((a, b) => a.username.localeCompare(b.username));
-      const sections: { key: AdminSection; label: string; subtitle: string }[] = [
-        { key: "overview", label: t(language, "adminNavOverview"), subtitle: t(language, "adminOverviewSubtitle") },
-        { key: "members", label: t(language, "membersLabel"), subtitle: t(language, "membersCardSubtitle") },
-        ...(isAdmin ? [{ key: "users" as const, label: t(language, "usersLabel"), subtitle: t(language, "usersCardSubtitle") }] : []),
-        { key: "gallery", label: t(language, "adminNavGallery"), subtitle: t(language, "galleryAdminSubtitle") },
-        { key: "suggestions", label: t(language, "adminNavSuggestions"), subtitle: t(language, "suggestionsSubtitle") },
-        ...(canEditMembers ? [{ key: "profileUpdates" as const, label: t(language, "adminNavProfileUpdates"), subtitle: t(language, "profileUpdatesSubtitle") }] : []),
-        ...(isAdmin ? [{ key: "logs" as const, label: t(language, "adminNavLogs"), subtitle: t(language, "logHistorySubtitle") }] : []),
-        { key: "quality", label: t(language, "adminNavQuality"), subtitle: t(language, "adminQualitySubtitle") },
-        ...(isAdmin ? [{ key: "backup" as const, label: t(language, "backupCardTitle"), subtitle: t(language, "backupCardSubtitle") }] : []),
-        { key: "analytics", label: t(language, "adminNavAnalytics"), subtitle: t(language, "analyticsSubtitle") },
-        { key: "security", label: t(language, "adminNavSecurity"), subtitle: t(language, "changePasswordSubtitle") }
-      ];
+      const sectionSubtitles: Record<AdminSection, string> = {
+        overview: t(language, "adminOverviewSubtitle"),
+        members: t(language, "membersCardSubtitle"),
+        users: t(language, "usersCardSubtitle"),
+        gallery: t(language, "galleryAdminSubtitle"),
+        suggestions: t(language, "suggestionsSubtitle"),
+        profileUpdates: t(language, "profileUpdatesSubtitle"),
+        logs: t(language, "logHistorySubtitle"),
+        quality: t(language, "adminQualitySubtitle"),
+        backup: t(language, "backupCardSubtitle"),
+        analytics: t(language, "analyticsSubtitle"),
+        security: t(language, "changePasswordSubtitle")
+      };
+      const sections = adminNavMenuItems.map((item) => ({ ...item, subtitle: sectionSubtitles[item.key] }));
       const activeSection = sections.find((section) => section.key === adminSection) ?? sections[0];
 
       let sectionActions: ReactNode = null;
@@ -3184,21 +3198,6 @@ export default function App() {
       return (
         <div className="admin-layout admin-layout-no-sidebar">
           <section className="section admin-main">
-            <nav className="admin-section-switcher" aria-label={t(language, "adminSidebarAria")}>
-              {sections.map((section) => (
-                <button
-                  key={section.key}
-                  type="button"
-                  className={`admin-section-chip${section.key === activeSection.key ? " active" : ""}`}
-                  aria-current={section.key === activeSection.key ? "page" : undefined}
-                  onClick={() => { setAdminSection(section.key); setPasswordChangeError(""); setPasswordChangeSuccess(false); }}
-                >
-                  <AdminIcon section={section.key} />
-                  <span>{section.label}</span>
-                  {section.key === "profileUpdates" && pendingProfileUpdateCount > 0 ? <span className="nav-badge">{pendingProfileUpdateCount > 99 ? "99+" : pendingProfileUpdateCount}</span> : null}
-                </button>
-              ))}
-            </nav>
             <div className="section-head">
               <div>
                 <span className="eyebrow">{t(language, "eyebrowAdminConsole")}</span>
@@ -3807,24 +3806,21 @@ export default function App() {
     );
   })();
 
-  // On mobile, the hamburger menu becomes a direct shortcut list into the Dashboard for
-  // logged-in accounts, instead of the public site links - admins get the full set of
-  // sections they can reach, editors/contributors a smaller one matching what they can do.
+  // On mobile, the hamburger menu contains direct links to every admin section and the
+  // permitted quick actions. The same section links live in the desktop navbar dropdown.
   const mobileAdminLinks: { key: string; label: string; onClick: () => void; badge?: number }[] = isLoggedIn
     ? [
-        { key: "dashboard", label: t(language, "adminNavOverview"), onClick: () => { navigate({ page: "admin" }); setAdminSection("overview"); } },
+        ...adminNavMenuItems.map((item) => ({
+          key: `admin-${item.key}`,
+          label: item.label,
+          badge: item.badge,
+          onClick: () => { navigate({ page: "admin" }); setAdminSection(item.key); setPasswordChangeError(""); setPasswordChangeSuccess(false); }
+        })),
         ...(canAddMember ? [{ key: "addMember", label: t(language, "addMemberButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); openMemberEditor(); } }] : []),
         ...(isAdmin ? [{ key: "addUser", label: t(language, "addUserButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("users"); openUserEditor(); } }] : []),
         ...(canAddAnnouncement ? [{ key: "postAnnouncement", label: t(language, "postAnnouncementButton"), onClick: () => { navigate({ page: "calendar" }); openAnnouncementEditor(); } }] : []),
         { key: "notifications", label: t(language, "navNotificationsLabel"), badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) },
-        ...(canEditMembers ? [{ key: "profileUpdates", label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("profileUpdates"); } }] : []),
         { key: "live", label: canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel"), onClick: () => navigate({ page: "live" }) },
-        { key: "gallery", label: t(language, "adminNavGallery"), onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } },
-        { key: "suggestions", label: t(language, "adminNavSuggestions"), onClick: () => { navigate({ page: "admin" }); setAdminSection("suggestions"); } },
-        ...(isAdmin ? [{ key: "logs", label: t(language, "adminNavLogs"), onClick: () => { navigate({ page: "admin" }); setAdminSection("logs"); } }] : []),
-        { key: "quality", label: t(language, "adminNavQuality"), onClick: () => { navigate({ page: "admin" }); setAdminSection("quality"); } },
-        ...(isAdmin ? [{ key: "backup", label: t(language, "backupCardTitle"), onClick: () => { navigate({ page: "admin" }); setAdminSection("backup"); } }] : []),
-        { key: "security", label: t(language, "adminNavSecurity"), onClick: () => { navigate({ page: "admin" }); setAdminSection("security"); } },
         ...(Capacitor.isNativePlatform() ? [{ key: "settings", label: t(language, "navSettingsLabel"), badge: appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }] : [])
       ]
     : [];
@@ -3865,6 +3861,32 @@ export default function App() {
         </button>
         <nav className={`topnav${mobileNavOpen ? " open" : ""}${isLoggedIn ? " topnav-authed" : ""}`}>
           {isLoggedIn ? (
+            <details className="topnav-admin-dropdown">
+              <summary className="navlink">{t(language, "adminNavMenuLabel")} <span aria-hidden="true">⌄</span></summary>
+              <div className="topnav-admin-dropdown-menu" role="menu" aria-label={t(language, "adminSidebarAria")}>
+                {adminNavMenuItems.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    role="menuitem"
+                    className={`navlink${route.page === "admin" && adminSection === item.key ? " active" : ""}`}
+                    onClick={(event) => {
+                      const dropdown = event.currentTarget.closest("details");
+                      if (dropdown) dropdown.open = false;
+                      navigate({ page: "admin" });
+                      setAdminSection(item.key);
+                      setPasswordChangeError("");
+                      setPasswordChangeSuccess(false);
+                    }}
+                  >
+                    <span>{item.label}</span>
+                    {item.badge && item.badge > 0 ? <span className="nav-badge">{item.badge > 99 ? "99+" : item.badge}</span> : null}
+                  </button>
+                ))}
+              </div>
+            </details>
+          ) : null}
+          {isLoggedIn ? (
             <div className="topnav-admin-links">
               {mobileAdminLinks.map((link) => (
                 <button
@@ -3879,7 +3901,6 @@ export default function App() {
             </div>
           ) : null}
           <div className="topnav-public-links">
-            {isLoggedIn ? <NavLink active={route.page === "admin"} onClick={() => navigate({ page: "admin" })}>{t(language, "navDashboardLabel")}</NavLink> : null}
             <NavLink active={route.page === "home"} onClick={() => navigate({ page: "home" })}>{NAV_LABELS[language].home}</NavLink>
             <NavLink active={route.page === "tree"} onClick={() => navigate({ page: "tree" })}>{NAV_LABELS[language].tree}</NavLink>
             <NavLink active={route.page === "member" && route.memberId === myMemberId} onClick={() => { goToMyFamily(); setMobileNavOpen(false); }}>{t(language, "myFamilyNavLabel")}</NavLink>

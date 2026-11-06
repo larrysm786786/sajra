@@ -1428,50 +1428,6 @@ input[type="file"]:not([hidden]):focus-visible {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.admin-section-switcher {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 18px;
-}
-
-.admin-section-chip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 16px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface-strong);
-  color: var(--text);
-  font-size: 0.88rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.admin-section-chip:hover {
-  background: var(--accent-soft);
-}
-
-.admin-section-chip.active {
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
-  color: #ffffff;
-}
-
-.admin-section-chip svg {
-  flex: 0 0 auto;
-}
-
-@media (max-width: 860px) {
-  .admin-section-switcher {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-  }
-}
-
 .admin-sidebar {
   position: sticky;
   top: 92px;
@@ -1827,6 +1783,8 @@ input[type="file"]:not([hidden]):focus-visible {
     overflow-y: auto;
   }
 
+  .topnav-admin-dropdown { display: none; }
+
   .topnav.open {
     transform: translateX(0);
   }
@@ -1863,6 +1821,29 @@ input[type="file"]:not([hidden]):focus-visible {
 .topnav-admin-links {
   display: none;
 }
+
+.topnav-admin-dropdown { position: relative; }
+.topnav-admin-dropdown > summary { list-style: none; cursor: pointer; }
+.topnav-admin-dropdown > summary::-webkit-details-marker { display: none; }
+.topnav-admin-dropdown[open] > summary { background: var(--accent); border-color: transparent; color: var(--ink); }
+.topnav-admin-dropdown-menu {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  gap: 4px;
+  width: min(250px, calc(100vw - 32px));
+  max-height: min(72vh, 560px);
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  background: #2e5185;
+  box-shadow: var(--shadow-lg);
+}
+.topnav-admin-dropdown-menu .navlink { width: 100%; justify-content: flex-start; text-align: left; }
+.topnav-admin-dropdown-menu .navlink.active { background: var(--accent); color: var(--ink); }
 
 .topnav-public-links {
   display: contents;

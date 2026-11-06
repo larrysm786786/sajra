@@ -41,6 +41,7 @@ const STRINGS = {
     navDashboardLabel: "Dashboard",
     adminPanelTitle: "Admin panel",
     adminSidebarAria: "Admin sections",
+    adminNavMenuLabel: "Admin sections",
     adminNavOverview: "Dashboard",
     adminNavGallery: "Gallery",
     adminNavSuggestions: "Suggestions",
@@ -561,6 +562,7 @@ const STRINGS = {
 
     adminPanelTitle: "ایڈمن پینل",
     adminSidebarAria: "ایڈمن حصے",
+    adminNavMenuLabel: "Admin sections",
     adminNavOverview: "ڈیش بورڈ",
     adminNavGallery: "گیلری",
     adminNavSuggestions: "تجاویز",
