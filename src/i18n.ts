@@ -416,7 +416,6 @@ const STRINGS = {
     usernameLabel: "Username",
     roleLabel: "Role",
     editorOption: "Editor",
-    contributorOption: "Contributor (can edit)",
     adminOption: "Admin",
     editorPermissionsTitle: "Extra permissions for this editor",
     permAddToSliderLabel: "Add member photos to the homepage slider",
@@ -424,6 +423,8 @@ const STRINGS = {
     permAddLiveStreamingLabel: "Add live streaming",
     permAddGalleryLabel: "Add gallery photos",
     permAddMemberLabel: "Add new members",
+    permEditMemberLabel: "Edit existing member profiles",
+    permReviewProfileUpdatesLabel: "Review profile update requests",
     saveUserButton: "Save user",
 
     editGalleryModalTitle: "Edit gallery photo",
@@ -936,7 +937,6 @@ const STRINGS = {
     usernameLabel: "یوزر نیم",
     roleLabel: "کردار",
     editorOption: "ایڈیٹر",
-    contributorOption: "کنٹری بیوٹر (ترمیم کر سکتا ہے)",
     adminOption: "ایڈمن",
     editorPermissionsTitle: "اس ایڈیٹر کے لیے اضافی اجازتیں",
     permAddToSliderLabel: "ہوم پیج سلائیڈر میں رکن کی تصاویر شامل کریں",
@@ -944,6 +944,8 @@ const STRINGS = {
     permAddLiveStreamingLabel: "لائیو اسٹریمنگ شامل کریں",
     permAddGalleryLabel: "گیلری تصاویر شامل کریں",
     permAddMemberLabel: "نئے ارکان شامل کریں",
+    permEditMemberLabel: "موجودہ اراکین کے پروفائل میں ترمیم کریں",
+    permReviewProfileUpdatesLabel: "پروفائل اپ ڈیٹ درخواستوں کا جائزہ لیں",
     saveUserButton: "صارف محفوظ کریں",
 
     editGalleryModalTitle: "گیلری تصویر میں ترمیم کریں",

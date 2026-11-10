@@ -27,7 +27,7 @@
   --surface: color-mix(in oklab, #000000 82%, #2e5185 18%);
   --surface-strong: color-mix(in oklab, #000000 78%, #2e5185 22%);
   --text: #ffffff;
-  --muted: color-mix(in oklab, #ffffff 55%, #000000 45%);
+  --muted: #ffffff;
   --border: color-mix(in oklab, #71d0f6 22%, transparent);
   --accent: #71d0f6;
   --accent-light: color-mix(in oklab, #71d0f6 70%, #ffffff 30%);
@@ -147,7 +147,7 @@ button {
   font-size: 1.4rem;
   line-height: 1.1;
   letter-spacing: 0.01em;
-  color: var(--bg-soft);
+  color: #ffffff;
   white-space: nowrap;
 }
 
@@ -237,7 +237,7 @@ button {
 .chip:hover,
 .toggle:hover,
 .icon-btn:hover {
-  color: var(--bg-soft);
+  color: #ffffff;
   border-color: color-mix(in oklab, var(--accent-light) 45%, transparent);
   background: rgba(255, 255, 255, 0.1);
 }
@@ -1484,6 +1484,11 @@ input[type="file"]:not([hidden]):focus-visible {
   color: var(--bg-soft);
 }
 
+[data-theme="dark"] .admin-nav-item.active,
+[data-theme="dark"] .view-toggle-btn.active {
+  color: #16233b;
+}
+
 .admin-nav-item.danger {
   color: var(--danger);
 }
@@ -2165,6 +2170,8 @@ input[type="file"]:not([hidden]):focus-visible {
 .node circle.highlighted { fill: var(--accent-light); stroke: var(--accent-strong); stroke-width: 3.5px; }
 .node:hover circle { r: 8; }
 .node text { font-size: 12.5px; font-family: inherit; fill: var(--text); }
+[data-theme="dark"] .node text:not(.org-card-name):not(.org-card-detail) { fill: #ffffff; font-weight: 600; }
+[data-theme="dark"] .node text.tree-label-outline { stroke: #000000; stroke-width: 3px; }
 .link { fill: none; stroke: var(--border); stroke-width: 1.5px; }
 .link.highlighted-link { stroke: var(--accent); stroke-width: 2.5px; }
 

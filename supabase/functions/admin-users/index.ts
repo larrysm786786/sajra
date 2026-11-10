@@ -8,9 +8,8 @@
 // name it "admin-users", paste this file, keep "Verify JWT" ON, then Deploy.
 // SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided automatically.
 //
-// Roles are stored in each account's app_metadata.role ("admin" | "editor" | "contributor").
+// Roles are stored in each account's app_metadata.role ("admin" | "editor").
 // Accounts with no role (e.g. created by hand in the dashboard) count as admins.
-// "contributor" is like "editor" but may also edit members that were already added, not just new ones.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -23,7 +22,7 @@ const corsHeaders = {
 const MIN_PASSWORD_LENGTH = 6;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-type Role = "admin" | "editor" | "contributor";
+type Role = "admin" | "editor";
 
 interface RequestBody {
   action?: "create" | "update" | "delete";
@@ -75,7 +74,7 @@ Deno.serve(async (req) => {
   const email = (body.email ?? "").trim().toLowerCase();
   if (!EMAIL_PATTERN.test(email)) return fail("Enter a valid email address.");
 
-  const role: Role = body.role === "admin" ? "admin" : body.role === "contributor" ? "contributor" : "editor";
+  const role: Role = body.role === "admin" ? "admin" : "editor";
   const password = body.password ?? "";
   const name = (body.name ?? "").trim();
 

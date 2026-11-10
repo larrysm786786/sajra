@@ -15,6 +15,16 @@ function fullLabel(member: Member, language: Language): string {
   return profession ? `${professionShortLabel(language, profession)} ${name}` : name;
 }
 
+function cardTextColor(background: string): string {
+  const hex = background.replace("#", "");
+  if (hex.length !== 6) return "#ffffff";
+  const channels = [0, 2, 4].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255);
+  const luminance = channels
+    .map((channel) => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4)
+    .reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
+  return luminance > 0.18 ? "#16233b" : "#ffffff";
+}
+
 interface NodeDatum {
   member: Member | null;
   children?: NodeDatum[];
@@ -43,9 +53,11 @@ const BRANCH_COLORS = [
 ];
 
 const LAYOUTS: Record<ViewMode, { dx: number; dy: number }> = {
-  horizontal: { dx: 70, dy: 240 },
-  vertical: { dx: 160, dy: 140 },
-  boxes: { dx: 270, dy: 240 }
+  // In left-to-right and box modes, dx controls vertical sibling spread and dy controls
+  // horizontal generation spacing. Favor a wider, shorter graph as the family grows.
+  horizontal: { dx: 50, dy: 300 },
+  vertical: { dx: 220, dy: 110 },
+  boxes: { dx: 175, dy: 300 }
 };
 
 interface Props {
@@ -275,6 +287,7 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
         nodeEnter
           .append("text")
           .attr("class", "org-card-name")
+          .style("fill", (d) => cardTextColor(d.data._branchColor || ROOT_COLOR))
           .attr("text-anchor", "middle")
           .attr("y", NAME_Y)
           .attr("dy", "0.32em")
@@ -283,6 +296,7 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
         nodeEnter
           .append("text")
           .attr("class", "org-card-detail")
+          .style("fill", (d) => cardTextColor(d.data._branchColor || ROOT_COLOR))
           .attr("text-anchor", "middle")
           .attr("y", DOB_Y)
           .attr("dy", "0.32em")
@@ -312,6 +326,7 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
           .text((d) => nodeName(d))
           .clone(true)
           .lower()
+          .attr("class", "tree-label-outline")
           .attr("stroke", "white")
           .attr("stroke-width", 3);
 

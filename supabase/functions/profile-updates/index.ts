@@ -43,7 +43,15 @@ Deno.serve(async (req) => {
     const { data: { user }, error } = await caller.auth.getUser();
     if (error || !user) return fail("Sign in with an account allowed to edit member profiles.", 401);
     const role = user.app_metadata?.role;
-    if (role === "editor") return fail("This account cannot edit existing member profiles.", 403);
+    if (role === "editor" || role === "contributor") {
+      const directory = createClient(url, anonKey, { global: { headers: { Authorization: authorization } } });
+      const { data: archive, error: archiveError } = await directory.from("sajra_state").select("state").eq("id", "main").maybeSingle();
+      const granted = !archiveError && archive?.state?.users?.some((entry: { email?: string; permissions?: { editMember?: boolean } }) =>
+        entry.email?.trim().toLowerCase() === user.email?.trim().toLowerCase() &&
+        (entry.permissions?.editMember === true || (role === "contributor" && entry.permissions?.editMember === undefined))
+      );
+      if (!granted) return fail("This account is not allowed to edit existing member profiles.", 403);
+    }
     const memberId = Number(body.memberId);
     if (!Number.isSafeInteger(memberId) || memberId <= 0) return fail("Invalid member.");
 

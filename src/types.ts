@@ -56,9 +56,7 @@ export interface BookPublication {
 }
 
 /**
- * Extra abilities an admin can grant to a specific "editor" account, on top of what the editor
- * role gets by default. Admins and contributors are never affected by these - only checked when
- * the signed-in account's own directory entry (matched by email) has role "editor".
+ * Abilities an admin can grant to a specific editor account, checked against its directory entry.
  */
 export interface UserPermissions {
   addToSlider?: boolean;
@@ -66,6 +64,8 @@ export interface UserPermissions {
   addLiveStreaming?: boolean;
   addGallery?: boolean;
   addMember?: boolean;
+  editMember?: boolean;
+  reviewProfileUpdates?: boolean;
 }
 
 /**

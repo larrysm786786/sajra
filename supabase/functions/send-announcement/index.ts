@@ -118,9 +118,16 @@ Deno.serve(async (req) => {
   const { data: callerData, error: callerError } = await caller.auth.getUser();
   const me = callerData?.user;
   if (callerError || !me) return fail("You must be signed in.", 401);
-  // Legacy accounts without a role count as admins; editors and contributors cannot broadcast.
+  // Editors need the matching per-user grant in the archive directory.
   if (me.app_metadata?.role === "editor" || me.app_metadata?.role === "contributor") {
-    return fail("Only admins can send announcement notifications.", 403);
+    const directory = createClient(url, anonKey, { global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } } });
+    const { data: archive, error } = await directory.from("sajra_state").select("state").eq("id", "main").maybeSingle();
+    const role = me.app_metadata?.role;
+    const granted = !error && archive?.state?.users?.some((entry: { email?: string; permissions?: { addAnnouncement?: boolean } }) =>
+      entry.email?.trim().toLowerCase() === me.email?.trim().toLowerCase() &&
+      (entry.permissions?.addAnnouncement === true || (role === "contributor" && entry.permissions?.addAnnouncement === undefined))
+    );
+    if (!granted) return fail("This account is not allowed to send announcement notifications.", 403);
   }
 
   let body: RequestBody;

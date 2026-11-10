@@ -109,6 +109,8 @@ type AdminSection = "overview" | "members" | "users" | "gallery" | "suggestions"
 
 const EDITOR_PERMISSION_OPTIONS: { key: keyof NonNullable<User["permissions"]>; labelKey: StringKey }[] = [
   { key: "addMember", labelKey: "permAddMemberLabel" },
+  { key: "editMember", labelKey: "permEditMemberLabel" },
+  { key: "reviewProfileUpdates", labelKey: "permReviewProfileUpdatesLabel" },
   { key: "addGallery", labelKey: "permAddGalleryLabel" },
   { key: "addToSlider", labelKey: "permAddToSliderLabel" },
   { key: "addAnnouncement", labelKey: "permAddAnnouncementLabel" },
@@ -292,7 +294,7 @@ function emptyUserDraft(user?: User): UserDraft {
         name: user.name ?? "",
         email: user.email ?? "",
         password: "",
-        role: user.role
+        role: user.role === "contributor" ? "editor" : user.role
       }
     : {
         username: "",
@@ -781,24 +783,24 @@ export default function App() {
   // even though signInWithPassword already issued a session (just one not yet at aal2).
   const isLoggedIn = Boolean(supabaseSession) && !mfaPending;
   const userRole = supabaseSession?.user.app_metadata?.role as Role | undefined;
-  // Accounts made with the "editor" or "contributor" role can manage members and the gallery but not
-  // users or backups. Accounts without a role (e.g. created by hand in the Supabase dashboard) count as admins.
+  // Accounts without a role (e.g. created by hand in the Supabase dashboard) count as admins.
   const isAdmin = isLoggedIn && userRole !== "editor" && userRole !== "contributor";
   const canUseBiometric = isLoggedIn && (isAdmin || userRole === "editor");
-  // Contributors (and admins) may edit members that were already added; plain editors may only add new ones.
-  const canEditMembers = isAdmin || userRole === "contributor";
-  // Per-account extra permissions an admin can grant a specific editor (see the Users admin
-  // section) - looked up by email against the directory, since that's the only link between a
-  // signed-in Supabase Auth session and a state.users entry. Admins and contributors are never
-  // gated by these; only accounts whose own role is "editor" are.
-  const myPermissions = userRole === "editor"
-    ? state.users.find((user) => user.email?.trim().toLowerCase() === supabaseSession?.user.email?.trim().toLowerCase())?.permissions
+  // Legacy contributor accounts are treated as editors. Their old fixed access remains enabled
+  // until an admin changes the corresponding toggles in the Users list.
+  const myUser = state.users.find((user) => user.email?.trim().toLowerCase() === supabaseSession?.user.email?.trim().toLowerCase());
+  const myPermissions = userRole === "editor" || userRole === "contributor"
+    ? userRole === "contributor"
+      ? { addMember: true, editMember: true, reviewProfileUpdates: true, addGallery: true, addAnnouncement: true, ...myUser?.permissions }
+      : myUser?.permissions
     : undefined;
   function editorPermission(key: keyof NonNullable<User["permissions"]>, allowedForNonEditor: boolean): boolean {
     if (!isLoggedIn) return false;
-    if (userRole !== "editor") return allowedForNonEditor;
+    if (isAdmin) return allowedForNonEditor;
     return myPermissions?.[key] === true;
   }
+  const canEditMembers = editorPermission("editMember", isAdmin);
+  const canReviewProfileUpdates = editorPermission("reviewProfileUpdates", isAdmin);
   const canAddToSlider = editorPermission("addToSlider", isAdmin);
   const canAddAnnouncement = editorPermission("addAnnouncement", true);
   const canAddLiveStreaming = editorPermission("addLiveStreaming", isAdmin);
@@ -1166,10 +1168,12 @@ export default function App() {
   }, [state, supabaseConfigured, isLoggedIn]);
 
   useEffect(() => {
-    if ((route.page === "member" || route.page === "branch") && route.memberId && !memberMap.has(route.memberId)) {
+    // Wait until cloud hydration finishes before treating a missing local member as invalid.
+    // Otherwise a refresh on a deep link briefly sees the empty initial cache and redirects home.
+    if (syncStatus === "ready" && (route.page === "member" || route.page === "branch") && route.memberId && !memberMap.has(route.memberId)) {
       window.location.hash = "#/home";
     }
-  }, [memberMap, route]);
+  }, [memberMap, route, syncStatus]);
 
   // Android's hardware/gesture back button otherwise just exits the app from any page. This
   // steps back through the app's own hash history instead, only exiting once there's nowhere
@@ -1509,7 +1513,7 @@ export default function App() {
     );
   }
 
-  // Editors may only add new members; contributors and admins may also edit existing ones.
+  // Existing profiles are editable only when an admin grants the permission.
   function openMemberEditor(member?: Member) {
     if (member ? !canEditMembers : !canAddMember) return;
     setMemberDraft(emptyMemberDraft(member));
@@ -1689,7 +1693,7 @@ export default function App() {
   }
 
   function approveMemberUpdateRequest(id: number) {
-    if (!canEditMembers) return;
+    if (!canReviewProfileUpdates) return;
     const actorEmail = supabaseSession?.user.email ?? null;
     updateState((current) => {
       const request = current.memberUpdateRequests.find((item) => item.id === id);
@@ -1716,7 +1720,7 @@ export default function App() {
   }
 
   function rejectMemberUpdateRequest(id: number) {
-    if (!canEditMembers) return;
+    if (!canReviewProfileUpdates) return;
     updateState((current) => ({
       ...current,
       memberUpdateRequests: current.memberUpdateRequests.map((item) => (item.id === id ? { ...item, status: "rejected" } : item))
@@ -1724,12 +1728,11 @@ export default function App() {
   }
 
   function deleteMemberUpdateRequest(id: number) {
-    if (!canEditMembers) return;
+    if (!canReviewProfileUpdates) return;
     updateState((current) => ({ ...current, memberUpdateRequests: current.memberUpdateRequests.filter((item) => item.id !== id) }));
   }
 
-  // Everyone can read announcements; admins and contributors can always post one, editors need
-  // the "Post an announcement" permission granted (see the Users admin section).
+  // Editors need the "Post an announcement" permission granted in the Users admin section.
   function openAnnouncementEditor() {
     if (!canAddAnnouncement) return;
     setAnnouncementNotice("");
@@ -1784,7 +1787,7 @@ export default function App() {
     updateState((current) => ({ ...current, announcements: current.announcements.filter((announcement) => announcement.id !== id) }));
   }
 
-  // Only admins may set the live link - any signed-in editor/contributor can post an
+  // Only admins may set the live link - an editor needs the granted live-stream permission.
   // announcement, but a live family event notification going to literally every install
   // (see the sajra_live auto-subscribe effect below) needs tighter control than that.
   async function publishLive(url: string, kind: "youtube" | "upload", title: string) {
@@ -2211,9 +2214,11 @@ export default function App() {
       email: email || null,
       role: userDraft.role,
       permissions: userDraft.role === "editor"
-        ? existing?.role === "editor"
-          ? existing.permissions
-          : { addToSlider: false, addAnnouncement: false, addLiveStreaming: false, addGallery: false, addMember: false }
+        ? existing?.role === "editor" || existing?.role === "contributor"
+          ? existing.role === "contributor"
+            ? { addMember: true, editMember: true, reviewProfileUpdates: true, addGallery: true, addAnnouncement: true, ...existing.permissions }
+            : existing.permissions
+          : { addToSlider: false, addAnnouncement: false, addLiveStreaming: false, addGallery: false, addMember: false, editMember: false, reviewProfileUpdates: false }
         : undefined,
       createdAt: existing?.createdAt || new Date().toISOString()
     };
@@ -2236,7 +2241,7 @@ export default function App() {
     if (!isAdmin) return;
     const actorEmail = supabaseSession?.user.email ?? null;
     updateState((current) => {
-      const target = current.users.find((user) => user.id === userId && user.role === "editor");
+      const target = current.users.find((user) => user.id === userId && (user.role === "editor" || user.role === "contributor"));
       if (!target) return current;
       const permissions = { ...target.permissions, [permission]: enabled };
       const next = {
@@ -2468,7 +2473,7 @@ export default function App() {
     const today = new Date().toISOString().slice(0, 10);
     return state.announcements.filter((announcement) => !announcement.expiresAt || announcement.expiresAt >= today);
   }, [state.announcements]);
-  const pendingProfileUpdateCount = isAdmin ? state.memberUpdateRequests.filter((request) => request.status === "pending").length : 0;
+  const pendingProfileUpdateCount = canReviewProfileUpdates ? state.memberUpdateRequests.filter((request) => request.status === "pending").length : 0;
   const unseenAnnouncementCount = activeAnnouncements.filter((announcement) => !seenAnnouncementIds.includes(announcement.id)).length;
   const notificationBadgeCount = unseenAnnouncementCount + pendingProfileUpdateCount;
   const adminNavMenuItems: { key: AdminSection; label: string; badge?: number }[] = isLoggedIn ? [
@@ -2477,7 +2482,7 @@ export default function App() {
     ...(isAdmin ? [{ key: "users" as const, label: t(language, "usersLabel") }] : []),
     { key: "gallery", label: t(language, "adminNavGallery") },
     { key: "suggestions", label: t(language, "adminNavSuggestions") },
-    ...(canEditMembers ? [{ key: "profileUpdates" as const, label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount }] : []),
+    ...(canReviewProfileUpdates ? [{ key: "profileUpdates" as const, label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount }] : []),
     ...(isAdmin ? [{ key: "logs" as const, label: t(language, "adminNavLogs") }] : []),
     { key: "quality", label: t(language, "adminNavQuality") },
     ...(isAdmin ? [{ key: "backup" as const, label: t(language, "backupCardTitle") }] : []),
@@ -3050,7 +3055,7 @@ export default function App() {
                       {user.username}
                     </button>
                     <div className="tree-sub">
-                      {t(language, "userIdPrefix")}: {user.id} | {user.name || t(language, "noName")} | {t(language, user.role === "admin" ? "adminOption" : user.role === "contributor" ? "contributorOption" : "editorOption")}
+                      {t(language, "userIdPrefix")}: {user.id} | {user.name || t(language, "noName")} | {t(language, user.role === "admin" ? "adminOption" : "editorOption")}
                     </div>
                   </div>
                   <div className="actions-row">
@@ -3058,13 +3063,13 @@ export default function App() {
                     <button className="btn-ghost danger" type="button" onClick={() => deleteUser(user.id)}>{t(language, "deleteButton")}</button>
                   </div>
                 </div>
-                {isAdmin && user.role === "editor" ? (
+                {isAdmin && (user.role === "editor" || user.role === "contributor") ? (
                   <div className="editor-permissions-grid admin-user-permissions">
                     <strong>{t(language, "editorPermissionsTitle")}</strong>
                     <div className="admin-user-permissions-options">
                       {EDITOR_PERMISSION_OPTIONS.map(({ key, labelKey }) => (
                         <label key={key} className="editor-permission-row">
-                          <input type="checkbox" checked={user.permissions?.[key] === true} onChange={(event) => setEditorPermission(user.id, key, event.target.checked)} />
+                          <input type="checkbox" checked={user.permissions?.[key] === true || (user.role === "contributor" && user.permissions?.[key] === undefined && ["addMember", "editMember", "reviewProfileUpdates", "addGallery", "addAnnouncement"].includes(key))} onChange={(event) => setEditorPermission(user.id, key, event.target.checked)} />
                           <span>{t(language, labelKey)}</span>
                         </label>
                       ))}
@@ -4343,7 +4348,6 @@ export default function App() {
               {t(language, "roleLabel")}
               <select className="select" value={userDraft.role} onChange={(e) => setUserDraft((current) => current ? { ...current, role: e.target.value as Role } : current)}>
                 <option value="editor">{t(language, "editorOption")}</option>
-                <option value="contributor">{t(language, "contributorOption")}</option>
                 <option value="admin">{t(language, "adminOption")}</option>
               </select>
             </label>
