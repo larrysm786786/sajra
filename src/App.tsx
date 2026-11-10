@@ -107,6 +107,14 @@ type RouteState = { page: ViewKey; memberId?: number; updateToken?: string };
 
 type AdminSection = "overview" | "members" | "users" | "gallery" | "suggestions" | "profileUpdates" | "logs" | "backup" | "quality" | "analytics";
 
+const EDITOR_PERMISSION_OPTIONS: { key: keyof NonNullable<User["permissions"]>; labelKey: StringKey }[] = [
+  { key: "addMember", labelKey: "permAddMemberLabel" },
+  { key: "addGallery", labelKey: "permAddGalleryLabel" },
+  { key: "addToSlider", labelKey: "permAddToSliderLabel" },
+  { key: "addAnnouncement", labelKey: "permAddAnnouncementLabel" },
+  { key: "addLiveStreaming", labelKey: "permAddLiveStreamingLabel" }
+];
+
 // Supabase reports an expired / already-used reset link through the URL hash.
 const STARTED_WITH_EXPIRED_LINK = typeof window !== "undefined" && window.location.hash.includes("error_code=otp_expired");
 
@@ -146,11 +154,6 @@ type UserDraft = {
   email: string;
   password: string;
   role: Role;
-  permAddToSlider: boolean;
-  permAddAnnouncement: boolean;
-  permAddLiveStreaming: boolean;
-  permAddGallery: boolean;
-  permAddMember: boolean;
 };
 
 type GalleryDraft = {
@@ -289,24 +292,14 @@ function emptyUserDraft(user?: User): UserDraft {
         name: user.name ?? "",
         email: user.email ?? "",
         password: "",
-        role: user.role,
-        permAddToSlider: user.permissions?.addToSlider === true,
-        permAddAnnouncement: user.permissions?.addAnnouncement === true,
-        permAddLiveStreaming: user.permissions?.addLiveStreaming === true,
-        permAddGallery: user.permissions?.addGallery === true,
-        permAddMember: user.permissions?.addMember === true
+        role: user.role
       }
     : {
         username: "",
         name: "",
         email: "",
         password: "",
-        role: "editor",
-        permAddToSlider: false,
-        permAddAnnouncement: false,
-        permAddLiveStreaming: false,
-        permAddGallery: false,
-        permAddMember: false
+        role: "editor"
       };
 }
 
@@ -844,6 +837,7 @@ export default function App() {
       smoothWheel: true,
       syncTouch: true,
       touchInertiaExponent: 1.2,
+      touchMultiplier: 1.25,
       stopInertiaOnNavigate: true
     });
     lenisRef.current = lenis;
@@ -1139,15 +1133,16 @@ export default function App() {
   }
 
   function handlePullTouchStart(e: ReactTouchEvent) {
-    pullStartYRef.current = window.scrollY <= 0 && e.touches.length === 1 && pullStatus === "idle" ? e.touches[0].clientY : null;
+    const scrollTop = lenisRef.current?.actualScroll ?? window.scrollY;
+    pullStartYRef.current = scrollTop <= 1 && e.touches.length === 1 && pullStatus === "idle" ? e.touches[0].clientY : null;
   }
 
   function handlePullTouchMove(e: ReactTouchEvent) {
     if (pullStartYRef.current === null) return;
     const dy = e.touches[0].clientY - pullStartYRef.current;
     if (dy <= 0) { setPullDistance(0); pullReadyRef.current = false; return; }
-    setPullDistance(Math.min(70, dy));
-    pullReadyRef.current = dy > 70;
+    setPullDistance(Math.min(70, dy * 0.54));
+    pullReadyRef.current = dy >= 130;
   }
 
   function handlePullTouchEnd() {
@@ -2215,13 +2210,11 @@ export default function App() {
       name: userDraft.name.trim() || null,
       email: email || null,
       role: userDraft.role,
-      permissions: userDraft.role === "editor" ? {
-        addToSlider: userDraft.permAddToSlider,
-        addAnnouncement: userDraft.permAddAnnouncement,
-        addLiveStreaming: userDraft.permAddLiveStreaming,
-        addGallery: userDraft.permAddGallery,
-        addMember: userDraft.permAddMember
-      } : undefined,
+      permissions: userDraft.role === "editor"
+        ? existing?.role === "editor"
+          ? existing.permissions
+          : { addToSlider: false, addAnnouncement: false, addLiveStreaming: false, addGallery: false, addMember: false }
+        : undefined,
       createdAt: existing?.createdAt || new Date().toISOString()
     };
     const actorEmail = supabaseSession?.user.email ?? null;
@@ -2237,6 +2230,21 @@ export default function App() {
       return pushActivityLog(next, { type: "user", action: exists ? "updated" : "added", label: updated.username, actorEmail });
     });
     closeEditors();
+  }
+
+  function setEditorPermission(userId: number, permission: keyof NonNullable<User["permissions"]>, enabled: boolean) {
+    if (!isAdmin) return;
+    const actorEmail = supabaseSession?.user.email ?? null;
+    updateState((current) => {
+      const target = current.users.find((user) => user.id === userId && user.role === "editor");
+      if (!target) return current;
+      const permissions = { ...target.permissions, [permission]: enabled };
+      const next = {
+        ...current,
+        users: current.users.map((user) => user.id === userId ? { ...user, permissions } : user)
+      };
+      return pushActivityLog(next, { type: "user", action: "updated", label: `${target.username} permissions`, actorEmail });
+    });
   }
 
   async function deleteUser(id: number) {
@@ -3050,6 +3058,19 @@ export default function App() {
                     <button className="btn-ghost danger" type="button" onClick={() => deleteUser(user.id)}>{t(language, "deleteButton")}</button>
                   </div>
                 </div>
+                {isAdmin && user.role === "editor" ? (
+                  <div className="editor-permissions-grid admin-user-permissions">
+                    <strong>{t(language, "editorPermissionsTitle")}</strong>
+                    <div className="admin-user-permissions-options">
+                      {EDITOR_PERMISSION_OPTIONS.map(({ key, labelKey }) => (
+                        <label key={key} className="editor-permission-row">
+                          <input type="checkbox" checked={user.permissions?.[key] === true} onChange={(event) => setEditorPermission(user.id, key, event.target.checked)} />
+                          <span>{t(language, labelKey)}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>
@@ -4326,27 +4347,6 @@ export default function App() {
                 <option value="admin">{t(language, "adminOption")}</option>
               </select>
             </label>
-            {userDraft.role === "editor" ? (
-              <div className="span-12 editor-permissions-grid">
-                <strong style={{ display: "block", marginBottom: 8 }}>{t(language, "editorPermissionsTitle")}</strong>
-                {([
-                  ["permAddToSlider", "permAddToSliderLabel"],
-                  ["permAddAnnouncement", "permAddAnnouncementLabel"],
-                  ["permAddLiveStreaming", "permAddLiveStreamingLabel"],
-                  ["permAddGallery", "permAddGalleryLabel"],
-                  ["permAddMember", "permAddMemberLabel"]
-                ] as const).map(([field, labelKey]) => (
-                  <label key={field} className="editor-permission-row">
-                    <input
-                      type="checkbox"
-                      checked={userDraft[field]}
-                      onChange={(e) => setUserDraft((current) => current ? { ...current, [field]: e.target.checked } : current)}
-                    />
-                    <span>{t(language, labelKey)}</span>
-                  </label>
-                ))}
-              </div>
-            ) : null}
             <label className="span-12">
               {t(language, userDraft.id ? "userPasswordEditLabel" : "userPasswordLabel")}
               <PasswordField
