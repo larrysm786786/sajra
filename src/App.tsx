@@ -1270,9 +1270,9 @@ export default function App() {
 
   // Load account security settings when an authenticated user opens Settings.
   useEffect(() => {
-    if (!isLoggedIn || route.page !== "settings") return;
+    if (!isAdmin || route.page !== "settings") return;
     void listMfaFactors().then(setMfaFactors).catch(() => {});
-  }, [isLoggedIn, route.page]);
+  }, [isAdmin, route.page]);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform() || route.page !== "calendar") return;
@@ -1456,7 +1456,7 @@ export default function App() {
             <button className="btn" type="submit" disabled={passwordChangeBusy}>{passwordChangeBusy ? t(language, "savingPassword") : t(language, "savePasswordButton")}</button>
           </form>
 
-          <div style={{ marginTop: 28, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
+          {isAdmin ? <div style={{ marginTop: 28, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
             <strong>{t(language, "mfaSectionTitle")}</strong>
             <p className="hint" style={{ marginTop: 6 }}>
               {mfaFactors.some((factor) => factor.status === "verified") ? t(language, "mfaSectionSubtitleOn") : t(language, "mfaSectionSubtitleOff")}
@@ -1507,7 +1507,7 @@ export default function App() {
                 <button className="btn-ghost" type="button" onClick={() => void startMfaEnrollment()}>{t(language, "mfaEnableButton")}</button>
               </div>
             )}
-          </div>
+          </div> : null}
         </div>
       </div>
     );
