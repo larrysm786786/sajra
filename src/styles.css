@@ -1832,7 +1832,7 @@ input[type="file"]:not([hidden]):focus-visible {
   display: none;
 }
 
-.topnav-editor-desktop-links {
+.topnav-staff-desktop-links {
   display: none;
 }
 
@@ -1868,11 +1868,11 @@ input[type="file"]:not([hidden]):focus-visible {
     display: none;
   }
 
-  .topnav-editor-desktop-links {
+  .topnav-staff-desktop-links {
     display: contents;
   }
 
-  .topnav-editor-public-links {
+  .topnav-staff-public-links {
     display: none;
   }
 }

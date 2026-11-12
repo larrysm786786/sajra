@@ -3888,6 +3888,8 @@ export default function App() {
   const isNativeApp = Capacitor.isNativePlatform();
   const isEditorUser = isLoggedIn && (userRole === "editor" || userRole === "contributor");
   const isDesktopEditorUser = isEditorUser && !isNativeApp;
+  const isDesktopAdminUser = isAdmin && !isNativeApp;
+  const isDesktopStaffUser = isDesktopEditorUser || isDesktopAdminUser;
   const nativeAdminLabels: Partial<Record<AdminSection, string>> = {
     members: "Add Members",
     users: "Add Users",
@@ -3903,6 +3905,21 @@ export default function App() {
     { key: "analytics", label: t(language, "adminNavAnalytics"), onClick: () => { navigate({ page: "admin" }); setAdminSection("analytics"); } },
     ...(canAddAnnouncement ? [{ key: "announcement", label: "Post Announcement", badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) }] : []),
     { key: "live", label: "Live", onClick: () => navigate({ page: "live" }) },
+    { key: "settings", label: t(language, "navSettingsLabel"), badge: isNativeApp && appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }
+  ] : [];
+  const desktopAdminMenuLinks: { key: string; label: string; badge?: number; onClick: () => void }[] = isDesktopAdminUser ? [
+    { key: "overview", label: "Dashboard", onClick: () => { navigate({ page: "admin" }); setAdminSection("overview"); } },
+    { key: "members", label: "Add Members", onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); } },
+    { key: "users", label: "Add Users", onClick: () => { navigate({ page: "admin" }); setAdminSection("users"); } },
+    { key: "gallery", label: "Add Photos", onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } },
+    { key: "suggestions", label: t(language, "adminNavSuggestions"), onClick: () => { navigate({ page: "admin" }); setAdminSection("suggestions"); } },
+    { key: "profileUpdates", label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("profileUpdates"); } },
+    { key: "logs", label: "Log History", onClick: () => { navigate({ page: "admin" }); setAdminSection("logs"); } },
+    { key: "quality", label: t(language, "adminNavQuality"), onClick: () => { navigate({ page: "admin" }); setAdminSection("quality"); } },
+    { key: "backup", label: t(language, "backupCardTitle"), onClick: () => { navigate({ page: "admin" }); setAdminSection("backup"); } },
+    { key: "analytics", label: t(language, "adminNavAnalytics"), onClick: () => { navigate({ page: "admin" }); setAdminSection("analytics"); } },
+    { key: "announcement", label: "Post Announcement", badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) },
+    { key: "live", label: "Add Live Streaming", onClick: () => navigate({ page: "live" }) },
     { key: "settings", label: t(language, "navSettingsLabel"), badge: isNativeApp && appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }
   ] : [];
   const mobileAdminLinks: { key: string; label: string; onClick: () => void; badge?: number }[] = isLoggedIn
@@ -3956,7 +3973,7 @@ export default function App() {
           <span />
         </button>
         <nav className={`topnav${mobileNavOpen ? " open" : ""}${isLoggedIn ? " topnav-authed" : ""}`}>
-          {isLoggedIn && !isDesktopEditorUser ? (
+          {isLoggedIn && !isDesktopStaffUser ? (
             <details className="topnav-admin-dropdown">
               <summary className="navlink">{t(language, "adminNavMenuLabel")} <span aria-hidden="true">⌄</span></summary>
               <div className="topnav-admin-dropdown-menu" role="menu" aria-label={t(language, "adminSidebarAria")}>
@@ -3983,8 +4000,18 @@ export default function App() {
             </details>
           ) : null}
           {isDesktopEditorUser ? (
-            <div className="topnav-editor-desktop-links">
+            <div className="topnav-staff-desktop-links">
               {editorMenuLinks.map((item) => (
+                <button key={item.key} type="button" className="navlink" onClick={item.onClick}>
+                  <span>{item.label}</span>
+                  {item.badge ? <span className="nav-badge">{item.badge > 99 ? "99+" : item.badge}</span> : null}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {isDesktopAdminUser ? (
+            <div className="topnav-staff-desktop-links">
+              {desktopAdminMenuLinks.map((item) => (
                 <button key={item.key} type="button" className="navlink" onClick={item.onClick}>
                   <span>{item.label}</span>
                   {item.badge ? <span className="nav-badge">{item.badge > 99 ? "99+" : item.badge}</span> : null}
@@ -4006,7 +4033,7 @@ export default function App() {
               ))}
             </div>
           ) : null}
-          <div className={`topnav-public-links${isDesktopEditorUser ? " topnav-editor-public-links" : ""}`}>
+          <div className={`topnav-public-links${isDesktopStaffUser ? " topnav-staff-public-links" : ""}`}>
             <NavLink active={route.page === "home"} onClick={() => navigate({ page: "home" })}>{NAV_LABELS[language].home}</NavLink>
             <NavLink active={route.page === "tree"} onClick={() => navigate({ page: "tree" })}>{NAV_LABELS[language].tree}</NavLink>
             <NavLink active={route.page === "member" && route.memberId === myMemberId} onClick={() => { goToMyFamily(); setMobileNavOpen(false); }}>{t(language, "myFamilyNavLabel")}</NavLink>
