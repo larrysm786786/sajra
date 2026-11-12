@@ -1863,6 +1863,10 @@ input[type="file"]:not([hidden]):focus-visible {
   .nav-backdrop {
     display: none;
   }
+
+  .topnav-editor-public-links {
+    display: none;
+  }
 }
 
 @media (max-width: 720px) {

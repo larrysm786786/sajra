@@ -3887,6 +3887,7 @@ export default function App() {
   // permitted quick actions. The same section links live in the desktop navbar dropdown.
   const isNativeApp = Capacitor.isNativePlatform();
   const isEditorUser = isLoggedIn && (userRole === "editor" || userRole === "contributor");
+  const isDesktopEditorUser = isEditorUser && !isNativeApp;
   const nativeAdminLabels: Partial<Record<AdminSection, string>> = {
     members: "Add Members",
     users: "Add Users",
@@ -3904,9 +3905,7 @@ export default function App() {
     { key: "live", label: "Live", onClick: () => navigate({ page: "live" }) },
     { key: "settings", label: t(language, "navSettingsLabel"), badge: isNativeApp && appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }
   ] : [];
-  const mobileAdminLinks: { key: string; label: string; onClick: () => void; badge?: number }[] = isEditorUser
-    ? editorMenuLinks
-    : isLoggedIn
+  const mobileAdminLinks: { key: string; label: string; onClick: () => void; badge?: number }[] = isLoggedIn
     ? [
         ...adminNavMenuItems.map((item) => ({
           key: `admin-${item.key}`,
@@ -3959,9 +3958,9 @@ export default function App() {
         <nav className={`topnav${mobileNavOpen ? " open" : ""}${isLoggedIn ? " topnav-authed" : ""}`}>
           {isLoggedIn ? (
             <details className="topnav-admin-dropdown">
-              <summary className="navlink">{isEditorUser ? "Editor menu" : t(language, "adminNavMenuLabel")} <span aria-hidden="true">⌄</span></summary>
+              <summary className="navlink">{isDesktopEditorUser ? "Editor menu" : t(language, "adminNavMenuLabel")} <span aria-hidden="true">⌄</span></summary>
               <div className="topnav-admin-dropdown-menu" role="menu" aria-label={t(language, "adminSidebarAria")}>
-                {isEditorUser ? editorMenuLinks.map((item) => (
+                {isDesktopEditorUser ? editorMenuLinks.map((item) => (
                   <button
                     key={item.key}
                     type="button"
@@ -4012,18 +4011,18 @@ export default function App() {
               ))}
             </div>
           ) : null}
-          {!isEditorUser ? <div className="topnav-public-links">
+          <div className={`topnav-public-links${isDesktopEditorUser ? " topnav-editor-public-links" : ""}`}>
             <NavLink active={route.page === "home"} onClick={() => navigate({ page: "home" })}>{NAV_LABELS[language].home}</NavLink>
             <NavLink active={route.page === "tree"} onClick={() => navigate({ page: "tree" })}>{NAV_LABELS[language].tree}</NavLink>
             <NavLink active={route.page === "member" && route.memberId === myMemberId} onClick={() => { goToMyFamily(); setMobileNavOpen(false); }}>{t(language, "myFamilyNavLabel")}</NavLink>
             <NavLink active={route.page === "roots"} onClick={() => navigate({ page: "roots" })}>{NAV_LABELS[language].roots}</NavLink>
             <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
-            {!isEditorUser ? <NavLink active={route.page === "calendar"} badge={notificationBadgeCount} onClick={() => navigate({ page: "calendar" })}>{t(language, "navNotificationsLabel")}</NavLink> : null}
-            {!isEditorUser ? <NavLink active={route.page === "live"} onClick={() => navigate({ page: "live" })}>{canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel")}</NavLink> : null}
+            <NavLink active={route.page === "calendar"} badge={notificationBadgeCount} onClick={() => navigate({ page: "calendar" })}>{t(language, "navNotificationsLabel")}</NavLink>
+            <NavLink active={route.page === "live"} onClick={() => navigate({ page: "live" })}>{canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel")}</NavLink>
             <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
             <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
-            {!isEditorUser && (isLoggedIn || isNativeApp) ? <NavLink active={route.page === "settings"} badge={isNativeApp && appUpdateAvailable ? 1 : 0} onClick={() => navigate({ page: "settings" })}>{t(language, "navSettingsLabel")}</NavLink> : null}
-          </div> : null}
+            {isLoggedIn || isNativeApp ? <NavLink active={route.page === "settings"} badge={isNativeApp && appUpdateAvailable ? 1 : 0} onClick={() => navigate({ page: "settings" })}>{t(language, "navSettingsLabel")}</NavLink> : null}
+          </div>
           <div className="topnav-actions-mobile">
             <button
               type="button"
