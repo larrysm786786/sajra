@@ -3886,11 +3886,24 @@ export default function App() {
   // On mobile, the hamburger menu contains direct links to every admin section and the
   // permitted quick actions. The same section links live in the desktop navbar dropdown.
   const isNativeApp = Capacitor.isNativePlatform();
+  const isEditorUser = isLoggedIn && (userRole === "editor" || userRole === "contributor");
   const nativeAdminLabels: Partial<Record<AdminSection, string>> = {
     members: "Add Members",
     users: "Add Users",
     gallery: "Add Photos"
   };
+  const desktopEditorMenuLinks: { key: string; label: string; badge?: number; onClick: () => void }[] = isEditorUser ? [
+    { key: "overview", label: t(language, "adminNavOverview"), onClick: () => { navigate({ page: "admin" }); setAdminSection("overview"); } },
+    { key: "members", label: "Add Members", onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); } },
+    { key: "gallery", label: "Add Photos", onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } },
+    { key: "suggestions", label: t(language, "adminNavSuggestions"), onClick: () => { navigate({ page: "admin" }); setAdminSection("suggestions"); } },
+    ...(canReviewProfileUpdates ? [{ key: "profileUpdates", label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("profileUpdates"); } }] : []),
+    { key: "quality", label: t(language, "adminNavQuality"), onClick: () => { navigate({ page: "admin" }); setAdminSection("quality"); } },
+    { key: "analytics", label: t(language, "adminNavAnalytics"), onClick: () => { navigate({ page: "admin" }); setAdminSection("analytics"); } },
+    { key: "announcement", label: "Post Announcement", badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) },
+    { key: "live", label: "Live", onClick: () => navigate({ page: "live" }) },
+    { key: "settings", label: t(language, "navSettingsLabel"), badge: isNativeApp && appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }
+  ] : [];
   const mobileAdminLinks: { key: string; label: string; onClick: () => void; badge?: number }[] = isLoggedIn
     ? [
         ...adminNavMenuItems.map((item) => ({
@@ -3944,9 +3957,24 @@ export default function App() {
         <nav className={`topnav${mobileNavOpen ? " open" : ""}${isLoggedIn ? " topnav-authed" : ""}`}>
           {isLoggedIn ? (
             <details className="topnav-admin-dropdown">
-              <summary className="navlink">{t(language, "adminNavMenuLabel")} <span aria-hidden="true">⌄</span></summary>
+              <summary className="navlink">{isEditorUser ? "Editor menu" : t(language, "adminNavMenuLabel")} <span aria-hidden="true">⌄</span></summary>
               <div className="topnav-admin-dropdown-menu" role="menu" aria-label={t(language, "adminSidebarAria")}>
-                {adminNavMenuItems.map((item) => (
+                {isEditorUser ? desktopEditorMenuLinks.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    role="menuitem"
+                    className="navlink"
+                    onClick={(event) => {
+                      const dropdown = event.currentTarget.closest("details");
+                      if (dropdown) dropdown.open = false;
+                      item.onClick();
+                    }}
+                  >
+                    <span>{item.label}</span>
+                    {item.badge ? <span className="nav-badge">{item.badge > 99 ? "99+" : item.badge}</span> : null}
+                  </button>
+                )) : adminNavMenuItems.map((item) => (
                   <button
                     key={item.key}
                     type="button"
@@ -3988,11 +4016,11 @@ export default function App() {
             <NavLink active={route.page === "member" && route.memberId === myMemberId} onClick={() => { goToMyFamily(); setMobileNavOpen(false); }}>{t(language, "myFamilyNavLabel")}</NavLink>
             <NavLink active={route.page === "roots"} onClick={() => navigate({ page: "roots" })}>{NAV_LABELS[language].roots}</NavLink>
             <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
-            <NavLink active={route.page === "calendar"} badge={notificationBadgeCount} onClick={() => navigate({ page: "calendar" })}>{t(language, "navNotificationsLabel")}</NavLink>
-            <NavLink active={route.page === "live"} onClick={() => navigate({ page: "live" })}>{canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel")}</NavLink>
+            {!isEditorUser ? <NavLink active={route.page === "calendar"} badge={notificationBadgeCount} onClick={() => navigate({ page: "calendar" })}>{t(language, "navNotificationsLabel")}</NavLink> : null}
+            {!isEditorUser ? <NavLink active={route.page === "live"} onClick={() => navigate({ page: "live" })}>{canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel")}</NavLink> : null}
             <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
             <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
-            {isLoggedIn || isNativeApp ? <NavLink active={route.page === "settings"} badge={isNativeApp && appUpdateAvailable ? 1 : 0} onClick={() => navigate({ page: "settings" })}>{t(language, "navSettingsLabel")}</NavLink> : null}
+            {!isEditorUser && (isLoggedIn || isNativeApp) ? <NavLink active={route.page === "settings"} badge={isNativeApp && appUpdateAvailable ? 1 : 0} onClick={() => navigate({ page: "settings" })}>{t(language, "navSettingsLabel")}</NavLink> : null}
           </div>
           <div className="topnav-actions-mobile">
             <button
