@@ -3956,26 +3956,11 @@ export default function App() {
           <span />
         </button>
         <nav className={`topnav${mobileNavOpen ? " open" : ""}${isLoggedIn ? " topnav-authed" : ""}`}>
-          {isLoggedIn ? (
+          {isLoggedIn && !isDesktopEditorUser ? (
             <details className="topnav-admin-dropdown">
-              <summary className="navlink">{isDesktopEditorUser ? "Editor menu" : t(language, "adminNavMenuLabel")} <span aria-hidden="true">⌄</span></summary>
+              <summary className="navlink">{t(language, "adminNavMenuLabel")} <span aria-hidden="true">⌄</span></summary>
               <div className="topnav-admin-dropdown-menu" role="menu" aria-label={t(language, "adminSidebarAria")}>
-                {isDesktopEditorUser ? editorMenuLinks.map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    role="menuitem"
-                    className="navlink"
-                    onClick={(event) => {
-                      const dropdown = event.currentTarget.closest("details");
-                      if (dropdown) dropdown.open = false;
-                      item.onClick();
-                    }}
-                  >
-                    <span>{item.label}</span>
-                    {item.badge ? <span className="nav-badge">{item.badge > 99 ? "99+" : item.badge}</span> : null}
-                  </button>
-                )) : adminNavMenuItems.map((item) => (
+                {adminNavMenuItems.map((item) => (
                   <button
                     key={item.key}
                     type="button"
@@ -3996,6 +3981,16 @@ export default function App() {
                 ))}
               </div>
             </details>
+          ) : null}
+          {isDesktopEditorUser ? (
+            <div className="topnav-editor-desktop-links">
+              {editorMenuLinks.map((item) => (
+                <button key={item.key} type="button" className="navlink" onClick={item.onClick}>
+                  <span>{item.label}</span>
+                  {item.badge ? <span className="nav-badge">{item.badge > 99 ? "99+" : item.badge}</span> : null}
+                </button>
+              ))}
+            </div>
           ) : null}
           {isLoggedIn ? (
             <div className="topnav-admin-links">

@@ -1832,6 +1832,10 @@ input[type="file"]:not([hidden]):focus-visible {
   display: none;
 }
 
+.topnav-editor-desktop-links {
+  display: none;
+}
+
 .topnav-admin-dropdown { position: relative; }
 .topnav-admin-dropdown > summary { list-style: none; cursor: pointer; }
 .topnav-admin-dropdown > summary::-webkit-details-marker { display: none; }
@@ -1862,6 +1866,10 @@ input[type="file"]:not([hidden]):focus-visible {
 @media (min-width: 861px) {
   .nav-backdrop {
     display: none;
+  }
+
+  .topnav-editor-desktop-links {
+    display: contents;
   }
 
   .topnav-editor-public-links {
