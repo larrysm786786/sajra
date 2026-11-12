@@ -3892,19 +3892,21 @@ export default function App() {
     users: "Add Users",
     gallery: "Add Photos"
   };
-  const desktopEditorMenuLinks: { key: string; label: string; badge?: number; onClick: () => void }[] = isEditorUser ? [
+  const editorMenuLinks: { key: string; label: string; badge?: number; onClick: () => void }[] = isEditorUser ? [
     { key: "overview", label: t(language, "adminNavOverview"), onClick: () => { navigate({ page: "admin" }); setAdminSection("overview"); } },
-    { key: "members", label: "Add Members", onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); } },
-    { key: "gallery", label: "Add Photos", onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } },
+    ...(canAddMember || canEditMembers ? [{ key: "members", label: "Add Members", onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); } }] : []),
+    ...(canAddGalleryPhoto ? [{ key: "gallery", label: "Add Photos", onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } }] : []),
     { key: "suggestions", label: t(language, "adminNavSuggestions"), onClick: () => { navigate({ page: "admin" }); setAdminSection("suggestions"); } },
     ...(canReviewProfileUpdates ? [{ key: "profileUpdates", label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("profileUpdates"); } }] : []),
     { key: "quality", label: t(language, "adminNavQuality"), onClick: () => { navigate({ page: "admin" }); setAdminSection("quality"); } },
     { key: "analytics", label: t(language, "adminNavAnalytics"), onClick: () => { navigate({ page: "admin" }); setAdminSection("analytics"); } },
-    { key: "announcement", label: "Post Announcement", badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) },
+    ...(canAddAnnouncement ? [{ key: "announcement", label: "Post Announcement", badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) }] : []),
     { key: "live", label: "Live", onClick: () => navigate({ page: "live" }) },
     { key: "settings", label: t(language, "navSettingsLabel"), badge: isNativeApp && appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }
   ] : [];
-  const mobileAdminLinks: { key: string; label: string; onClick: () => void; badge?: number }[] = isLoggedIn
+  const mobileAdminLinks: { key: string; label: string; onClick: () => void; badge?: number }[] = isEditorUser
+    ? editorMenuLinks
+    : isLoggedIn
     ? [
         ...adminNavMenuItems.map((item) => ({
           key: `admin-${item.key}`,
@@ -3959,7 +3961,7 @@ export default function App() {
             <details className="topnav-admin-dropdown">
               <summary className="navlink">{isEditorUser ? "Editor menu" : t(language, "adminNavMenuLabel")} <span aria-hidden="true">⌄</span></summary>
               <div className="topnav-admin-dropdown-menu" role="menu" aria-label={t(language, "adminSidebarAria")}>
-                {isEditorUser ? desktopEditorMenuLinks.map((item) => (
+                {isEditorUser ? editorMenuLinks.map((item) => (
                   <button
                     key={item.key}
                     type="button"
@@ -4010,7 +4012,7 @@ export default function App() {
               ))}
             </div>
           ) : null}
-          <div className="topnav-public-links">
+          {!isEditorUser ? <div className="topnav-public-links">
             <NavLink active={route.page === "home"} onClick={() => navigate({ page: "home" })}>{NAV_LABELS[language].home}</NavLink>
             <NavLink active={route.page === "tree"} onClick={() => navigate({ page: "tree" })}>{NAV_LABELS[language].tree}</NavLink>
             <NavLink active={route.page === "member" && route.memberId === myMemberId} onClick={() => { goToMyFamily(); setMobileNavOpen(false); }}>{t(language, "myFamilyNavLabel")}</NavLink>
@@ -4021,7 +4023,7 @@ export default function App() {
             <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
             <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
             {!isEditorUser && (isLoggedIn || isNativeApp) ? <NavLink active={route.page === "settings"} badge={isNativeApp && appUpdateAvailable ? 1 : 0} onClick={() => navigate({ page: "settings" })}>{t(language, "navSettingsLabel")}</NavLink> : null}
-          </div>
+          </div> : null}
           <div className="topnav-actions-mobile">
             <button
               type="button"
