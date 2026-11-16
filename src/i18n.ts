@@ -373,6 +373,7 @@ const STRINGS = {
 
     loginNotConfigured: "Admin login isn't set up for this copy of Apna Sajra yet. Please ask the family admin.",
     invalidLogin: "The email or password is wrong.",
+    loginErrorGeneric: "Login returned an unreadable response. Please try again; if it continues, ask the administrator to check Supabase Auth logs.",
     invalidBackupFile: "That backup file doesn't look right.",
 
     confirmDeleteMember: "Delete this member? Their links to parents, spouses and children will be removed too.",
@@ -894,6 +895,7 @@ const STRINGS = {
 
     loginNotConfigured: "اس اپنا شجرہ کاپی کے لیے ایڈمن لاگ ان ابھی ترتیب نہیں دیا گیا۔ براہ کرم آرکائیو ایڈمنسٹریٹر سے رابطہ کریں۔",
     invalidLogin: "غلط ای میل یا پاسورڈ۔",
+    loginErrorGeneric: "لاگ اِن کا جواب پڑھا نہیں جا سکا۔ دوبارہ کوشش کریں؛ مسئلہ برقرار رہے تو ایڈمنسٹریٹر سے Supabase Auth لاگز چیک کرنے کو کہیں۔",
     invalidBackupFile: "غلط بیک اپ فائل۔",
 
     confirmDeleteMember: "کیا اس رکن اور اس کے تمام رشتہ داری روابط کو حذف کر دیا جائے؟",

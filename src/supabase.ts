@@ -150,7 +150,20 @@ export async function signInWithPassword(email: string, password: string): Promi
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error("Supabase is not configured.");
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw new Error(error.message);
+  if (error) {
+    const message = error.message.trim();
+    if (message && !["{}", "[]", "[object object]"].includes(message.toLowerCase())) {
+      throw new Error(message);
+    }
+
+    if (typeof error.status === "number" && error.status >= 500) {
+      throw new Error(`Supabase Auth server error (HTTP ${error.status}). The Auth logs show that it cannot save the login session because the database transaction is read-only; this needs a Supabase-side fix.`);
+    }
+
+    const status = typeof error.status === "number" ? `HTTP ${error.status}` : error.name;
+    const code = error.code ? `, code: ${error.code}` : "";
+    throw new Error(`Supabase Auth returned an empty error response (${status}${code}).`);
+  }
 }
 
 export async function signOutSupabase(): Promise<void> {

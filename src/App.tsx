@@ -1310,7 +1310,9 @@ export default function App() {
       setLoginEmail("");
       setLoginPassword("");
     } catch (error) {
-      setLoginError(error instanceof Error ? error.message : t(language, "invalidLogin"));
+      const message = error instanceof Error ? error.message.trim() : "";
+      const unusableMessage = !message || ["{}", "[]", "[object object]"].includes(message.toLowerCase());
+      setLoginError(unusableMessage ? t(language, "loginErrorGeneric") : message);
     } finally {
       setLoginBusy(false);
     }
