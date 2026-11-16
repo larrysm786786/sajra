@@ -87,7 +87,16 @@ export function formatDate(value?: string | null, language: AppState["language"]
   if (!value) return "-";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(language === "ur" ? "ur" : "en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  // The "-u-nu-arabext" extension forces the Extended Arabic-Indic digit shapes Urdu actually uses
+  // (۰۱۲۳...) - the "ur" locale's own default numbering system still renders plain 0-9, and plain
+  // "-u-nu-arab" gives the different Arabic-Indic shapes (٠١٢٣...) used for Arabic, not Urdu.
+  return date.toLocaleDateString(language === "ur" ? "ur-u-nu-arabext" : "en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+/** Renders a plain number (age, count, id) in Urdu's own digit shapes (۰۱۲۳...) for Urdu, Latin digits otherwise. */
+export function formatNumber(value: number | string, language: AppState["language"] = "en"): string {
+  if (language !== "ur") return String(value);
+  return new Intl.NumberFormat("ur-u-nu-arabext", { useGrouping: false }).format(Number(value));
 }
 
 export function calculateAge(dob?: string | null, dod?: string | null): number | null {
@@ -142,7 +151,9 @@ export function formatHijriDate(value?: string | null, language: AppState["langu
   const hijri = gregorianToHijri(value);
   if (!hijri) return "";
   const monthName = (language === "ur" ? HIJRI_MONTHS_UR : HIJRI_MONTHS_EN)[hijri.month - 1] ?? "";
-  return language === "ur" ? `${hijri.day} ${monthName} ${hijri.year} ہجری` : `${hijri.day} ${monthName} ${hijri.year} AH`;
+  return language === "ur"
+    ? `${formatNumber(hijri.day, language)} ${monthName} ${formatNumber(hijri.year, language)} ہجری`
+    : `${hijri.day} ${monthName} ${hijri.year} AH`;
 }
 
 export function displayName(member: Member, language: AppState["language"] = "en"): string {

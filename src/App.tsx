@@ -21,6 +21,7 @@ import {
   exportJson,
   findRelation,
   formatDate,
+  formatNumber,
   getAncestorChain,
   getChildren,
   findDataQualityIssues,
@@ -359,11 +360,11 @@ function NavLink({
   );
 }
 
-function StatCard({ value, label, hint, icon }: { value: string | number; label: string; hint?: string; icon?: ReactNode }) {
+function StatCard({ value, label, hint, icon, language }: { value: string | number; label: string; hint?: string; icon?: ReactNode; language?: Language }) {
   return (
     <div className="stat-card">
       {icon ? <div className="stat-card-icon">{icon}</div> : null}
-      <span className="stat-value">{value}</span>
+      <span className="stat-value">{typeof value === "number" ? formatNumber(value, language ?? "en") : value}</span>
       <div className="muted" style={{ fontWeight: 700 }}>{label}</div>
       {hint ? <div className="muted" style={{ marginTop: 8, lineHeight: 1.5 }}>{hint}</div> : null}
     </div>
@@ -467,7 +468,7 @@ function MemberCard({
         <div className="tree-name">{displayName(member, language)}</div>
         <div className="tree-sub">
           {member.birthplace || t(language, "noBirthplace")}
-          {calculateAge(member.dob, member.dod) !== null ? ` | ${t(language, "ageWord")} ${calculateAge(member.dob, member.dod)}` : ""}
+          {calculateAge(member.dob, member.dod) !== null ? ` | ${t(language, "ageWord")} ${formatNumber(calculateAge(member.dob, member.dod)!, language)}` : ""}
         </div>
       </div>
     </button>
@@ -2725,8 +2726,8 @@ export default function App() {
                     {member.birthplace || t(language, "noBirthplace")}
                     {member.dob ? ` | ${t(language, "bornWord")} ${formatDate(member.dob, language)} (${formatHijriDate(member.dob, language)})` : ""}
                     {member.dod ? ` | ${t(language, "diedWord")} ${formatDate(member.dod, language)} (${formatHijriDate(member.dod, language)})` : ""}
-                    {calculateAge(member.dob, member.dod) !== null ? ` | ${t(language, "ageWord")} ${calculateAge(member.dob, member.dod)}` : ""}
-                    {member.daughtersCount != null ? ` | ${t(language, "daughtersCountLabel")}: ${member.daughtersCount}` : ""}
+                    {calculateAge(member.dob, member.dod) !== null ? ` | ${t(language, "ageWord")} ${formatNumber(calculateAge(member.dob, member.dod)!, language)}` : ""}
+                    {member.daughtersCount != null ? ` | ${t(language, "daughtersCountLabel")}: ${formatNumber(member.daughtersCount, language)}` : ""}
                   </p>
                 </div>
               </div>
@@ -2990,11 +2991,11 @@ export default function App() {
         sectionBody = (
           <>
             <div className="stat-grid">
-              <StatCard value={stats.members} label={t(language, "membersLabel")} />
-              <StatCard value={stats.roots} label={t(language, "rootsLabel")} />
-              <StatCard value={stats.gallery} label={t(language, "galleryItemsLabel")} />
-              <StatCard value={stats.users} label={t(language, "usersLabel")} />
-              {isAdmin ? <StatCard value={stats.visitors} label={t(language, "totalVisitorsLabel")} icon={<EyeIcon />} /> : null}
+              <StatCard value={stats.members} language={language} label={t(language, "membersLabel")} />
+              <StatCard value={stats.roots} language={language} label={t(language, "rootsLabel")} />
+              <StatCard value={stats.gallery} language={language} label={t(language, "galleryItemsLabel")} />
+              <StatCard value={stats.users} language={language} label={t(language, "usersLabel")} />
+              {isAdmin ? <StatCard value={stats.visitors} language={language} label={t(language, "totalVisitorsLabel")} icon={<EyeIcon />} /> : null}
             </div>
             <div style={{ marginTop: 18 }}>
               <div className="section-head">
@@ -3270,9 +3271,9 @@ export default function App() {
         ) : (
           <>
             <div className="stat-grid">
-              <StatCard value={state.visitorCount ?? 0} label={t(language, "totalVisitorsLabel")} icon={<EyeIcon />} />
-              <StatCard value={visitStats?.today ?? 0} label={t(language, "todayVisitsLabel")} />
-              <StatCard value={visitStats?.activeNow ?? 0} label={t(language, "activeNowLabel")} />
+              <StatCard value={state.visitorCount ?? 0} language={language} label={t(language, "totalVisitorsLabel")} icon={<EyeIcon />} />
+              <StatCard value={visitStats?.today ?? 0} language={language} label={t(language, "todayVisitsLabel")} />
+              <StatCard value={visitStats?.activeNow ?? 0} language={language} label={t(language, "activeNowLabel")} />
             </div>
             <LiveVisitorMap
               cities={liveCities}
@@ -3650,7 +3651,7 @@ export default function App() {
           <div className="family-book-cover">
             <h1>{displayAppName(state.appName, language)}</h1>
             <p>{t(language, "familyBookTitle")}</p>
-            <p className="family-book-cover-meta">{formatDate(new Date().toISOString(), language)} | {t(language, "membersLabel")}: {state.members.length}</p>
+            <p className="family-book-cover-meta">{formatDate(new Date().toISOString(), language)} | {t(language, "membersLabel")}: {formatNumber(state.members.length, language)}</p>
           </div>
 
           {familyBookGroups.map((group) => (
@@ -3678,7 +3679,7 @@ export default function App() {
                         {parents.length ? <div className="tree-sub">{t(language, "parentsTitle")}: {parents.map((parent) => displayName(parent, language)).join(", ")}</div> : null}
                         {spouses.length ? <div className="tree-sub">{t(language, "spousesSuffix")}: {spouses.map((spouse) => displayName(spouse, language)).join(", ")}</div> : null}
                         {children.length ? <div className="tree-sub">{t(language, "childrenSuffix")}: {children.map((child) => displayName(child, language)).join(", ")}</div> : null}
-                        {member.daughtersCount != null ? <div className="tree-sub">{t(language, "daughtersCountLabel")}: {member.daughtersCount}</div> : null}
+                        {member.daughtersCount != null ? <div className="tree-sub">{t(language, "daughtersCountLabel")}: {formatNumber(member.daughtersCount, language)}</div> : null}
                         {member.bio ? <p className="family-book-bio">{member.bio}</p> : null}
                       </div>
                     </div>
@@ -3773,13 +3774,14 @@ export default function App() {
               </div>
             </div>
             <div className="stat-grid">
-              <StatCard value={stats.members} label={t(language, "membersLabel")} />
-              <StatCard value={familyInsights.generations} label={t(language, "generationsLabel")} />
-              <StatCard value={familyInsights.male} label={t(language, "genderMale")} />
-              <StatCard value={familyInsights.female} label={t(language, "genderFemale")} />
+              <StatCard value={stats.members} language={language} label={t(language, "membersLabel")} />
+              <StatCard value={familyInsights.generations} language={language} label={t(language, "generationsLabel")} />
+              <StatCard value={familyInsights.male} language={language} label={t(language, "genderMale")} />
+              <StatCard value={familyInsights.female} language={language} label={t(language, "genderFemale")} />
               {familyInsights.oldestLiving ? (
                 <StatCard
                   value={calculateAge(familyInsights.oldestLiving.dob, familyInsights.oldestLiving.dod) ?? "-"}
+                  language={language}
                   label={t(language, "oldestLivingLabel")}
                   hint={displayName(familyInsights.oldestLiving, language)}
                 />
@@ -3984,7 +3986,7 @@ export default function App() {
         </a>
         <span className="visitor-counter visitor-counter-mobile" title={t(language, "totalVisitorsLabel")} aria-label={`${t(language, "totalVisitorsLabel")}: ${state.visitorCount ?? 0}`}>
           <EyeIcon />
-          {state.visitorCount ?? 0}
+          {formatNumber(state.visitorCount ?? 0, language)}
         </span>
         <button
           type="button"
@@ -4091,7 +4093,7 @@ export default function App() {
         <div className="header-actions">
           <span className="visitor-counter" title={t(language, "totalVisitorsLabel")} aria-label={`${t(language, "totalVisitorsLabel")}: ${state.visitorCount ?? 0}`}>
             <EyeIcon />
-            {state.visitorCount ?? 0}
+            {formatNumber(state.visitorCount ?? 0, language)}
           </span>
           <button
             type="button"
