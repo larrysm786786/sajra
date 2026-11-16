@@ -258,9 +258,8 @@ export default function SajraChat({ appName, language, members, onOpenMember, on
       if (err instanceof FunctionsHttpError) {
         try {
           const body = await err.context.clone().json();
-          const serverMessage = typeof body?.error === "string" ? body.error : err.message;
-          setError(language === "ur" ? t(language, "chatUnreachableError") : serverMessage);
-        } catch { setError(language === "ur" ? t(language, "chatUnreachableError") : err.message); }
+          setError(typeof body?.error === "string" ? body.error : err.message);
+        } catch { setError(err.message); }
       } else {
         setError(err instanceof Error ? err.message : t(language, "chatUnreachableError"));
       }

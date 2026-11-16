@@ -289,6 +289,7 @@ const STRINGS = {
     noGuestbookEntries: "No messages yet. Be the first to leave one.",
 
     eyebrowHero: "Apna Sajra family archive",
+    featuredProfessionalsEyebrow: "Featured",
     heroLegacyTitleLine1: "Nine Generations.",
     heroLegacyTitleLine2: "One Legacy.",
     heroLegacyCopy: "A family bound by heritage, strengthened by unity, and carried forward through generations.",
@@ -864,6 +865,7 @@ const STRINGS = {
     noGuestbookEntries: "ابھی کوئی پیغام نہیں۔ سب سے پہلے آپ لکھیں۔",
 
     eyebrowHero: "اپنا شجرہ خاندانی آرکائیو",
+    featuredProfessionalsEyebrow: "نمایاں",
     heroLegacyTitleLine1: "نو نسلیں۔",
     heroLegacyTitleLine2: "ایک وراثت۔",
     heroLegacyCopy: "ایک ایسا خاندان جو وراثت سے جڑا، اتحاد سے مضبوط اور نسل در نسل آگے بڑھتا ہے۔",

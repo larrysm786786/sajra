@@ -189,6 +189,11 @@ function fullLabel(member: Member, language: Language): string {
   return profession ? `${professionShortLabel(language, profession)} ${name}` : name;
 }
 
+/** The default app name has its own Urdu rendering; a custom name an admin typed in is left as-is since it isn't a translatable UI string. */
+function displayAppName(appName: string, language: Language): string {
+  return appName === "Apna Sajra" ? t(language, "treeSajraFallback") : appName;
+}
+
 function hasMeaningfulData(state: AppState): boolean {
   return Boolean(
     state.members.length ||
@@ -644,6 +649,7 @@ function ProfessionPhotoSlider({ members, language, onOpen }: { members: Member[
   }
   return <div className="profession-photo-slider" aria-label="Family members with professional roles" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
     <button key={`photo-${member.id}`} type="button" className="profession-photo-image" onClick={() => onOpen(member.id)} aria-label={"Open " + displayName(member, language) + " profile"}>
+      <span className="profession-photo-eyebrow">{t(language, "featuredProfessionalsEyebrow")}</span>
       <img src={photoSrc(member.photo)} alt={displayName(member, language)} decoding="async" />
     </button>
     <div key={`details-${member.id}`} className="profession-photo-content">
@@ -654,26 +660,6 @@ function ProfessionPhotoSlider({ members, language, onOpen }: { members: Member[
       </div>
       {bio ? <ProfessionPhotoBio key={member.id} bio={bio} language={language} onOpen={() => onOpen(member.id)} /> : null}
     </div>
-    {photoMembers.length > 1 ? <>
-      <div className="profession-photo-controls">
-        <button type="button" aria-label={t(language, "previousProfileLabel")} onClick={() => setSlideIndex((index) => (index - 1 + photoMembers.length) % photoMembers.length)}>{t(language, "previousButtonLabel")}</button>
-        <span>{slideIndex + 1} / {photoMembers.length}</span>
-        <button type="button" aria-label={t(language, "nextProfileLabel")} onClick={() => setSlideIndex((index) => (index + 1) % photoMembers.length)}>{t(language, "nextButtonLabel")}</button>
-      </div>
-      <div className="profession-photo-dots" role="tablist" aria-label={t(language, "previousProfileLabel")}>
-        {photoMembers.map((dotMember, index) => (
-          <button
-            key={dotMember.id}
-            type="button"
-            role="tab"
-            className={`profession-photo-dot${index === slideIndex % photoMembers.length ? " active" : ""}`}
-            aria-label={displayName(dotMember, language)}
-            aria-selected={index === slideIndex % photoMembers.length}
-            onClick={() => setSlideIndex(index)}
-          />
-        ))}
-      </div>
-    </> : null}
   </div>;
 }
 export default function App() {
@@ -991,7 +977,12 @@ export default function App() {
     saveState(state);
     document.documentElement.dataset.theme = state.theme;
     document.documentElement.lang = language;
-    document.documentElement.dir = language === "ur" ? "rtl" : "ltr";
+    // Deliberately always "ltr" here: flipping the whole page to dir="rtl" for Urdu used to mirror
+    // the entire layout (nav, buttons, grids), not just text - switching language must only change
+    // text/translation, never the visual design. Urdu text still reads right-to-left correctly
+    // inside LTR containers via the CSS below (html[lang="ur"] rules) and the browser's own
+    // Unicode bidi handling, without flipping anything else.
+    document.documentElement.dir = "ltr";
   }, [state, language]);
 
   useEffect(() => {
@@ -2779,7 +2770,7 @@ export default function App() {
                 {suggestionSent ? <p className="hint no-print">{t(language, "suggestionSentMessage")}</p> : null}
                 {shareNotice ? <p className="hint no-print">{shareNotice}</p> : null}
                 {updateLinkNotice ? <p className="hint no-print">{updateLinkNotice}</p> : null}
-                {member.bio ? <p style={{ marginTop: 16, lineHeight: 1.8 }}>{member.bio}</p> : null}
+                {member.bio ? <p style={{ marginTop: 16, lineHeight: 1.8, textAlign: "justify" }}>{member.bio}</p> : null}
                 {member.contact ? <p className="tree-sub" style={{ marginTop: 8 }}>{t(language, "contactLabel")}: {member.contact}</p> : null}
                 {member.publications?.length ? <section className="member-publications" aria-labelledby="member-publications-title">
                   <h2 id="member-publications-title">{t(language, "publicationsTitle")}</h2>
@@ -3658,7 +3649,7 @@ export default function App() {
           </div>
 
           <div className="family-book-cover">
-            <h1>{state.appName}</h1>
+            <h1>{displayAppName(state.appName, language)}</h1>
             <p>{t(language, "familyBookTitle")}</p>
             <p className="family-book-cover-meta">{formatDate(new Date().toISOString(), language)} | {t(language, "membersLabel")}: {state.members.length}</p>
           </div>
@@ -3926,35 +3917,35 @@ export default function App() {
   const isDesktopAdminUser = isAdmin && !isNativeApp;
   const isDesktopStaffUser = isDesktopEditorUser || isDesktopAdminUser;
   const nativeAdminLabels: Partial<Record<AdminSection, string>> = {
-    members: "Add Members",
-    users: "Add Users",
-    gallery: "Add Photos"
+    members: t(language, "addMemberButton"),
+    users: t(language, "addUserButton"),
+    gallery: t(language, "addGalleryPhotoButton")
   };
   const editorMenuLinks: { key: string; label: string; badge?: number; onClick: () => void }[] = isEditorUser ? [
     { key: "overview", label: t(language, "adminNavOverview"), onClick: () => { navigate({ page: "admin" }); setAdminSection("overview"); } },
-    ...(canAddMember || canEditMembers ? [{ key: "members", label: "Add Members", onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); } }] : []),
-    ...(canAddGalleryPhoto ? [{ key: "gallery", label: "Add Photos", onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } }] : []),
+    ...(canAddMember || canEditMembers ? [{ key: "members", label: t(language, "addMemberButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); } }] : []),
+    ...(canAddGalleryPhoto ? [{ key: "gallery", label: t(language, "addGalleryPhotoButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } }] : []),
     { key: "suggestions", label: t(language, "adminNavSuggestions"), onClick: () => { navigate({ page: "admin" }); setAdminSection("suggestions"); } },
     ...(canReviewProfileUpdates ? [{ key: "profileUpdates", label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("profileUpdates"); } }] : []),
     { key: "quality", label: t(language, "adminNavQuality"), onClick: () => { navigate({ page: "admin" }); setAdminSection("quality"); } },
     { key: "analytics", label: t(language, "adminNavAnalytics"), onClick: () => { navigate({ page: "admin" }); setAdminSection("analytics"); } },
-    ...(canAddAnnouncement ? [{ key: "announcement", label: "Post Announcement", badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) }] : []),
-    { key: "live", label: "Live", onClick: () => navigate({ page: "live" }) },
+    ...(canAddAnnouncement ? [{ key: "announcement", label: t(language, "postAnnouncementButton"), badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) }] : []),
+    { key: "live", label: t(language, "navLiveLabel"), onClick: () => navigate({ page: "live" }) },
     { key: "settings", label: t(language, "navSettingsLabel"), badge: isNativeApp && appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }
   ] : [];
   const desktopAdminMenuLinks: { key: string; label: string; badge?: number; onClick: () => void }[] = isDesktopAdminUser ? [
-    { key: "overview", label: "Dashboard", onClick: () => { navigate({ page: "admin" }); setAdminSection("overview"); } },
-    { key: "members", label: "Add Members", onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); } },
-    { key: "users", label: "Add Users", onClick: () => { navigate({ page: "admin" }); setAdminSection("users"); } },
-    { key: "gallery", label: "Add Photos", onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } },
+    { key: "overview", label: t(language, "navDashboardLabel"), onClick: () => { navigate({ page: "admin" }); setAdminSection("overview"); } },
+    { key: "members", label: t(language, "addMemberButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); } },
+    { key: "users", label: t(language, "addUserButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("users"); } },
+    { key: "gallery", label: t(language, "addGalleryPhotoButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } },
     { key: "suggestions", label: t(language, "adminNavSuggestions"), onClick: () => { navigate({ page: "admin" }); setAdminSection("suggestions"); } },
     { key: "profileUpdates", label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("profileUpdates"); } },
-    { key: "logs", label: "Log History", onClick: () => { navigate({ page: "admin" }); setAdminSection("logs"); } },
+    { key: "logs", label: t(language, "adminNavLogs"), onClick: () => { navigate({ page: "admin" }); setAdminSection("logs"); } },
     { key: "quality", label: t(language, "adminNavQuality"), onClick: () => { navigate({ page: "admin" }); setAdminSection("quality"); } },
     { key: "backup", label: t(language, "backupCardTitle"), onClick: () => { navigate({ page: "admin" }); setAdminSection("backup"); } },
     { key: "analytics", label: t(language, "adminNavAnalytics"), onClick: () => { navigate({ page: "admin" }); setAdminSection("analytics"); } },
-    { key: "announcement", label: "Post Announcement", badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) },
-    { key: "live", label: "Add Live Streaming", onClick: () => navigate({ page: "live" }) },
+    { key: "announcement", label: t(language, "postAnnouncementButton"), badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) },
+    { key: "live", label: t(language, "addLiveStreamingLabel"), onClick: () => navigate({ page: "live" }) },
     { key: "settings", label: t(language, "navSettingsLabel"), badge: isNativeApp && appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }
   ] : [];
   const mobileAdminLinks: { key: string; label: string; onClick: () => void; badge?: number }[] = isLoggedIn
@@ -3968,7 +3959,7 @@ export default function App() {
         ...(!isNativeApp && canAddMember ? [{ key: "addMember", label: t(language, "addMemberButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); openMemberEditor(); } }] : []),
         ...(!isNativeApp && isAdmin ? [{ key: "addUser", label: t(language, "addUserButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("users"); openUserEditor(); } }] : []),
         ...(!isNativeApp && canAddAnnouncement ? [{ key: "postAnnouncement", label: t(language, "postAnnouncementButton"), onClick: () => { navigate({ page: "calendar" }); openAnnouncementEditor(); } }] : []),
-        { key: "notifications", label: isNativeApp ? "Post Announcement" : t(language, "navNotificationsLabel"), badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) },
+        { key: "notifications", label: isNativeApp ? t(language, "postAnnouncementButton") : t(language, "navNotificationsLabel"), badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) },
         { key: "live", label: canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel"), onClick: () => navigate({ page: "live" }) },
         { key: "settings", label: t(language, "navSettingsLabel"), badge: isNativeApp && appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }
       ]
@@ -3989,7 +3980,7 @@ export default function App() {
         <a className="brand" href="#/home">
           <div className="brand-mark"><img src={import.meta.env.BASE_URL + "logo.jpg"} alt="" /></div>
           <div className="brand-title">
-            <strong>{state.appName}</strong>
+            <strong>{displayAppName(state.appName, language)}</strong>
           </div>
         </a>
         <span className="visitor-counter visitor-counter-mobile" title={t(language, "totalVisitorsLabel")} aria-label={`${t(language, "totalVisitorsLabel")}: ${state.visitorCount ?? 0}`}>

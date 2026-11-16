@@ -2205,14 +2205,14 @@ input[type="file"]:not([hidden]):focus-visible {
 .node text.org-card-detail { font-size: 10px; font-weight: 500; font-family: inherit; fill: rgba(255, 255, 255, 0.9); pointer-events: none; }
 
 /* ===== RTL (Urdu) support ===== */
-html[dir="rtl"] body { text-align: right; }
-html[dir="rtl"] .header-actions,
-html[dir="rtl"] .form-stack label,
-html[dir="rtl"] .actions-row {
+html[lang="ur"] body { text-align: right; }
+html[lang="ur"] .header-actions,
+html[lang="ur"] .form-stack label,
+html[lang="ur"] .actions-row {
   direction: rtl;
 }
-html[dir="rtl"] .field,
-html[dir="rtl"] .select {
+html[lang="ur"] .field,
+html[lang="ur"] .select {
   text-align: right;
 }
 
@@ -2279,20 +2279,21 @@ html[dir="rtl"] .select {
 .family-book-entries { display: grid; gap: 12px; }
 .family-book-entry { display: flex; gap: 14px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; }
 .family-book-entry-body { min-width: 0; flex: 1; }
-.family-book-bio { margin: 8px 0 0; line-height: 1.6; }
+.family-book-bio { margin: 8px 0 0; line-height: 1.6; text-align: justify; }
 
 /* Sajra AI chat */
 .sajra-chat-widget { position: fixed; right: 24px; bottom: 24px; z-index: 50; font-family: Inter, system-ui, sans-serif; }
 .sajra-chat-launcher { display: flex; align-items: center; gap: 9px; border: 0; border-radius: 999px; padding: 14px 20px; color: #fff; background: linear-gradient(135deg, #2e5185, #1c3560); box-shadow: 0 8px 28px rgba(25, 50, 88, .32); font-weight: 650; font-size: 14px; transition: transform .2s, box-shadow .2s; }
 .sajra-chat-launcher:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(25, 50, 88, .4); }
 .sajra-chat-launcher > span:first-child { color: #a9e8ff; font-size: 20px; }
-.sajra-chat-launcher.active { padding: 8px 14px; font-size: 27px; line-height: 1; }
 .sajra-chat-panel { position: absolute; right: 0; bottom: 76px; display: flex; flex-direction: column; width: min(390px, calc(100vw - 28px)); height: min(580px, calc(100dvh - 130px)); overflow: hidden; border: 1px solid var(--border); border-radius: 20px; background: var(--surface-strong); box-shadow: 0 20px 70px rgba(15, 36, 68, .25); animation: sajra-chat-in .2s ease-out; }
 @keyframes sajra-chat-in { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .sajra-chat-header { display: flex; align-items: center; gap: 12px; padding: 17px 18px; color: white; background: linear-gradient(120deg, #2e5185, #203c69); }
 .sajra-chat-avatar { display: grid; width: 39px; height: 39px; place-items: center; border-radius: 50%; color: #173251; background: #a9e8ff; font-size: 22px; }
 .sajra-chat-header > div { display: grid; gap: 3px; }.sajra-chat-header strong { font-size: 16px; }.sajra-chat-header small { color: #d3e7f2; font-size: 11px; }
-.sajra-chat-close { margin-left: auto; border: 0; color: white; background: transparent; font-size: 27px; opacity: .85; }
+.sajra-chat-close { display: grid; place-items: center; width: 34px; height: 34px; margin-left: auto; border: 0; border-radius: 50%; color: white; background: rgba(255, 255, 255, 0.12); font-size: 22px; line-height: 1; cursor: pointer; transition: background .15s ease; }
+.sajra-chat-close:hover, .sajra-chat-close:active { background: rgba(255, 255, 255, 0.22); }
+.sajra-chat-close:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
 .sajra-chat-messages { flex: 1; overflow-y: auto; padding: 20px 16px; background: color-mix(in oklab, var(--bg-soft) 88%, #d9f2fc 12%); }
 .sajra-chat-welcome { display: flex; flex-direction: column; align-items: center; padding: 34px 8px; text-align: center; }.sajra-chat-welcome > span { color: #2e5185; font-size: 36px; }.sajra-chat-welcome h3 { margin: 12px 0 6px; color: var(--text); font-size: 19px; }.sajra-chat-welcome p { max-width: 280px; margin: 0; color: var(--muted); font-size: 16px; line-height: 1.6; }
 .sajra-chat-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 22px; }.sajra-chat-chips button { padding: 8px 12px; border: 1px solid var(--border); border-radius: 999px; color: var(--ink); background: var(--surface-strong); font-size: 16px; }
@@ -2336,7 +2337,8 @@ html[dir="rtl"] .select {
 .hero-tools .hero-actions { margin: 0; }
 .hero-tools .hero-search { flex: 1 1 300px; max-width: 480px; margin: 0; }
 .profession-photo-slider { position: relative; display: grid; grid-template-columns: minmax(220px, 36%) minmax(0, 1fr); align-items: stretch; width: 100%; max-width: none; overflow: hidden; margin-top: 26px; padding: 0; border: 1px solid var(--border); border-radius: 18px; background: color-mix(in oklab, var(--surface-strong) 92%, transparent); }
-.profession-photo-image { animation: profession-slide-in .35s ease both; display: block; align-self: center; width: 100%; aspect-ratio: 1; overflow: hidden; padding: 0; border: 0; border-radius: 0; background: var(--bg-soft); cursor: pointer; }
+.profession-photo-image { position: relative; animation: profession-slide-in .35s ease both; display: block; align-self: center; width: 100%; aspect-ratio: 1; overflow: hidden; padding: 0; border: 0; border-radius: 0; background: var(--bg-soft); cursor: pointer; }
+.profession-photo-eyebrow { position: absolute; top: 12px; left: 12px; z-index: 1; padding: 4px 10px; border-radius: 999px; color: #ffffff; background: color-mix(in oklab, var(--accent-strong) 85%, transparent); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
 .profession-photo-image img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 35%; }
 .profession-photo-content { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; min-width: 0; padding: clamp(20px, 3vw, 38px) clamp(20px, 3vw, 38px) 68px; animation: profession-slide-in .35s ease both; }
 .profession-photo-caption { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
@@ -2348,14 +2350,11 @@ html[dir="rtl"] .select {
 .profession-photo-bio p.is-collapsed { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
 .profession-photo-read-more { margin-top: 6px; padding: 0; border: 0; color: var(--accent-strong); background: transparent; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
 .profession-photo-read-more:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 3px; border-radius: 2px; }
-html[dir="rtl"] .profession-photo-bio { direction: rtl; text-align: justify; }
-.profession-photo-controls { position: absolute; right: 16px; bottom: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.profession-photo-controls span { color: var(--muted); font-size: 13px; }
-.profession-photo-controls button { padding: 7px 9px; border: 1px solid var(--border); border-radius: 9px; color: var(--text); background: var(--surface); font-size: 12px; cursor: pointer; }
+html[lang="ur"] .profession-photo-bio { direction: rtl; text-align: justify; }
 @media (min-width: 861px) { .profession-photo-slider { grid-template-rows: min(36vw, 446px); }.profession-photo-content { box-sizing: border-box; min-height: 0; overflow: hidden; }.profession-photo-bio { flex: 1 1 auto; min-height: 0; overflow: hidden; }.profession-photo-bio p.is-collapsed { -webkit-line-clamp: 5; } }
 @media (min-width: 1101px) { .profession-photo-bio p.is-collapsed { -webkit-line-clamp: 7; } }
 @media (min-width: 1301px) { .profession-photo-bio p.is-collapsed { -webkit-line-clamp: 9; } }
-@media (max-width: 600px) { .hero-tools { align-items: stretch; padding: 16px; }.profession-photo-slider { width: 100%; margin-left: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: 190px 204px; border-radius: 15px; }.profession-photo-image { justify-self: stretch; width: 100%; height: 190px; aspect-ratio: auto; border-radius: 0; }.profession-photo-content { box-sizing: border-box; height: 204px; min-height: 0; overflow: hidden; gap: 7px; padding: 10px 12px 48px; }.profession-photo-caption { gap: 3px; }.profession-photo-caption span { font-size: 10px; }.profession-photo-caption strong { font-size: clamp(1.05rem, 5vw, 1.35rem); }.profession-photo-caption small { font-size: 11px; }.profession-photo-bio { font-size: 12px; line-height: 1.4; }.profession-photo-controls { right: 10px; bottom: 9px; left: 10px; justify-content: space-between; gap: 6px; pointer-events: none; }.profession-photo-controls button { min-width: 66px; padding: 7px; pointer-events: auto; }.profession-photo-controls span { padding: 0 6px; border-radius: 8px; background: var(--surface); } }
+@media (max-width: 600px) { .hero-tools { align-items: stretch; padding: 16px; }.profession-photo-slider { width: 100%; margin-left: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: 190px 204px; border-radius: 15px; }.profession-photo-image { justify-self: stretch; width: 100%; height: 190px; aspect-ratio: auto; border-radius: 0; }.profession-photo-content { box-sizing: border-box; height: 204px; min-height: 0; overflow: hidden; gap: 7px; padding: 10px 12px 48px; }.profession-photo-caption { gap: 3px; }.profession-photo-caption strong { font-size: clamp(1.05rem, 5vw, 1.35rem); }.profession-photo-caption small { font-size: 11px; }.profession-photo-bio { font-size: 12px; line-height: 1.4; }.profession-photo-eyebrow { top: 8px; left: 8px; padding: 3px 8px; font-size: 10px; } }
 @media (max-width: 860px) { .profession-photo-bio { box-sizing: border-box; margin-bottom: 14px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 12px; background: color-mix(in oklab, var(--surface-strong) 94%, transparent); }.profession-photo-bio p.is-collapsed { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }.profession-photo-read-more { display: inline-flex; } }
 .hero-slider-admin-toggle { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-soft); }
 .hero-slider-admin-toggle input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--accent-strong); }
@@ -2491,52 +2490,9 @@ html[dir="rtl"] .profession-photo-bio { direction: rtl; text-align: justify; }
 *, *::before, *::after { box-shadow: none !important; }
 .live-map-city-dot, .org-card { filter: none !important; }
 
-/* Touch-friendly homepage slider controls for phones and the Android app. */
+/* Touch-friendly homepage slider: swipe only, no visible prev/next/dot controls. */
 .profession-photo-slider { touch-action: pan-y; }
-.profession-photo-dots { display: none; }
 @media (max-width: 860px) {
-  .profession-photo-controls { display: none; }
-  .profession-photo-dots {
-    position: absolute;
-    right: 12px;
-    bottom: 8px;
-    left: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    max-width: calc(100% - 24px);
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .profession-photo-dots::-webkit-scrollbar { display: none; }
-  .profession-photo-dot {
-    display: grid;
-    width: 22px;
-    height: 22px;
-    flex: 0 0 22px;
-    place-items: center;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: transparent;
-    cursor: pointer;
-  }
-  .profession-photo-dot::before {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--muted);
-    content: "";
-    transition: width .18s ease, border-radius .18s ease, background .18s ease;
-  }
-  .profession-photo-dot.active::before {
-    width: 16px;
-    border-radius: 999px;
-    background: var(--accent-strong);
-  }
-  .profession-photo-dot:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 1px; }
-  .profession-photo-caption span { font-size: 12px; }
   .profession-photo-read-more { font-size: 16px; }
 
   /* Nastaliq needs more line height, while smaller labels keep the Urdu UI compact. */
@@ -2565,11 +2521,11 @@ html[dir="rtl"] .profession-photo-bio { direction: rtl; text-align: justify; }
   html[lang="ur"] .sajra-chat-error { font-size: 11px; line-height: 1.9; }
   html[lang="ur"] .sajra-chat-footnote { font-size: 9px; line-height: 1.8; }
   html[lang="ur"] .profession-photo-bio { font-size: 12px; line-height: 1.8; }
-  html[dir="rtl"] .sajra-chat-messages,
-  html[dir="rtl"] .sajra-chat-message,
-  html[dir="rtl"] .sajra-chat-profile-card { direction: rtl; text-align: right; }
-  html[dir="rtl"] .sajra-chat-settings,
-  html[dir="rtl"] .sajra-chat-form,
-  html[dir="rtl"] .sajra-chat-feedback { direction: rtl; }
+  html[lang="ur"] .sajra-chat-messages,
+  html[lang="ur"] .sajra-chat-message,
+  html[lang="ur"] .sajra-chat-profile-card { direction: rtl; text-align: right; }
+  html[lang="ur"] .sajra-chat-settings,
+  html[lang="ur"] .sajra-chat-form,
+  html[lang="ur"] .sajra-chat-feedback { direction: rtl; }
 }
 
