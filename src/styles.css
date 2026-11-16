@@ -59,6 +59,13 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Noto Nastaliq Urdu renders visibly larger than Inter at the same declared size (its
+   calligraphic, connected letterforms carry more visual weight), so every rem-based size in the
+   app (which all scale off this root value) is nudged down a bit for Urdu to read proportionate
+   to the English/Inter sizing - this only ever touches font-size, since rem is used for nothing
+   else in this stylesheet. */
+html[lang="ur"] { font-size: 14px; }
+
 html[lang="ur"] body,
 html[lang="ur"] .brand-title strong,
 html[lang="ur"] .hero h1,
@@ -75,6 +82,24 @@ html[lang="ur"] .section-title {
   font-size: clamp(1.2rem, 2vw, 1.55rem);
   line-height: 1.5;
 }
+
+/* The same proportional trim for fixed-px text that doesn't scale with the root font-size above -
+   the family tree's own member labels, and the other small badges/captions seen throughout. */
+html[lang="ur"] .node text { font-size: 11px; }
+html[lang="ur"] .node text.org-card-name { font-size: 10px; }
+html[lang="ur"] .node text.org-card-detail { font-size: 9px; }
+html[lang="ur"] .admin-suggestion-kind { font-size: 11px; }
+html[lang="ur"] .announcement-admin-badge { font-size: 10px; }
+html[lang="ur"] .member-qr-card .muted { font-size: 12px; }
+html[lang="ur"] .calendar-event-person small,
+html[lang="ur"] .today-memory-card small { font-size: 11px; }
+html[lang="ur"] .calendar-event-type { font-size: 12px; }
+html[lang="ur"] .branch-member-link small { font-size: 10px; }
+html[lang="ur"] .member-publication-card span { font-size: 12px; }
+html[lang="ur"] .publication-fields label { font-size: 12px; }
+html[lang="ur"] .hero-slider-admin-toggle strong { font-size: 13px; }
+html[lang="ur"] .hero-slider-admin-toggle small { font-size: 11px; }
+html[lang="ur"] .admin-profile-update-details { font-size: 13px; }
 
 a {
   color: inherit;
@@ -2495,8 +2520,8 @@ html[lang="ur"] .profession-photo-bio { direction: rtl; text-align: justify; }
 @media (max-width: 860px) {
   .profession-photo-read-more { font-size: 16px; }
 
-  /* Nastaliq needs more line height, while smaller labels keep the Urdu UI compact. */
-  html[lang="ur"] body { font-size: 15px; line-height: 1.85; }
+  /* Nastaliq needs more line height to stay readable even though the font itself is smaller. */
+  html[lang="ur"] body { line-height: 1.85; }
   html[lang="ur"] .sajra-chat-widget,
   html[lang="ur"] .sajra-chat-panel { font-family: "Noto Nastaliq Urdu", "Inter", serif; }
   html[lang="ur"] .sajra-chat-header { padding-block: 12px; }
