@@ -620,6 +620,7 @@ function ProfessionPhotoSlider({ members, language, onOpen }: { members: Member[
     return member.showInHeroSlider === true && Boolean(member.photo?.trim()) && isSliderProfession(member.profession);
   }).sort(sortMembers), [members]);
   const [slideIndex, setSlideIndex] = useState(0);
+  const touchStartXRef = useRef<number | null>(null);
   useEffect(() => {
     if (photoMembers.length < 2) return;
     const timer = window.setInterval(() => setSlideIndex((index) => (index + 1) % photoMembers.length), 6500);
@@ -628,7 +629,20 @@ function ProfessionPhotoSlider({ members, language, onOpen }: { members: Member[
   if (!photoMembers.length) return null;
   const member = photoMembers[slideIndex % photoMembers.length];
   const bio = member.bio?.trim() ?? "";
-  return <div className="profession-photo-slider" aria-label="Family members with professional roles">
+  function handleTouchStart(e: ReactTouchEvent) {
+    touchStartXRef.current = e.touches[0]?.clientX ?? null;
+  }
+  function handleTouchEnd(e: ReactTouchEvent) {
+    const startX = touchStartXRef.current;
+    touchStartXRef.current = null;
+    if (startX === null || photoMembers.length < 2) return;
+    const endX = e.changedTouches[0]?.clientX ?? startX;
+    const delta = endX - startX;
+    if (Math.abs(delta) < 40) return;
+    if (delta < 0) setSlideIndex((index) => (index + 1) % photoMembers.length);
+    else setSlideIndex((index) => (index - 1 + photoMembers.length) % photoMembers.length);
+  }
+  return <div className="profession-photo-slider" aria-label="Family members with professional roles" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
     <button key={`photo-${member.id}`} type="button" className="profession-photo-image" onClick={() => onOpen(member.id)} aria-label={"Open " + displayName(member, language) + " profile"}>
       <img src={photoSrc(member.photo)} alt={displayName(member, language)} decoding="async" />
     </button>
@@ -640,7 +654,26 @@ function ProfessionPhotoSlider({ members, language, onOpen }: { members: Member[
       </div>
       {bio ? <ProfessionPhotoBio key={member.id} bio={bio} language={language} onOpen={() => onOpen(member.id)} /> : null}
     </div>
-    {photoMembers.length > 1 ? <div className="profession-photo-controls"><button type="button" aria-label={t(language, "previousProfileLabel")} onClick={() => setSlideIndex((index) => (index - 1 + photoMembers.length) % photoMembers.length)}>{t(language, "previousButtonLabel")}</button><span>{slideIndex + 1} / {photoMembers.length}</span><button type="button" aria-label={t(language, "nextProfileLabel")} onClick={() => setSlideIndex((index) => (index + 1) % photoMembers.length)}>{t(language, "nextButtonLabel")}</button></div> : null}
+    {photoMembers.length > 1 ? <>
+      <div className="profession-photo-controls">
+        <button type="button" aria-label={t(language, "previousProfileLabel")} onClick={() => setSlideIndex((index) => (index - 1 + photoMembers.length) % photoMembers.length)}>{t(language, "previousButtonLabel")}</button>
+        <span>{slideIndex + 1} / {photoMembers.length}</span>
+        <button type="button" aria-label={t(language, "nextProfileLabel")} onClick={() => setSlideIndex((index) => (index + 1) % photoMembers.length)}>{t(language, "nextButtonLabel")}</button>
+      </div>
+      <div className="profession-photo-dots" role="tablist" aria-label={t(language, "previousProfileLabel")}>
+        {photoMembers.map((dotMember, index) => (
+          <button
+            key={dotMember.id}
+            type="button"
+            role="tab"
+            className={`profession-photo-dot${index === slideIndex % photoMembers.length ? " active" : ""}`}
+            aria-label={displayName(dotMember, language)}
+            aria-selected={index === slideIndex % photoMembers.length}
+            onClick={() => setSlideIndex(index)}
+          />
+        ))}
+      </div>
+    </> : null}
   </div>;
 }
 export default function App() {
@@ -4091,7 +4124,7 @@ export default function App() {
       {mobileNavOpen ? <div className="nav-backdrop" onClick={() => setMobileNavOpen(false)} /> : null}
 
       {content}
-      <SajraChat appName={state.appName} members={state.members} onOpenMember={(id) => navigate({ page: "member", memberId: id })} onFeedback={submitChatFeedback} />
+      <SajraChat appName={state.appName} language={language} members={state.members} onOpenMember={(id) => navigate({ page: "member", memberId: id })} onFeedback={submitChatFeedback} />
 
       {supabaseConfigured && (syncStatus === "error" || syncStatus === "conflict") ? (
         <p className="footer-note">

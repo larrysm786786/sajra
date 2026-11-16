@@ -4,7 +4,8 @@ import { FunctionsHttpError } from "@supabase/supabase-js";
 import { Capacitor } from "@capacitor/core";
 import { getSupabaseClient } from "./supabase";
 import { appSpeech } from "./AppUpdater";
-import type { Member } from "./types";
+import { t } from "./i18n";
+import type { Member, Language } from "./types";
 
 type ChatMessage = { role: "user" | "assistant"; content: string; feedback?: "up" | "down"; feedbackSent?: boolean };
 
@@ -85,14 +86,19 @@ function renderAssistantMessage(content: string) {
   });
 }
 
-export default function SajraChat({ appName, members, onOpenMember, onFeedback }: { appName: string; members: Member[]; onOpenMember: (memberId: number) => void; onFeedback: (answer: string, helpful: boolean) => Promise<void> }) {
+export default function SajraChat({ appName, language, members, onOpenMember, onFeedback }: { appName: string; language: Language; members: Member[]; onOpenMember: (memberId: number) => void; onFeedback: (answer: string, helpful: boolean) => Promise<void> }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [answerLength, setAnswerLength] = useState<"concise" | "detailed">("concise");
-  const [responseLanguage, setResponseLanguage] = useState<"auto" | "en" | "hinglish" | "ur">("auto");
+  const [responseLanguage, setResponseLanguage] = useState<"auto" | "en" | "hinglish" | "ur">(language === "ur" ? "ur" : "auto");
+  // Follows the app's own language toggle so switching to Urdu also switches the chat's reply
+  // language without the user having to pick it again in the settings dropdown below.
+  useEffect(() => {
+    setResponseLanguage(language === "ur" ? "ur" : "auto");
+  }, [language]);
   const [readAloud, setReadAloud] = useState(true);
   const [listening, setListening] = useState(false);
   const [micLevel, setMicLevel] = useState(0);
@@ -188,7 +194,7 @@ export default function SajraChat({ appName, members, onOpenMember, onFeedback }
 
     if (isNative) {
       if (nativeSpeechAvailable === false) {
-        setError("Voice input isn't available on this device. Enable or install an Android speech recognition service, then try again.");
+        setError(t(language, "chatVoiceUnavailableError"));
         return;
       }
       try {
@@ -196,7 +202,7 @@ export default function SajraChat({ appName, members, onOpenMember, onFeedback }
         setListening(true);
       } catch (error) {
         setListening(false);
-        setError(error instanceof Error ? error.message : "Could not access the microphone. Check Sajra's microphone permission.");
+        setError(error instanceof Error ? error.message : t(language, "chatMicPermissionError"));
       }
       return;
     }
@@ -231,7 +237,7 @@ export default function SajraChat({ appName, members, onOpenMember, onFeedback }
       await onFeedback(content, helpful);
       setMessages((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, feedbackSent: true } : item));
     } catch {
-      setError("Feedback could not be sent. Please try again later.");
+      setError(t(language, "chatFeedbackFailed"));
     }
   }
   async function send(event: FormEvent) {
@@ -239,38 +245,39 @@ export default function SajraChat({ appName, members, onOpenMember, onFeedback }
     const text = draft.trim();
     const supabase = getSupabaseClient();
     if (!text || busy) return;
-    if (!supabase) { setError("Chat is not configured yet. Please contact the site administrator."); return; }
+    if (!supabase) { setError(t(language, "chatNotConfiguredError")); return; }
     const next = [...messages, { role: "user" as const, content: text }];
     setMessages(next); setDraft(""); setBusy(true); setError("");
     try {
       const familyMembers = members.map(({ id, uniqueId, name, nameUr, gender, profession, fatherId, motherId, spouseIds, daughtersCount }) => ({ id, uniqueId, name, nameUr, gender, profession, fatherId, motherId, spouseIds, daughtersCount: daughtersCount ?? undefined }));
       const { data, error: invokeError } = await supabase.functions.invoke("sajra-chat", { body: { messages: next.slice(-6), appName, familyMembers, answerLength, responseLanguage } });
       if (invokeError) throw invokeError;
-      if (typeof data?.reply !== "string") throw new Error("I could not get an answer. Please try again.");
+      if (typeof data?.reply !== "string") throw new Error(t(language, "chatNoAnswerError"));
       setMessages((current) => [...current, { role: "assistant", content: data.reply }]);
     } catch (err) {
       if (err instanceof FunctionsHttpError) {
         try {
           const body = await err.context.clone().json();
-          setError(typeof body?.error === "string" ? body.error : err.message);
-        } catch { setError(err.message); }
+          const serverMessage = typeof body?.error === "string" ? body.error : err.message;
+          setError(language === "ur" ? t(language, "chatUnreachableError") : serverMessage);
+        } catch { setError(language === "ur" ? t(language, "chatUnreachableError") : err.message); }
       } else {
-        setError(err instanceof Error ? err.message : "Could not reach the chat service. Please try again.");
+        setError(err instanceof Error ? err.message : t(language, "chatUnreachableError"));
       }
     }
     finally { setBusy(false); setTimeout(scrollToBottom, 20); }
   }
 
   return <div className="sajra-chat-widget">
-    {open ? <section className="sajra-chat-panel" aria-label="Anis Ai assistant">
-      <header className="sajra-chat-header"><span className="sajra-chat-avatar">{"\u2726"}</span><div><strong>Anis Ai</strong></div><button type="button" className="sajra-chat-close" aria-label="Close chat" onClick={() => setOpen(false)}>{"\u00D7"}</button></header>
+    {open ? <section className="sajra-chat-panel" aria-label={t(language, "chatAriaLabel")}>
+      <header className="sajra-chat-header"><span className="sajra-chat-avatar">{"\u2726"}</span><div><strong>{t(language, "chatTitle")}</strong></div><button type="button" className="sajra-chat-close" aria-label={t(language, "chatCloseAriaLabel")} onClick={() => setOpen(false)}>{"\u00D7"}</button></header>
       <div className="sajra-chat-messages" aria-live="polite">
-        {!messages.length ? <div className="sajra-chat-welcome"><span>{"\u2726"}</span><h3>Assalamo Alaikum</h3><p>I can help you explore the {appName} family tree. What would you like to know?</p><div className="sajra-chat-chips"><button type="button" onClick={() => setDraft("How do I search the family tree?")}>Search the tree</button><button type="button" onClick={() => setDraft("How many Hafiz, Maulanas, and engineers are in the tree?")}>Family counts</button><button type="button" onClick={() => setDraft("Who are the parents of ")}>Find parents</button><button type="button" onClick={() => setDraft("How are these family members related: ")}>Find a relationship</button><button type="button" onClick={() => setDraft("Tell me about Sajra")}>About Sajra</button></div></div> : messages.map((message, index) => <div key={index} className={`sajra-chat-message ${message.role}`}>{message.role === "assistant" ? <>{renderAssistantMessage(message.content)}{members.filter((member) => member.uniqueId && message.content.includes(member.uniqueId)).map((member) => { const father = members.find((candidate) => candidate.id === member.fatherId); const mother = members.find((candidate) => candidate.id === member.motherId); return <button key={member.id} type="button" className="sajra-chat-profile-card" onClick={() => { setOpen(false); onOpenMember(member.id); }}><strong>{member.name}</strong><span>{member.uniqueId}</span>{member.profession ? <small>{member.profession}</small> : null}{father || mother ? <small>{father ? "Father: " + father.name : ""}{father && mother ? " | " : ""}{mother ? "Mother: " + mother.name : ""}</small> : null}<small>View profile</small></button>; })}{message.role === "assistant" ? <><div className="sajra-chat-source">Family tree records</div><div className="sajra-chat-feedback" aria-label="Rate this answer"><span>Was this helpful?</span><button type="button" aria-label="Helpful" aria-pressed={message.feedback === "up"} disabled={Boolean(message.feedback)} onClick={() => void submitFeedback(index, message.content, true)}>Yes</button><button type="button" aria-label="Not helpful" aria-pressed={message.feedback === "down"} disabled={Boolean(message.feedback)} onClick={() => void submitFeedback(index, message.content, false)}>No</button>{message.feedbackSent ? <small>Thanks, feedback sent to the site admins.</small> : message.feedback ? <small>Sending feedback</small> : null}</div></> : null}</> : message.content}</div>)}
+        {!messages.length ? <div className="sajra-chat-welcome"><span>{"\u2726"}</span><h3>{t(language, "chatGreeting")}</h3><p>{t(language, "chatWelcomeMessage").replace("{appName}", appName)}</p><div className="sajra-chat-chips"><button type="button" onClick={() => setDraft(t(language, "chatSearchTreeQuestion"))}>{t(language, "chatChipSearchTree")}</button><button type="button" onClick={() => setDraft(t(language, "chatChipFamilyCountsQuestion"))}>{t(language, "chatChipFamilyCounts")}</button><button type="button" onClick={() => setDraft(t(language, "chatChipFindParentsQuestion"))}>{t(language, "chatChipFindParents")}</button><button type="button" onClick={() => setDraft(t(language, "chatChipFindRelationshipQuestion"))}>{t(language, "chatChipFindRelationship")}</button><button type="button" onClick={() => setDraft(t(language, "chatChipAboutSajraQuestion"))}>{t(language, "chatChipAboutSajra")}</button></div></div> : messages.map((message, index) => <div key={index} className={`sajra-chat-message ${message.role}`}>{message.role === "assistant" ? <>{renderAssistantMessage(message.content)}{members.filter((member) => member.uniqueId && message.content.includes(member.uniqueId)).map((member) => { const father = members.find((candidate) => candidate.id === member.fatherId); const mother = members.find((candidate) => candidate.id === member.motherId); return <button key={member.id} type="button" className="sajra-chat-profile-card" onClick={() => { setOpen(false); onOpenMember(member.id); }}><strong>{member.name}</strong><span>{member.uniqueId}</span>{member.profession ? <small>{member.profession}</small> : null}{father || mother ? <small>{father ? `${t(language, "chatFatherPrefix")} ${father.name}` : ""}{father && mother ? " | " : ""}{mother ? `${t(language, "chatMotherPrefix")} ${mother.name}` : ""}</small> : null}<small>{t(language, "viewProfile")}</small></button>; })}{message.role === "assistant" ? <><div className="sajra-chat-source">{t(language, "chatSourceLabel")}</div><div className="sajra-chat-feedback" aria-label={t(language, "chatRateAnswerAriaLabel")}><span>{t(language, "chatWasHelpfulLabel")}</span><button type="button" aria-label={t(language, "chatHelpfulAriaLabel")} aria-pressed={message.feedback === "up"} disabled={Boolean(message.feedback)} onClick={() => void submitFeedback(index, message.content, true)}>{t(language, "chatYesLabel")}</button><button type="button" aria-label={t(language, "chatNotHelpfulAriaLabel")} aria-pressed={message.feedback === "down"} disabled={Boolean(message.feedback)} onClick={() => void submitFeedback(index, message.content, false)}>{t(language, "chatNoLabel")}</button>{message.feedbackSent ? <small>{t(language, "chatFeedbackThanks")}</small> : message.feedback ? <small>{t(language, "chatFeedbackSending")}</small> : null}</div></> : null}</> : message.content}</div>)}
         {busy ? <div className="sajra-chat-message assistant sajra-chat-typing"><i/><i/><i/></div> : null}{error ? <p className="sajra-chat-error">{error}</p> : null}<div ref={bottomRef}/>
       </div>
-      <div className="sajra-chat-settings"><label>Language<select value={responseLanguage} onChange={(event) => setResponseLanguage(event.target.value as "auto" | "en" | "hinglish" | "ur")}><option value="auto">Match my message</option><option value="en">English</option><option value="hinglish">Hinglish</option><option value="ur">Urdu</option></select></label><label>Answer<select value={answerLength} onChange={(event) => setAnswerLength(event.target.value as "concise" | "detailed")}><option value="concise">Short</option><option value="detailed">Detailed</option></select></label>{speechSynthesisSupported ? <>{speaking ? <button type="button" className="sajra-chat-voice-stop" onClick={stopSpeaking}>{"\u23f9\ufe0f Stop"}</button> : null}<button type="button" className={`sajra-chat-voice-toggle${readAloud ? " active" : ""}`} aria-pressed={readAloud} onClick={() => { setReadAloud((value) => !value); stopSpeaking(); }}>{readAloud ? "\ud83d\udd0a Read aloud" : "\ud83d\udd07 Read aloud"}</button></> : null}</div><form className="sajra-chat-form" onSubmit={(event) => void send(event)}>{micSupported ? <button type="button" className={`sajra-chat-mic-btn${listening ? " listening" : ""}`} style={listening ? { transform: `scale(${1 + micLevel * 0.3})` } : undefined} aria-label={listening ? "Stop listening" : "Speak your question"} aria-pressed={listening} onClick={() => void toggleListening()}><MicIcon /></button> : null}<textarea aria-label="Your message" placeholder={listening ? "Listening\u2026" : "Ask me anything\u2026"} rows={1} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(event); } }} /><button type="submit" aria-label="Send message" disabled={!draft.trim() || busy}>{"\u2191"}</button></form>
-      <div className="sajra-chat-footnote">AI can make mistakes. Avoid sharing private information.</div>
+      <div className="sajra-chat-settings"><label>{t(language, "chatLanguageLabel")}<select value={responseLanguage} onChange={(event) => setResponseLanguage(event.target.value as "auto" | "en" | "hinglish" | "ur")}><option value="auto">{t(language, "chatLangAuto")}</option><option value="en">{t(language, "chatLangEnglish")}</option><option value="hinglish">{t(language, "chatLangHinglish")}</option><option value="ur">{t(language, "chatLangUrdu")}</option></select></label><label>{t(language, "chatAnswerLabel")}<select value={answerLength} onChange={(event) => setAnswerLength(event.target.value as "concise" | "detailed")}><option value="concise">{t(language, "chatAnswerShort")}</option><option value="detailed">{t(language, "chatAnswerDetailed")}</option></select></label>{speechSynthesisSupported ? <>{speaking ? <button type="button" className="sajra-chat-voice-stop" onClick={stopSpeaking}>{t(language, "chatStopSpeakingLabel")}</button> : null}<button type="button" className={`sajra-chat-voice-toggle${readAloud ? " active" : ""}`} aria-pressed={readAloud} onClick={() => { setReadAloud((value) => !value); stopSpeaking(); }}>{readAloud ? t(language, "chatReadAloudOnLabel") : t(language, "chatReadAloudOffLabel")}</button></> : null}</div><form className="sajra-chat-form" onSubmit={(event) => void send(event)}>{micSupported ? <button type="button" className={`sajra-chat-mic-btn${listening ? " listening" : ""}`} style={listening ? { transform: `scale(${1 + micLevel * 0.3})` } : undefined} aria-label={listening ? t(language, "chatStopListeningAriaLabel") : t(language, "chatSpeakQuestionAriaLabel")} aria-pressed={listening} onClick={() => void toggleListening()}><MicIcon /></button> : null}<textarea aria-label={t(language, "chatYourMessageAriaLabel")} placeholder={listening ? t(language, "chatListeningPlaceholder") : t(language, "chatAskPlaceholder")} rows={1} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(event); } }} /><button type="submit" aria-label={t(language, "chatSendMessageAriaLabel")} disabled={!draft.trim() || busy}>{"\u2191"}</button></form>
+      <div className="sajra-chat-footnote">{t(language, "chatDisclaimer")}</div>
     </section> : null}
-    <button type="button" className={`sajra-chat-launcher${open ? " active" : ""}`} aria-label={open ? "Close AI chat" : "Open AI chat"} onClick={() => setOpen((value) => !value)}>{open ? "\u00D7" : <><span>{"\u2726"}</span><span className="sajra-chat-launcher-label">Ask Anis Ai</span></>}</button>
+    {!open ? <button type="button" className="sajra-chat-launcher" aria-label={t(language, "chatOpenAriaLabel")} onClick={() => setOpen(true)}><span>{"\u2726"}</span><span className="sajra-chat-launcher-label">{t(language, "chatLauncherLabel")}</span></button> : null}
   </div>;
 }

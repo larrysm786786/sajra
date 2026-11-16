@@ -2340,15 +2340,15 @@ html[dir="rtl"] .select {
 .profession-photo-image img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 35%; }
 .profession-photo-content { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; min-width: 0; padding: clamp(20px, 3vw, 38px) clamp(20px, 3vw, 38px) 68px; animation: profession-slide-in .35s ease both; }
 .profession-photo-caption { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
-.profession-photo-caption span { color: var(--accent-strong); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.profession-photo-caption span { color: var(--accent-strong); font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
 .profession-photo-caption strong { color: var(--ink); font-family: "Playfair Display", serif; font-size: clamp(1.2rem, 2.5vw, 1.8rem); overflow-wrap: anywhere; }
 .profession-photo-caption small { color: var(--muted); font-size: 13px; }
-.profession-photo-bio { position: relative; width: 100%; color: var(--muted); font-size: 14px; line-height: 1.7; text-align: start; }
+.profession-photo-bio { position: relative; width: 100%; color: var(--muted); font-size: 14px; line-height: 1.7; text-align: justify; }
 .profession-photo-bio p { margin: 0; white-space: pre-line; }
 .profession-photo-bio p.is-collapsed { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
-.profession-photo-read-more { margin-top: 6px; padding: 0; border: 0; color: var(--accent-strong); background: transparent; font: inherit; font-weight: 700; cursor: pointer; }
+.profession-photo-read-more { margin-top: 6px; padding: 0; border: 0; color: var(--accent-strong); background: transparent; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
 .profession-photo-read-more:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 3px; border-radius: 2px; }
-html[dir="rtl"] .profession-photo-bio { direction: rtl; text-align: right; }
+html[dir="rtl"] .profession-photo-bio { direction: rtl; text-align: justify; }
 .profession-photo-controls { position: absolute; right: 16px; bottom: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .profession-photo-controls span { color: var(--muted); font-size: 13px; }
 .profession-photo-controls button { padding: 7px 9px; border: 1px solid var(--border); border-radius: 9px; color: var(--text); background: var(--surface); font-size: 12px; cursor: pointer; }
@@ -2490,4 +2490,86 @@ html[dir="rtl"] .profession-photo-bio { direction: rtl; text-align: right; }
 /* Temporarily disable shadows site-wide for visual inspection. */
 *, *::before, *::after { box-shadow: none !important; }
 .live-map-city-dot, .org-card { filter: none !important; }
+
+/* Touch-friendly homepage slider controls for phones and the Android app. */
+.profession-photo-slider { touch-action: pan-y; }
+.profession-photo-dots { display: none; }
+@media (max-width: 860px) {
+  .profession-photo-controls { display: none; }
+  .profession-photo-dots {
+    position: absolute;
+    right: 12px;
+    bottom: 8px;
+    left: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    max-width: calc(100% - 24px);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .profession-photo-dots::-webkit-scrollbar { display: none; }
+  .profession-photo-dot {
+    display: grid;
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+  }
+  .profession-photo-dot::before {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    content: "";
+    transition: width .18s ease, border-radius .18s ease, background .18s ease;
+  }
+  .profession-photo-dot.active::before {
+    width: 16px;
+    border-radius: 999px;
+    background: var(--accent-strong);
+  }
+  .profession-photo-dot:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 1px; }
+  .profession-photo-caption span { font-size: 12px; }
+  .profession-photo-read-more { font-size: 16px; }
+
+  /* Nastaliq needs more line height, while smaller labels keep the Urdu UI compact. */
+  html[lang="ur"] body { font-size: 15px; line-height: 1.85; }
+  html[lang="ur"] .sajra-chat-widget,
+  html[lang="ur"] .sajra-chat-panel { font-family: "Noto Nastaliq Urdu", "Inter", serif; }
+  html[lang="ur"] .sajra-chat-header { padding-block: 12px; }
+  html[lang="ur"] .sajra-chat-header strong { font-size: 14px; }
+  html[lang="ur"] .sajra-chat-welcome { padding-block: 24px; }
+  html[lang="ur"] .sajra-chat-welcome h3 { font-size: 16px; line-height: 1.9; }
+  html[lang="ur"] .sajra-chat-welcome p { font-size: 13px; line-height: 2; }
+  html[lang="ur"] .sajra-chat-chips { gap: 6px; margin-top: 16px; }
+  html[lang="ur"] .sajra-chat-chips button { padding: 6px 10px; font-size: 12px; line-height: 1.9; }
+  html[lang="ur"] .sajra-chat-message { font-size: 13px; line-height: 1.95; }
+  html[lang="ur"] .sajra-chat-profile-card strong { font-size: 14px; }
+  html[lang="ur"] .sajra-chat-profile-card span { font-size: 12px; }
+  html[lang="ur"] .sajra-chat-profile-card small { font-size: 11px; }
+  html[lang="ur"] .sajra-chat-source,
+  html[lang="ur"] .sajra-chat-feedback,
+  html[lang="ur"] .sajra-chat-feedback button { font-size: 10px; }
+  html[lang="ur"] .sajra-chat-settings { gap: 8px; }
+  html[lang="ur"] .sajra-chat-settings label { gap: 4px; font-size: 10px; }
+  html[lang="ur"] .sajra-chat-settings select { max-width: 116px; padding: 4px 5px; }
+  html[lang="ur"] .sajra-chat-form { gap: 6px; padding-inline: 9px; }
+  html[lang="ur"] .sajra-chat-form textarea { min-width: 0; padding: 9px 10px; font-size: 14px; }
+  html[lang="ur"] .sajra-chat-error { font-size: 11px; line-height: 1.9; }
+  html[lang="ur"] .sajra-chat-footnote { font-size: 9px; line-height: 1.8; }
+  html[lang="ur"] .profession-photo-bio { font-size: 12px; line-height: 1.8; }
+  html[dir="rtl"] .sajra-chat-messages,
+  html[dir="rtl"] .sajra-chat-message,
+  html[dir="rtl"] .sajra-chat-profile-card { direction: rtl; text-align: right; }
+  html[dir="rtl"] .sajra-chat-settings,
+  html[dir="rtl"] .sajra-chat-form,
+  html[dir="rtl"] .sajra-chat-feedback { direction: rtl; }
+}
 
