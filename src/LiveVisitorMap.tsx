@@ -1,6 +1,9 @@
 import React, { useRef, useState } from "react";
 import { WORLD_CITIES } from "./worldCityData";
 import { WORLD_COUNTRIES } from "./worldMapData";
+import { formatNumber } from "./lib";
+import { t } from "./i18n";
+import type { Language } from "./types";
 
 interface CityActivity { city: string; country: string; activeUsers: number; }
 interface Point { x: number; y: number; }
@@ -37,9 +40,10 @@ interface Props {
   loading: boolean;
   error: string;
   onRefresh: () => void;
+  language: Language;
 }
 
-export default function LiveVisitorMap({ cities, loading, error, onRefresh }: Props) {
+export default function LiveVisitorMap({ cities, loading, error, onRefresh, language }: Props) {
   const [zoom, setZoom] = useState(1);
   const [view, setView] = useState<[number, number]>([0, 0]);
   const pointersRef = useRef(new Map<number, Point>());
@@ -105,8 +109,8 @@ export default function LiveVisitorMap({ cities, loading, error, onRefresh }: Pr
 
   return <section className="card live-visitor-card" aria-label="Live visitors map">
     <div className="live-visitor-heading">
-      <div><span className="live-indicator" /> <strong>Live visitors by city</strong><small>Approximate city locations · updated every minute</small></div>
-      <button className="btn-ghost live-refresh" type="button" onClick={onRefresh} disabled={loading}>{loading ? "Updating…" : "Refresh"}</button>
+      <div><span className="live-indicator" /> <strong>{t(language, "liveVisitorsByCityTitle")}</strong><small>{t(language, "liveVisitorsByCitySubtitle")}</small></div>
+      <button className="btn-ghost live-refresh" type="button" onClick={onRefresh} disabled={loading}>{loading ? t(language, "updatingLabel") : t(language, "refreshButton")}</button>
     </div>
     {error ? <div className="notice danger live-map-error">{error}</div> : null}
     <div
@@ -134,7 +138,7 @@ export default function LiveVisitorMap({ cities, loading, error, onRefresh }: Pr
           return <g key={`${item.city}-${item.country}-${index}`} className="live-map-city-marker">
             <circle className="live-map-city-halo" cx={item.x} cy={item.y} r={radius * 3.2} />
             <circle className="live-map-city-dot" cx={item.x} cy={item.y} r={radius} />
-            <title>{item.city}, {item.country}: {item.activeUsers} active visitors</title>
+            <title>{item.city}, {item.country}: {formatNumber(item.activeUsers, language)} {t(language, "activeVisitorsSuffix")}</title>
           </g>;
         })}</g>
       </svg>
@@ -143,9 +147,9 @@ export default function LiveVisitorMap({ cities, loading, error, onRefresh }: Pr
         <button type="button" aria-label="Zoom out" onPointerDown={(e) => e.stopPropagation()} onClick={() => setZoomAround(zoom / 1.5)}>−</button>
         <button type="button" aria-label="Reset map view" onPointerDown={(e) => e.stopPropagation()} onClick={() => { setZoom(1); setView([0, 0]); }}>↺</button>
       </div>
-      {!loading && !cities.length && !error ? <div className="live-map-empty">No active visitor locations reported right now.</div> : null}
-      <small className="live-map-attribution">Map data: Natural Earth</small>
+      {!loading && !cities.length && !error ? <div className="live-map-empty">{t(language, "noActiveVisitorLocations")}</div> : null}
+      <small className="live-map-attribution">{t(language, "mapDataAttribution")}</small>
     </div>
-    {cities.length ? <div className="live-city-list">{cities.slice(0, 12).map((item, index) => <div key={`${item.city}-${item.country}-${index}`}><span><strong>{item.city}</strong><small>{item.country}</small></span><b>{item.activeUsers}</b></div>)}</div> : null}
+    {cities.length ? <div className="live-city-list">{cities.slice(0, 12).map((item, index) => <div key={`${item.city}-${item.country}-${index}`}><span><strong>{item.city}</strong><small>{item.country}</small></span><b>{formatNumber(item.activeUsers, language)}</b></div>)}</div> : null}
   </section>;
 }

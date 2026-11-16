@@ -3281,6 +3281,7 @@ export default function App() {
               cities={liveCities}
               loading={liveCitiesLoading}
               error={liveCitiesError}
+              language={language}
               onRefresh={() => { void fetchLiveVisitorCities().then(setLiveCities).catch((error) => setLiveCitiesError(error instanceof Error ? error.message : String(error))); }}
             />
             <div className="card" style={{ marginTop: 18, padding: 18 }}>
@@ -3288,7 +3289,7 @@ export default function App() {
               <div className="analytics-bar-chart">
                 {(visitStats?.last7Days ?? []).map((day) => (
                   <div key={day.date} className="analytics-bar-col">
-                    <span className="analytics-bar-value">{day.count}</span>
+                    <span className="analytics-bar-value">{formatNumber(day.count, language)}</span>
                     <div className="analytics-bar" style={{ height: `${Math.max(4, (day.count / maxDayCount) * 100)}%` }} />
                     <small>{new Date(`${day.date}T00:00:00`).toLocaleDateString(language === "ur" ? "ur-PK" : "en", { weekday: "short" })}</small>
                   </div>
