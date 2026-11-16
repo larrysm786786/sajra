@@ -649,12 +649,11 @@ function ProfessionPhotoSlider({ members, language, onOpen }: { members: Member[
   }
   return <div className="profession-photo-slider" aria-label="Family members with professional roles" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
     <button key={`photo-${member.id}`} type="button" className="profession-photo-image" onClick={() => onOpen(member.id)} aria-label={"Open " + displayName(member, language) + " profile"}>
-      <span className="profession-photo-eyebrow">{t(language, "featuredProfessionalsEyebrow")}</span>
       <img src={photoSrc(member.photo)} alt={displayName(member, language)} decoding="async" />
     </button>
     <div key={`details-${member.id}`} className="profession-photo-content">
       <div className="profession-photo-caption">
-        <span>{professionLabel(language, member.profession ?? "")}</span>
+        <span className="eyebrow profession-photo-eyebrow">{professionLabel(language, member.profession ?? "")}</span>
         <strong>{displayName(member, language)}</strong>
         {member.uniqueId ? <small>{member.uniqueId}</small> : null}
       </div>
