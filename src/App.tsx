@@ -346,16 +346,18 @@ function NavLink({
   active,
   children,
   onClick,
-  badge
+  badge,
+  language
 }: {
   active?: boolean;
   children: ReactNode;
   onClick: () => void;
   badge?: number;
+  language?: Language;
 }) {
   return (
     <button type="button" className={`navlink ${active ? "active" : ""}`} onClick={onClick}>
-      <span>{children}</span>{badge ? <span className="nav-badge">{badge > 99 ? "99+" : badge}</span> : null}
+      <span>{children}</span>{badge ? <span className="nav-badge">{badge > 99 ? "99+" : formatNumber(badge, language ?? "en")}</span> : null}
     </button>
   );
 }
@@ -3232,7 +3234,7 @@ export default function App() {
           {logsTotalPages > 1 ? (
             <div className="actions-row" style={{ marginTop: 14, justifyContent: "center" }}>
               <button className="btn-ghost" type="button" disabled={logsCurrentPage === 0} onClick={() => setLogsPage(logsCurrentPage - 1)}>{t(language, "previousButtonLabel")}</button>
-              <span className="tree-sub">{logsCurrentPage + 1} / {logsTotalPages}</span>
+              <span className="tree-sub">{formatNumber(logsCurrentPage + 1, language)} / {formatNumber(logsTotalPages, language)}</span>
               <button className="btn-ghost" type="button" disabled={logsCurrentPage >= logsTotalPages - 1} onClick={() => setLogsPage(logsCurrentPage + 1)}>{t(language, "nextButtonLabel")}</button>
             </div>
           ) : null}
@@ -3808,7 +3810,7 @@ export default function App() {
                   aria-pressed={group.id === activeProfessionGroup?.id}
                   onClick={() => setSelectedProfession((current) => (current === group.id ? null : group.id))}
                 >
-                  <span className="stat-value">{group.members.length}</span>
+                  <span className="stat-value">{formatNumber(group.members.length, language)}</span>
                   <span className="muted" style={{ fontWeight: 700 }}>{group.label}</span>
                 </button>
               ))}
@@ -4020,7 +4022,7 @@ export default function App() {
                     }}
                   >
                     <span>{item.label}</span>
-                    {item.badge && item.badge > 0 ? <span className="nav-badge">{item.badge > 99 ? "99+" : item.badge}</span> : null}
+                    {item.badge && item.badge > 0 ? <span className="nav-badge">{item.badge > 99 ? "99+" : formatNumber(item.badge, language)}</span> : null}
                   </button>
                 ))}
               </div>
@@ -4031,7 +4033,7 @@ export default function App() {
               {editorMenuLinks.map((item) => (
                 <button key={item.key} type="button" className="navlink" onClick={item.onClick}>
                   <span>{item.label}</span>
-                  {item.badge ? <span className="nav-badge">{item.badge > 99 ? "99+" : item.badge}</span> : null}
+                  {item.badge ? <span className="nav-badge">{item.badge > 99 ? "99+" : formatNumber(item.badge, language)}</span> : null}
                 </button>
               ))}
             </div>
@@ -4041,7 +4043,7 @@ export default function App() {
               {desktopAdminMenuLinks.map((item) => (
                 <button key={item.key} type="button" className="navlink" onClick={item.onClick}>
                   <span>{item.label}</span>
-                  {item.badge ? <span className="nav-badge">{item.badge > 99 ? "99+" : item.badge}</span> : null}
+                  {item.badge ? <span className="nav-badge">{item.badge > 99 ? "99+" : formatNumber(item.badge, language)}</span> : null}
                 </button>
               ))}
             </div>
@@ -4055,7 +4057,7 @@ export default function App() {
                   className="navlink"
                   onClick={() => { link.onClick(); setMobileNavOpen(false); }}
                 >
-                  <span>{link.label}</span>{link.badge ? <span className="nav-badge">{link.badge > 99 ? "99+" : link.badge}</span> : null}
+                  <span>{link.label}</span>{link.badge ? <span className="nav-badge">{link.badge > 99 ? "99+" : formatNumber(link.badge, language)}</span> : null}
                 </button>
               ))}
             </div>
@@ -4066,11 +4068,11 @@ export default function App() {
             <NavLink active={route.page === "member" && route.memberId === myMemberId} onClick={() => { goToMyFamily(); setMobileNavOpen(false); }}>{t(language, "myFamilyNavLabel")}</NavLink>
             <NavLink active={route.page === "roots"} onClick={() => navigate({ page: "roots" })}>{NAV_LABELS[language].roots}</NavLink>
             <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
-            <NavLink active={route.page === "calendar"} badge={notificationBadgeCount} onClick={() => navigate({ page: "calendar" })}>{t(language, "navNotificationsLabel")}</NavLink>
+            <NavLink active={route.page === "calendar"} badge={notificationBadgeCount} language={language} onClick={() => navigate({ page: "calendar" })}>{t(language, "navNotificationsLabel")}</NavLink>
             <NavLink active={route.page === "live"} onClick={() => navigate({ page: "live" })}>{canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel")}</NavLink>
             <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
             <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
-            {isLoggedIn || isNativeApp ? <NavLink active={route.page === "settings"} badge={isNativeApp && appUpdateAvailable ? 1 : 0} onClick={() => navigate({ page: "settings" })}>{t(language, "navSettingsLabel")}</NavLink> : null}
+            {isLoggedIn || isNativeApp ? <NavLink active={route.page === "settings"} badge={isNativeApp && appUpdateAvailable ? 1 : 0} language={language} onClick={() => navigate({ page: "settings" })}>{t(language, "navSettingsLabel")}</NavLink> : null}
           </div>
           <div className="topnav-actions-mobile">
             <button

@@ -2229,12 +2229,10 @@ input[type="file"]:not([hidden]):focus-visible {
 .node text.org-card-name { font-size: 12px; font-weight: 700; font-family: inherit; fill: #ffffff; pointer-events: none; }
 .node text.org-card-detail { font-size: 10px; font-weight: 500; font-family: inherit; fill: rgba(255, 255, 255, 0.9); pointer-events: none; }
 
-/* ===== RTL (Urdu) support ===== */
+/* ===== Urdu text alignment (layout/order never changes - see the dir="ltr" note in App.tsx) ===== */
 html[lang="ur"] body { text-align: right; }
-html[lang="ur"] .header-actions,
-html[lang="ur"] .form-stack label,
-html[lang="ur"] .actions-row {
-  direction: rtl;
+html[lang="ur"] .form-stack label {
+  text-align: right;
 }
 html[lang="ur"] .field,
 html[lang="ur"] .select {
@@ -2374,7 +2372,7 @@ html[lang="ur"] .select {
 .profession-photo-bio p.is-collapsed { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
 .profession-photo-read-more { margin-top: 6px; padding: 0; border: 0; color: var(--accent-strong); background: transparent; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
 .profession-photo-read-more:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 3px; border-radius: 2px; }
-html[lang="ur"] .profession-photo-bio { direction: rtl; text-align: justify; }
+html[lang="ur"] .profession-photo-bio { text-align: justify; }
 @media (min-width: 861px) { .profession-photo-slider { grid-template-rows: min(36vw, 446px); }.profession-photo-content { box-sizing: border-box; min-height: 0; overflow: hidden; }.profession-photo-bio { flex: 1 1 auto; min-height: 0; overflow: hidden; }.profession-photo-bio p.is-collapsed { -webkit-line-clamp: 5; } }
 @media (min-width: 1101px) { .profession-photo-bio p.is-collapsed { -webkit-line-clamp: 7; } }
 @media (min-width: 1301px) { .profession-photo-bio p.is-collapsed { -webkit-line-clamp: 9; } }
@@ -2547,9 +2545,6 @@ html[lang="ur"] .profession-photo-bio { direction: rtl; text-align: justify; }
   html[lang="ur"] .profession-photo-bio { font-size: 12px; line-height: 1.8; }
   html[lang="ur"] .sajra-chat-messages,
   html[lang="ur"] .sajra-chat-message,
-  html[lang="ur"] .sajra-chat-profile-card { direction: rtl; text-align: right; }
-  html[lang="ur"] .sajra-chat-settings,
-  html[lang="ur"] .sajra-chat-form,
-  html[lang="ur"] .sajra-chat-feedback { direction: rtl; }
+  html[lang="ur"] .sajra-chat-profile-card { text-align: right; }
 }
 
