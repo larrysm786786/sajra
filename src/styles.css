@@ -1673,6 +1673,23 @@ input[type="file"]:not([hidden]):focus-visible {
   font-size: 0.92rem;
 }
 
+.download-app-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: linear-gradient(120deg, var(--accent-strong), #1c3560);
+  color: #ffffff;
+}
+.download-app-banner strong { display: block; font-size: 1.02rem; }
+.download-app-banner p { margin: 4px 0 0; color: #d3e7f2; font-size: 0.86rem; }
+.download-app-banner .btn { flex: 0 0 auto; background: #ffffff; color: var(--accent-strong); }
+@media (max-width: 600px) { .download-app-banner { flex-direction: column; align-items: stretch; text-align: center; } }
+
 .bulk-import-errors {
   margin: 8px 0 0;
   padding-left: 18px;

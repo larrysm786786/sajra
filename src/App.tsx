@@ -3697,6 +3697,15 @@ export default function App() {
 
     return (
       <>
+        {!Capacitor.isNativePlatform() ? (
+          <div className="download-app-banner no-print">
+            <div>
+              <strong>{t(language, "downloadAppBannerTitle")}</strong>
+              <p>{t(language, "downloadAppBannerSubtitle")}</p>
+            </div>
+            <a className="btn" href="https://github.com/larrysm786786/sajra/releases/latest/download/Sajra.apk">{t(language, "downloadAppButton")}</a>
+          </div>
+        ) : null}
         <section className="hero">
           <span className="eyebrow">{t(language, "eyebrowHero")}</span>
           <h1 className="hero-legacy-title">{t(language, "heroLegacyTitleLine1")}<br />{t(language, "heroLegacyTitleLine2")}</h1>
