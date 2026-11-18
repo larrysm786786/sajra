@@ -75,8 +75,21 @@ export function loadState(): AppState {
   }
 }
 
+/**
+ * This local copy (photos and all) is just an instant-load/offline cache - Supabase is the real
+ * source of truth. With 250+ members and their photos, the JSON can pass the browser's ~5-10MB
+ * localStorage quota; setItem throws synchronously when it does, and since this runs inside a
+ * plain useEffect with no Error Boundary around the app, an uncaught throw here used to take the
+ * whole page down to a blank white screen on the very next render - most visibly right after
+ * adding a member's photo, the single biggest addition to that JSON. Best-effort only: if the
+ * local cache can't be written, the app keeps working purely off Supabase.
+ */
 export function saveState(state: AppState): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Quota exceeded or storage blocked - not fatal, Supabase already has (or will get) this save.
+  }
 }
 
 export function nextId<T extends { id: number }>(items: T[]): number {
