@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
     const donorMemberId = Number(body.donorMemberId);
     if (!Number.isSafeInteger(donorMemberId) || donorMemberId <= 0) return fail("Please pick who is donating.");
     const cause = typeof body.cause === "string" ? body.cause : "";
-    if (!["sickMember", "masjid", "madarsa", "iftari"].includes(cause)) return fail("Please pick a cause.");
+    if (!["sickMember", "masjid", "madarsa", "iftari", "sehri"].includes(cause)) return fail("Please pick a cause.");
     const amount = Number(body.amount);
     if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000) return fail("Please enter a valid amount.");
     const { data, error } = await admin.rpc("append_public_sajra_action", {

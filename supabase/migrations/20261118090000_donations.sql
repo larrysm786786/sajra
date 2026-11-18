@@ -89,7 +89,7 @@ begin
       from jsonb_array_elements(coalesce(archive.state -> 'members', '[]'::jsonb)) m
       where (m ->> 'id')::bigint = member_id;
     if member_name is null then raise exception 'Profile not found'; end if;
-    if (p_payload ->> 'cause') not in ('sickMember', 'masjid', 'madarsa', 'iftari') then
+    if (p_payload ->> 'cause') not in ('sickMember', 'masjid', 'madarsa', 'iftari', 'sehri') then
       raise exception 'Invalid cause';
     end if;
     if not (coalesce(archive.state -> 'donationSettings' -> 'activeCauses', '[]'::jsonb) ? (p_payload ->> 'cause')) then

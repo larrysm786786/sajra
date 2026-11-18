@@ -176,12 +176,40 @@ button {
   white-space: nowrap;
 }
 
+/* The hamburger + sliding panel is now the one nav pattern at every screen width (desktop
+   included) - a wide desktop header used to lay every admin link out inline instead, which grew
+   to 14 items for a logged-in admin and had no scroll limit, pushing Logout off the bottom. */
 .topnav {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 40;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: stretch;
+  height: 100vh;
+  width: min(78vw, 320px);
+  gap: 4px;
+  padding: 84px 18px 24px;
+  background: #2e5185;
+  box-shadow: -18px 0 44px rgba(0, 0, 0, 0.35);
+  transform: translateX(100%);
+  transition: transform 240ms ease;
+}
+
+.topnav.open {
+  transform: translateX(0);
+}
+
+.topnav-admin-dropdown {
+  display: none;
+}
+
+.navlink,
+.topnav .chip,
+.topnav .toggle {
+  width: 100%;
+  text-align: left;
 }
 
 .btn,
@@ -282,10 +310,9 @@ button {
   font-size: 0.8rem;
 }
 
+/* Superseded by .topnav-actions-mobile inside the hamburger panel, now used at every width. */
 .header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: none;
 }
 
 .visitor-counter {
@@ -307,15 +334,23 @@ button {
 }
 
 .visitor-counter-mobile {
-  display: none;
+  display: inline-flex;
+  margin-inline-start: auto;
+  padding: 6px 10px;
 }
 
 .topnav-actions-mobile {
-  display: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .hamburger-btn {
-  display: none;
+  display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
@@ -1800,78 +1835,30 @@ input[type="file"]:not([hidden]):focus-visible {
   .hero {
     box-shadow: none;
   }
-
-  .visitor-counter-mobile {
-    display: inline-flex;
-    margin-inline-start: auto;
-    padding: 6px 10px;
-  }
-
-  .hamburger-btn {
-    display: flex;
-  }
-
-  .header-actions {
-    display: none;
-  }
-
-  .topnav {
-    position: fixed;
-    top: 0;
-    right: 0;
-    z-index: 40;
-    height: 100vh;
-    width: min(78vw, 320px);
-    flex-wrap: nowrap;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: flex-start;
-    gap: 4px;
-    padding: 84px 18px 24px;
-    background: #2e5185;
-    box-shadow: -18px 0 44px rgba(0, 0, 0, 0.35);
-    transform: translateX(100%);
-    transition: transform 240ms ease;
-    overflow-y: auto;
-  }
-
-  .topnav-admin-dropdown { display: none; }
-
-  .topnav.open {
-    transform: translateX(0);
-  }
-
-  .navlink,
-  .topnav .chip,
-  .topnav .toggle {
-    width: 100%;
-    text-align: left;
-  }
-
-  .topnav-actions-mobile {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.14);
-  }
-
-  /* Logged-in accounts get a Dashboard shortcut list on mobile instead of the public site
-     links - the site links are still one tap away via that Dashboard's own sidebar. */
-  .topnav-authed .topnav-public-links {
-    display: none;
-  }
-
-  .topnav-authed .topnav-admin-links {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
 }
 
 .topnav-admin-links {
   display: none;
+}
+
+/* Logged-in accounts get a Dashboard shortcut list in the panel instead of the public site
+   links - the site links are still one tap away via that Dashboard's own sidebar. This now
+   applies at every screen width, not just mobile (see .topnav above). The list is the part
+   that grows (up to ~14 items for a logged-in admin), so it scrolls on its own, capped to
+   roughly 11 rows, while .topnav-actions-mobile (incl. Logout) stays pinned below it instead
+   of being pushed off-screen. */
+.topnav-authed .topnav-public-links {
+  display: none;
+}
+
+.topnav-authed .topnav-admin-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: min(60vh, 506px);
+  overflow-y: auto;
 }
 
 .topnav-staff-desktop-links {
@@ -1902,21 +1889,13 @@ input[type="file"]:not([hidden]):focus-visible {
 .topnav-admin-dropdown-menu .navlink.active { background: var(--accent); color: var(--ink); }
 
 .topnav-public-links {
-  display: contents;
-}
-
-@media (min-width: 861px) {
-  .nav-backdrop {
-    display: none;
-  }
-
-  .topnav-staff-desktop-links {
-    display: contents;
-  }
-
-  .topnav-staff-public-links {
-    display: none;
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: min(60vh, 506px);
+  overflow-y: auto;
 }
 
 @media (max-width: 720px) {
@@ -2326,8 +2305,9 @@ html[lang="ur"] .select {
 .donation-entry-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; }
 .donation-cause-toggle-list { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
 .donation-cause-toggle { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 999px; cursor: pointer; }
-.donation-qr-box { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; text-align: center; }
-.donation-qr-box img { width: 180px; height: 180px; border-radius: 10px; }
+.donation-qr-box { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px; border: 1px solid var(--border); border-radius: 12px; text-align: center; background: #fff; }
+.donation-qr-box img { width: min(220px, 100%); height: 220px; max-width: 100%; object-fit: contain; border-radius: 8px; background: #fff; padding: 6px; }
+.donation-qr-box .hint { color: #33415c; }
 
 /* Sajra AI chat */
 .sajra-chat-widget { position: fixed; right: 24px; bottom: 24px; z-index: 50; font-family: Inter, system-ui, sans-serif; }

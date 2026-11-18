@@ -176,8 +176,8 @@ export interface LiveStream {
   updatedAt: string | null;
 }
 
-/** The 4 fixed donation causes an admin/editor can open or close for public giving. */
-export type DonationCauseKey = "sickMember" | "masjid" | "madarsa" | "iftari";
+/** The 5 fixed donation causes an admin/editor can open or close for public giving. */
+export type DonationCauseKey = "sickMember" | "masjid" | "madarsa" | "iftari" | "sehri";
 
 /**
  * Admin-set payment details (a UPI QR code to scan) and which causes are currently open.

@@ -192,7 +192,7 @@ type DonationDraft = {
   amount: string;
 };
 
-const DONATION_CAUSE_KEYS: DonationCauseKey[] = ["sickMember", "masjid", "madarsa", "iftari"];
+const DONATION_CAUSE_KEYS: DonationCauseKey[] = ["sickMember", "masjid", "madarsa", "iftari", "sehri"];
 
 /** Name prefixed with profession, so people who share a name (common in this family) can be told apart in search lists. */
 function fullLabel(member: Member, language: Language): string {
@@ -205,7 +205,8 @@ const DONATION_CAUSE_LABEL_KEYS: Record<DonationCauseKey, StringKey> = {
   sickMember: "donationCauseSickMember",
   masjid: "donationCauseMasjid",
   madarsa: "donationCauseMadarsa",
-  iftari: "donationCauseIftari"
+  iftari: "donationCauseIftari",
+  sehri: "donationCauseSehri"
 };
 function donationCauseLabelKey(cause: DonationCauseKey): StringKey {
   return DONATION_CAUSE_LABEL_KEYS[cause];
@@ -888,6 +889,11 @@ export default function App() {
     [state.donationEntries]
   );
   const totalDonationAmount = useMemo(() => confirmedDonations.reduce((sum, entry) => sum + entry.amount, 0), [confirmedDonations]);
+  const confirmedDonationsByCause = useMemo(() => {
+    const grouped = {} as Record<DonationCauseKey, typeof confirmedDonations>;
+    for (const cause of DONATION_CAUSE_KEYS) grouped[cause] = confirmedDonations.filter((entry) => entry.cause === cause);
+    return grouped;
+  }, [confirmedDonations]);
 
   useEffect(() => {
     const lenis = new Lenis({
@@ -1795,6 +1801,14 @@ export default function App() {
       ...current,
       donationSettings: { ...current.donationSettings, qrCodeImage: donationQrInput.trim() || current.donationSettings.qrCodeImage, upiId: donationUpiInput.trim() || null }
     }));
+  }
+
+  function clearDonationPaymentDetails() {
+    if (!canManageDonations) return;
+    if (!window.confirm(t(language, "confirmClearDonationDetails"))) return;
+    setDonationQrInput("");
+    setDonationUpiInput("");
+    updateState((current) => ({ ...current, donationSettings: { ...current.donationSettings, qrCodeImage: null, upiId: null } }));
   }
 
   async function handleDonationQrPhoto(file?: File) {
@@ -3342,7 +3356,7 @@ export default function App() {
           <>
             <div className="card" style={{ padding: 16, marginBottom: 18 }}>
               <strong>{t(language, "donationCausesTitle")}</strong>
-              <p className="hint" style={{ marginTop: 4 }}>{t(language, "donationCausesHint")}</p>
+              <p className="hint" style={{ marginTop: 4, marginBottom: 12 }}>{t(language, "donationCausesHint")}</p>
               <div className="donation-cause-toggle-list">
                 {DONATION_CAUSE_KEYS.map((cause) => (
                   <label key={cause} className="donation-cause-toggle">
@@ -3354,8 +3368,8 @@ export default function App() {
             </div>
             <div className="card" style={{ padding: 16, marginBottom: 18 }}>
               <strong>{t(language, "donationPaymentDetailsTitle")}</strong>
-              <p className="hint" style={{ marginTop: 4 }}>{t(language, "donationPaymentDetailsHint")}</p>
-              <div className="form-grid" style={{ marginTop: 12 }}>
+              <p className="hint" style={{ marginTop: 4, marginBottom: 14 }}>{t(language, "donationPaymentDetailsHint")}</p>
+              <div className="form-grid">
                 <label className="span-12">
                   <span className="sr-only">{t(language, "donationUpiIdLabel")}</span>
                   <input className="field" placeholder={t(language, "donationUpiIdLabel")} value={donationUpiInput} onChange={(e) => setDonationUpiInput(e.target.value)} />
@@ -3364,9 +3378,16 @@ export default function App() {
                   <span className="sr-only">{t(language, "donationQrUploadLabel")}</span>
                   <input className="field" type="file" accept="image/*" aria-label={t(language, "donationQrUploadLabel")} onChange={(e) => void handleDonationQrPhoto(e.target.files?.[0])} />
                 </label>
-                {donationQrInput ? <img src={donationQrInput} alt={t(language, "donationQrAlt")} style={{ width: 140, height: 140, borderRadius: 10, marginTop: 4 }} /> : null}
+                {donationQrInput ? (
+                  <div className="span-12 donation-qr-box" style={{ marginTop: 4 }}>
+                    <img src={donationQrInput} alt={t(language, "donationQrAlt")} />
+                  </div>
+                ) : null}
               </div>
-              <button className="btn" type="button" style={{ marginTop: 12 }} onClick={saveDonationPaymentDetails}>{t(language, "saveButton")}</button>
+              <div className="actions-row" style={{ marginTop: 14 }}>
+                <button className="btn" type="button" onClick={saveDonationPaymentDetails}>{t(language, "saveButton")}</button>
+                <button className="btn-ghost danger" type="button" onClick={clearDonationPaymentDetails}>{t(language, "clearButton")}</button>
+              </div>
             </div>
 
             <h3 className="section-title" style={{ fontSize: "1.05rem" }}>{t(language, "pendingDonationsTitle")}</h3>
@@ -3391,20 +3412,27 @@ export default function App() {
 
             <h3 className="section-title" style={{ fontSize: "1.05rem", marginTop: 24 }}>{t(language, "donationListTitle")} ({t(language, "donationTotalPrefix")} ₹{formatNumber(totalDonationAmount, language)})</h3>
             {confirmedDonations.length ? (
-              <div className="list">
-                {confirmedDonations.map((entry) => (
-                  <div key={entry.id} className="card donation-entry-row">
-                    <div>
-                      <div className="tree-name">{entry.donorName}</div>
-                      <div className="tree-sub">{t(language, donationCauseLabelKey(entry.cause))} | {formatDate(entry.createdAt, language)}</div>
-                    </div>
-                    <div className="actions-row">
-                      <strong>₹{formatNumber(entry.amount, language)}</strong>
-                      <button className="btn-ghost danger" type="button" onClick={() => deleteDonation(entry.id)}>{t(language, "deleteButton")}</button>
-                    </div>
+              DONATION_CAUSE_KEYS.filter((cause) => confirmedDonationsByCause[cause].length).map((cause) => (
+                <div key={cause} style={{ marginTop: 16 }}>
+                  <h4 style={{ fontSize: "0.95rem", margin: "0 0 8px" }}>
+                    {t(language, donationCauseLabelKey(cause))} ({t(language, "donationTotalPrefix")} ₹{formatNumber(confirmedDonationsByCause[cause].reduce((sum, entry) => sum + entry.amount, 0), language)})
+                  </h4>
+                  <div className="list">
+                    {confirmedDonationsByCause[cause].map((entry) => (
+                      <div key={entry.id} className="card donation-entry-row">
+                        <div>
+                          <div className="tree-name">{entry.donorName}</div>
+                          <div className="tree-sub">{formatDate(entry.createdAt, language)}</div>
+                        </div>
+                        <div className="actions-row">
+                          <strong>₹{formatNumber(entry.amount, language)}</strong>
+                          <button className="btn-ghost danger" type="button" onClick={() => deleteDonation(entry.id)}>{t(language, "deleteButton")}</button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              ))
             ) : (
               <div className="empty">{t(language, "noDonationsYet")}</div>
             )}
@@ -3931,17 +3959,24 @@ export default function App() {
             </div>
           </div>
           {confirmedDonations.length ? (
-            <div className="list">
-              {confirmedDonations.map((entry) => (
-                <div key={entry.id} className="card donation-entry-row">
-                  <div>
-                    <div className="tree-name">{entry.donorName}</div>
-                    <div className="tree-sub">{t(language, donationCauseLabelKey(entry.cause))} | {formatDate(entry.createdAt, language)}</div>
-                  </div>
-                  <strong>₹{formatNumber(entry.amount, language)}</strong>
+            DONATION_CAUSE_KEYS.filter((cause) => confirmedDonationsByCause[cause].length).map((cause) => (
+              <div key={cause} style={{ marginTop: 20 }}>
+                <h3 className="section-title" style={{ fontSize: "1rem", marginBottom: 8 }}>
+                  {t(language, donationCauseLabelKey(cause))} ({t(language, "donationTotalPrefix")} ₹{formatNumber(confirmedDonationsByCause[cause].reduce((sum, entry) => sum + entry.amount, 0), language)})
+                </h3>
+                <div className="list">
+                  {confirmedDonationsByCause[cause].map((entry) => (
+                    <div key={entry.id} className="card donation-entry-row">
+                      <div>
+                        <div className="tree-name">{entry.donorName}</div>
+                        <div className="tree-sub">{formatDate(entry.createdAt, language)}</div>
+                      </div>
+                      <strong>₹{formatNumber(entry.amount, language)}</strong>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))
           ) : (
             <div className="empty">{t(language, "noDonationsYet")}</div>
           )}
@@ -4863,13 +4898,7 @@ export default function App() {
                 </div>
               ) : null}
             </div>
-            <label className="span-12">
-              <div className="muted" style={{ marginBottom: 8, fontWeight: 700 }}>{t(language, "donationCauseLabel")}</div>
-              <select className="select" value={donationDraft.cause} onChange={(e) => setDonationDraft((current) => current ? { ...current, cause: e.target.value as DonationCauseKey } : current)}>
-                {state.donationSettings.activeCauses.map((cause) => <option key={cause} value={cause}>{t(language, donationCauseLabelKey(cause))}</option>)}
-              </select>
-            </label>
-            <label className="span-12">
+            <label className="span-12" style={{ marginTop: 10 }}>
               <div className="muted" style={{ marginBottom: 8, fontWeight: 700 }}>{t(language, "donationAmountLabel")}</div>
               <input
                 className="field"
