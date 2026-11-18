@@ -2,7 +2,7 @@ export type Language = "en" | "ur";
 export type Theme = "light" | "dark";
 export type Gender = "male" | "female";
 export type Role = "admin" | "editor" | "contributor";
-export type ViewKey = "home" | "tree" | "gallery" | "admin" | "member" | "branch" | "calendar" | "about" | "guide" | "roots" | "settings" | "live" | "memory" | "dua" | "update" | "familyBook";
+export type ViewKey = "home" | "tree" | "gallery" | "admin" | "member" | "branch" | "calendar" | "about" | "guide" | "roots" | "settings" | "live" | "memory" | "dua" | "update" | "familyBook" | "donations";
 
 export interface BookPublication {
   title: string;
@@ -66,6 +66,7 @@ export interface UserPermissions {
   addMember?: boolean;
   editMember?: boolean;
   reviewProfileUpdates?: boolean;
+  manageDonations?: boolean;
 }
 
 /**
@@ -175,6 +176,37 @@ export interface LiveStream {
   updatedAt: string | null;
 }
 
+/** The 4 fixed donation causes an admin/editor can open or close for public giving. */
+export type DonationCauseKey = "sickMember" | "masjid" | "madarsa" | "iftari";
+
+/**
+ * Admin-set payment details (a UPI QR code to scan) and which causes are currently open.
+ * The app never processes the payment itself - a visitor scans this and pays through their own
+ * UPI app, then records what they paid, which an admin/editor confirms against their own account.
+ */
+export interface DonationSettings {
+  activeCauses: DonationCauseKey[];
+  qrCodeImage?: string | null;
+  upiId?: string | null;
+}
+
+/**
+ * One donor's claimed payment for a cause. Starts "pending" (self-reported, unverified) and only
+ * counts toward the public total/list once an admin/editor checks their own UPI account and marks
+ * it "confirmed" - the app has no way to verify a payment happened on its own.
+ */
+export interface DonationEntry {
+  id: number;
+  cause: DonationCauseKey;
+  donorMemberId: number;
+  /** Snapshot of the donor's name at submission time. */
+  donorName: string;
+  amount: number;
+  status: "pending" | "confirmed";
+  createdAt: string;
+  confirmedAt?: string | null;
+}
+
 export interface AppState {
   appName: string;
   language: Language;
@@ -190,6 +222,8 @@ export interface AppState {
   profileComments: ProfileComment[];
   duaRequests: DuaRequest[];
   memberUpdateRequests: MemberUpdateRequest[];
+  donationSettings: DonationSettings;
+  donationEntries: DonationEntry[];
 }
 
 export interface TreeNode {

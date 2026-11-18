@@ -2686,5 +2686,7 @@ export const SAJRA_SEED_STATE: AppState = {
   "liveStream": { "url": null, "title": null, "updatedAt": null },
   "profileComments": [],
   "duaRequests": [],
-  "memberUpdateRequests": []
+  "memberUpdateRequests": [],
+  "donationSettings": { "activeCauses": [], "qrCodeImage": null, "upiId": null },
+  "donationEntries": []
 } as AppState;

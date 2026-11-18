@@ -11,7 +11,7 @@ import { trackNativeScreenView, trackWebPageView } from "./analytics";
 import LiveVisitorMap from "./LiveVisitorMap";
 import type { FormEvent, ReactNode, TouchEvent as ReactTouchEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
-import type { Announcement, AppState, BookPublication, DuaRequest, GalleryImage, Gender, Language, Member, MemberUpdateRequest, Role, Suggestion, User, ViewKey } from "./types";
+import type { Announcement, AppState, BookPublication, DonationCauseKey, DuaRequest, GalleryImage, Gender, Language, Member, MemberUpdateRequest, Role, Suggestion, User, ViewKey } from "./types";
 import {
   buildMembersFromImportRows,
   buildTree,
@@ -68,6 +68,7 @@ import {
   sendAdminAlertNotification,
   sendLiveNotification,
   sendPresenceHeartbeat,
+  submitDonation,
   submitProfileUpdateLink,
   submitPublicSajraAction,
   uploadLiveVideo,
@@ -106,7 +107,7 @@ const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string
 
 type RouteState = { page: ViewKey; memberId?: number; updateToken?: string };
 
-type AdminSection = "overview" | "members" | "users" | "gallery" | "suggestions" | "profileUpdates" | "logs" | "backup" | "quality" | "analytics";
+type AdminSection = "overview" | "members" | "users" | "gallery" | "suggestions" | "profileUpdates" | "donations" | "logs" | "backup" | "quality" | "analytics";
 
 const EDITOR_PERMISSION_OPTIONS: { key: keyof NonNullable<User["permissions"]>; labelKey: StringKey }[] = [
   { key: "addMember", labelKey: "permAddMemberLabel" },
@@ -115,7 +116,8 @@ const EDITOR_PERMISSION_OPTIONS: { key: keyof NonNullable<User["permissions"]>; 
   { key: "addGallery", labelKey: "permAddGalleryLabel" },
   { key: "addToSlider", labelKey: "permAddToSliderLabel" },
   { key: "addAnnouncement", labelKey: "permAddAnnouncementLabel" },
-  { key: "addLiveStreaming", labelKey: "permAddLiveStreamingLabel" }
+  { key: "addLiveStreaming", labelKey: "permAddLiveStreamingLabel" },
+  { key: "manageDonations", labelKey: "permManageDonationsLabel" }
 ];
 
 // Supabase reports an expired / already-used reset link through the URL hash.
@@ -183,11 +185,30 @@ type DuaDraft = {
   requesterName: string;
 };
 
+type DonationDraft = {
+  memberId: string;
+  memberSearch: string;
+  cause: DonationCauseKey;
+  amount: string;
+};
+
+const DONATION_CAUSE_KEYS: DonationCauseKey[] = ["sickMember", "masjid", "madarsa", "iftari"];
+
 /** Name prefixed with profession, so people who share a name (common in this family) can be told apart in search lists. */
 function fullLabel(member: Member, language: Language): string {
   const name = displayName(member, language);
   const profession = member.profession?.trim();
   return profession ? `${professionShortLabel(language, profession)} ${name}` : name;
+}
+
+const DONATION_CAUSE_LABEL_KEYS: Record<DonationCauseKey, StringKey> = {
+  sickMember: "donationCauseSickMember",
+  masjid: "donationCauseMasjid",
+  madarsa: "donationCauseMadarsa",
+  iftari: "donationCauseIftari"
+};
+function donationCauseLabelKey(cause: DonationCauseKey): StringKey {
+  return DONATION_CAUSE_LABEL_KEYS[cause];
 }
 
 /** The default app name has its own Urdu rendering; a custom name an admin typed in is left as-is since it isn't a translatable UI string. */
@@ -211,7 +232,7 @@ function parseRoute(): RouteState {
   if (!raw || raw === "/") return { page: "home" };
   const [page, id] = raw.split("/").filter(Boolean);
   if ((page === "member" || page === "branch" || page === "update") && id) return { page, memberId: Number(id) || undefined, ...(page === "update" ? { updateToken: new URLSearchParams(query).get("token") ?? undefined } : {}) };
-  if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots" || page === "calendar" || page === "settings" || page === "live" || page === "memory" || page === "dua" || page === "familyBook") {
+  if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots" || page === "calendar" || page === "settings" || page === "live" || page === "memory" || page === "dua" || page === "familyBook" || page === "donations") {
     return { page };
   }
   return { page: "home" };
@@ -429,6 +450,7 @@ const ADMIN_ICONS: Record<AdminSection, string> = {
   gallery: "M3 5h18v14H3V5Zm0 11 5-5 4 4 3-3 6 6M15.5 9.5h.01",
   suggestions: "M12 22s-8-4.5-8-11a8 8 0 0 1 16 0c0 6.5-8 11-8 11ZM12 8v5M12 16h.01",
   profileUpdates: "M12 20h9M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5Z",
+  donations: "M12 21s-8-4.5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6.5-8 11-8 11Z",
   logs: "M12 8v5l3 2M3 12a9 9 0 1 0 3-6.7M3 4v5h5",
   backup: "M12 3v12m0 0-4-4m4 4 4-4M4 17v3h16v-3",
   quality: "M12 3 3 20h18L12 3Zm0 6v5m0 3h.01",
@@ -737,6 +759,11 @@ export default function App() {
   const [duaDraft, setDuaDraft] = useState<DuaDraft | null>(null);
   const [duaBusy, setDuaBusy] = useState(false);
   const [duaSent, setDuaSent] = useState(false);
+  const [donationDraft, setDonationDraft] = useState<DonationDraft | null>(null);
+  const [donationBusy, setDonationBusy] = useState(false);
+  const [donationSent, setDonationSent] = useState(false);
+  const [donationQrInput, setDonationQrInput] = useState("");
+  const [donationUpiInput, setDonationUpiInput] = useState("");
   const [updateRequestDraft, setUpdateRequestDraft] = useState<{ memberId: number; photo: string; bio: string; contact: string; profession: string; publications: BookPublication[] } | null>(null);
   const [updateRequestBusy, setUpdateRequestBusy] = useState(false);
   const [updateRequestSent, setUpdateRequestSent] = useState(false);
@@ -822,6 +849,7 @@ export default function App() {
   }
   const canEditMembers = editorPermission("editMember", isAdmin);
   const canReviewProfileUpdates = editorPermission("reviewProfileUpdates", isAdmin);
+  const canManageDonations = editorPermission("manageDonations", isAdmin);
   const canAddToSlider = editorPermission("addToSlider", isAdmin);
   const canAddAnnouncement = editorPermission("addAnnouncement", true);
   const canAddLiveStreaming = editorPermission("addLiveStreaming", isAdmin);
@@ -851,6 +879,15 @@ export default function App() {
     [state.duaRequests]
   );
   const familyBookGroups = useMemo(() => groupMembersByGeneration(state.members), [state.members]);
+  const confirmedDonations = useMemo(
+    () => state.donationEntries.filter((entry) => entry.status === "confirmed").sort((a, b) => (b.confirmedAt ?? b.createdAt).localeCompare(a.confirmedAt ?? a.createdAt)),
+    [state.donationEntries]
+  );
+  const pendingDonations = useMemo(
+    () => state.donationEntries.filter((entry) => entry.status === "pending").sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [state.donationEntries]
+  );
+  const totalDonationAmount = useMemo(() => confirmedDonations.reduce((sum, entry) => sum + entry.amount, 0), [confirmedDonations]);
 
   useEffect(() => {
     const lenis = new Lenis({
@@ -912,6 +949,15 @@ export default function App() {
 
   useEffect(() => {
     if (adminSection !== "logs") setLogsPage(0);
+  }, [adminSection]);
+
+  useEffect(() => {
+    if (adminSection === "donations") {
+      setDonationQrInput(state.donationSettings.qrCodeImage ?? "");
+      setDonationUpiInput(state.donationSettings.upiId ?? "");
+    }
+    // Deliberately keyed off adminSection only, not state.donationSettings, so it re-seeds on
+    // entering the section but doesn't wipe what the admin is typing on every autosave tick.
   }, [adminSection]);
 
   useEffect(() => {
@@ -1672,6 +1718,89 @@ export default function App() {
   function deleteDuaRequest(id: number) {
     if (!isAdmin) return;
     updateState((current) => ({ ...current, duaRequests: current.duaRequests.filter((request) => request.id !== id) }));
+  }
+
+  // Open to anyone, logged in or not - donating doesn't need an account, only picking which
+  // family member (by name) is giving, same as the rest of the public submission forms.
+  function openDonationForm(cause: DonationCauseKey, member?: Member) {
+    setDonationSent(false);
+    setDonationDraft({
+      memberId: member ? String(member.id) : "",
+      memberSearch: member ? fullLabel(member, language) : "",
+      cause,
+      amount: ""
+    });
+  }
+
+  function closeDonationForm() {
+    setDonationDraft(null);
+  }
+
+  async function submitDonationForm() {
+    if (!donationDraft || donationBusy) return;
+    const memberId = Number(donationDraft.memberId);
+    const amount = Number(donationDraft.amount);
+    if (!memberId || !Number.isFinite(amount) || amount <= 0) return;
+    setDonationBusy(true);
+    try {
+      if (supabaseConfigured) {
+        const entry = await submitDonation({ donorMemberId: memberId, cause: donationDraft.cause, amount }) as AppState["donationEntries"][number];
+        setState((current) => ({ ...current, donationEntries: [entry, ...current.donationEntries].slice(0, 500) }));
+      } else {
+        const member = state.members.find((candidate) => candidate.id === memberId);
+        if (!member) return;
+        const entry: AppState["donationEntries"][number] = { id: nextId(state.donationEntries), cause: donationDraft.cause, donorMemberId: memberId, donorName: member.name, amount, status: "pending", createdAt: new Date().toISOString() };
+        updateState((current) => ({ ...current, donationEntries: [entry, ...current.donationEntries].slice(0, 500) }));
+      }
+      setDonationSent(true);
+      setDonationDraft(null);
+    } finally {
+      setDonationBusy(false);
+    }
+  }
+
+  function confirmDonation(id: number) {
+    if (!canManageDonations) return;
+    updateState((current) => ({
+      ...current,
+      donationEntries: current.donationEntries.map((entry) => (entry.id === id ? { ...entry, status: "confirmed", confirmedAt: new Date().toISOString() } : entry))
+    }));
+  }
+
+  function deleteDonation(id: number) {
+    if (!canManageDonations) return;
+    updateState((current) => ({ ...current, donationEntries: current.donationEntries.filter((entry) => entry.id !== id) }));
+  }
+
+  function toggleDonationCause(cause: DonationCauseKey) {
+    if (!canManageDonations) return;
+    const activating = !state.donationSettings.activeCauses.includes(cause);
+    updateState((current) => ({
+      ...current,
+      donationSettings: {
+        ...current.donationSettings,
+        activeCauses: activating
+          ? [...current.donationSettings.activeCauses, cause]
+          : current.donationSettings.activeCauses.filter((key) => key !== cause)
+      }
+    }));
+    if (activating && supabaseConfigured) {
+      void sendAnnouncementNotification(`${t(language, "donationCauseOpenedPrefix")} ${t(language, donationCauseLabelKey(cause))}`);
+    }
+  }
+
+  function saveDonationPaymentDetails() {
+    if (!canManageDonations) return;
+    updateState((current) => ({
+      ...current,
+      donationSettings: { ...current.donationSettings, qrCodeImage: donationQrInput.trim() || current.donationSettings.qrCodeImage, upiId: donationUpiInput.trim() || null }
+    }));
+  }
+
+  async function handleDonationQrPhoto(file?: File) {
+    if (!file) return;
+    const src = await readFileAsCompressedDataUrl(file, 1000, 0.9);
+    setDonationQrInput(src);
   }
 
   // The link an admin/editor sends a member so they can confirm/update their own photo, bio and
@@ -2502,8 +2631,9 @@ export default function App() {
     return state.announcements.filter((announcement) => !announcement.expiresAt || announcement.expiresAt >= today);
   }, [state.announcements]);
   const pendingProfileUpdateCount = canReviewProfileUpdates ? state.memberUpdateRequests.filter((request) => request.status === "pending").length : 0;
+  const pendingDonationCount = canManageDonations ? pendingDonations.length : 0;
   const unseenAnnouncementCount = activeAnnouncements.filter((announcement) => !seenAnnouncementIds.includes(announcement.id)).length;
-  const notificationBadgeCount = unseenAnnouncementCount + pendingProfileUpdateCount;
+  const notificationBadgeCount = unseenAnnouncementCount + pendingProfileUpdateCount + pendingDonationCount;
   const adminNavMenuItems: { key: AdminSection; label: string; badge?: number }[] = isLoggedIn ? [
     { key: "overview", label: t(language, "adminNavOverview") },
     { key: "members", label: t(language, "membersLabel") },
@@ -2511,6 +2641,7 @@ export default function App() {
     { key: "gallery", label: t(language, "adminNavGallery") },
     { key: "suggestions", label: t(language, "adminNavSuggestions") },
     ...(canReviewProfileUpdates ? [{ key: "profileUpdates" as const, label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount }] : []),
+    ...(canManageDonations ? [{ key: "donations" as const, label: t(language, "adminNavDonations"), badge: pendingDonationCount }] : []),
     ...(isAdmin ? [{ key: "logs" as const, label: t(language, "adminNavLogs") }] : []),
     { key: "quality", label: t(language, "adminNavQuality") },
     ...(isAdmin ? [{ key: "backup" as const, label: t(language, "backupCardTitle") }] : []),
@@ -2966,6 +3097,7 @@ export default function App() {
         gallery: t(language, "galleryAdminSubtitle"),
         suggestions: t(language, "suggestionsSubtitle"),
         profileUpdates: t(language, "profileUpdatesSubtitle"),
+        donations: t(language, "donationsAdminSubtitle"),
         logs: t(language, "logHistorySubtitle"),
         quality: t(language, "adminQualitySubtitle"),
         backup: t(language, "backupCardSubtitle"),
@@ -3204,6 +3336,79 @@ export default function App() {
           </div>
         ) : (
           <div className="empty">{t(language, "noProfileUpdatesYet")}</div>
+        );
+      } else if (activeSection.key === "donations") {
+        sectionBody = (
+          <>
+            <div className="card" style={{ padding: 16, marginBottom: 18 }}>
+              <strong>{t(language, "donationCausesTitle")}</strong>
+              <p className="hint" style={{ marginTop: 4 }}>{t(language, "donationCausesHint")}</p>
+              <div className="donation-cause-toggle-list">
+                {DONATION_CAUSE_KEYS.map((cause) => (
+                  <label key={cause} className="donation-cause-toggle">
+                    <input type="checkbox" checked={state.donationSettings.activeCauses.includes(cause)} onChange={() => toggleDonationCause(cause)} />
+                    <span>{t(language, donationCauseLabelKey(cause))}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="card" style={{ padding: 16, marginBottom: 18 }}>
+              <strong>{t(language, "donationPaymentDetailsTitle")}</strong>
+              <p className="hint" style={{ marginTop: 4 }}>{t(language, "donationPaymentDetailsHint")}</p>
+              <div className="form-grid" style={{ marginTop: 12 }}>
+                <label className="span-12">
+                  <span className="sr-only">{t(language, "donationUpiIdLabel")}</span>
+                  <input className="field" placeholder={t(language, "donationUpiIdLabel")} value={donationUpiInput} onChange={(e) => setDonationUpiInput(e.target.value)} />
+                </label>
+                <label className="span-12">
+                  <span className="sr-only">{t(language, "donationQrUploadLabel")}</span>
+                  <input className="field" type="file" accept="image/*" aria-label={t(language, "donationQrUploadLabel")} onChange={(e) => void handleDonationQrPhoto(e.target.files?.[0])} />
+                </label>
+                {donationQrInput ? <img src={donationQrInput} alt={t(language, "donationQrAlt")} style={{ width: 140, height: 140, borderRadius: 10, marginTop: 4 }} /> : null}
+              </div>
+              <button className="btn" type="button" style={{ marginTop: 12 }} onClick={saveDonationPaymentDetails}>{t(language, "saveButton")}</button>
+            </div>
+
+            <h3 className="section-title" style={{ fontSize: "1.05rem" }}>{t(language, "pendingDonationsTitle")}</h3>
+            {pendingDonations.length ? (
+              <div className="list">
+                {pendingDonations.map((entry) => (
+                  <div key={entry.id} className="card admin-suggestion-card">
+                    <div className="admin-suggestion-content">
+                      <div className="tree-name">{entry.donorName}</div>
+                      <div className="tree-sub">{t(language, donationCauseLabelKey(entry.cause))} | ₹{formatNumber(entry.amount, language)} | {formatDate(entry.createdAt, language)}</div>
+                    </div>
+                    <div className="actions-row admin-suggestion-actions">
+                      <button className="btn-ghost" type="button" onClick={() => confirmDonation(entry.id)}>{t(language, "confirmDonationButton")}</button>
+                      <button className="btn-ghost danger" type="button" onClick={() => deleteDonation(entry.id)}>{t(language, "deleteButton")}</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty">{t(language, "noPendingDonations")}</div>
+            )}
+
+            <h3 className="section-title" style={{ fontSize: "1.05rem", marginTop: 24 }}>{t(language, "donationListTitle")} ({t(language, "donationTotalPrefix")} ₹{formatNumber(totalDonationAmount, language)})</h3>
+            {confirmedDonations.length ? (
+              <div className="list">
+                {confirmedDonations.map((entry) => (
+                  <div key={entry.id} className="card donation-entry-row">
+                    <div>
+                      <div className="tree-name">{entry.donorName}</div>
+                      <div className="tree-sub">{t(language, donationCauseLabelKey(entry.cause))} | {formatDate(entry.createdAt, language)}</div>
+                    </div>
+                    <div className="actions-row">
+                      <strong>₹{formatNumber(entry.amount, language)}</strong>
+                      <button className="btn-ghost danger" type="button" onClick={() => deleteDonation(entry.id)}>{t(language, "deleteButton")}</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty">{t(language, "noDonationsYet")}</div>
+            )}
+          </>
         );
       } else if (activeSection.key === "logs") {
         const typeLabelKeys = { member: "logTypeMember", user: "logTypeUser", gallery: "logTypeGallery" } as const;
@@ -3695,6 +3900,55 @@ export default function App() {
       );
     }
 
+    if (route.page === "donations") {
+      return (
+        <section className="section">
+          <div className="section-head">
+            <div>
+              <span className="eyebrow">{t(language, "donationsEyebrow")}</span>
+              <h1 className="section-title">{t(language, "donationsTitle")}</h1>
+              <p className="section-subtitle">{t(language, "donationsSubtitle")}</p>
+            </div>
+          </div>
+          {donationSent ? <p className="hint">{t(language, "donationSentMessage")}</p> : null}
+          {state.donationSettings.activeCauses.length ? (
+            <div className="donation-cause-grid">
+              {state.donationSettings.activeCauses.map((cause) => (
+                <div key={cause} className="card donation-cause-card">
+                  <strong>{t(language, donationCauseLabelKey(cause))}</strong>
+                  <button className="btn" type="button" onClick={() => openDonationForm(cause)}>{t(language, "donateButton")}</button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty">{t(language, "noDonationCausesActive")}</div>
+          )}
+
+          <div className="section-head" style={{ marginTop: 32 }}>
+            <div>
+              <h2 className="section-title" style={{ fontSize: "1.15rem" }}>{t(language, "donationListTitle")}</h2>
+              <p className="section-subtitle">{t(language, "donationTotalPrefix")} ₹{formatNumber(totalDonationAmount, language)}</p>
+            </div>
+          </div>
+          {confirmedDonations.length ? (
+            <div className="list">
+              {confirmedDonations.map((entry) => (
+                <div key={entry.id} className="card donation-entry-row">
+                  <div>
+                    <div className="tree-name">{entry.donorName}</div>
+                    <div className="tree-sub">{t(language, donationCauseLabelKey(entry.cause))} | {formatDate(entry.createdAt, language)}</div>
+                  </div>
+                  <strong>₹{formatNumber(entry.amount, language)}</strong>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty">{t(language, "noDonationsYet")}</div>
+          )}
+        </section>
+      );
+    }
+
     return (
       <>
         {!Capacitor.isNativePlatform() ? (
@@ -3940,6 +4194,7 @@ export default function App() {
     ...(canAddGalleryPhoto ? [{ key: "gallery", label: t(language, "addGalleryPhotoButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } }] : []),
     { key: "suggestions", label: t(language, "adminNavSuggestions"), onClick: () => { navigate({ page: "admin" }); setAdminSection("suggestions"); } },
     ...(canReviewProfileUpdates ? [{ key: "profileUpdates", label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("profileUpdates"); } }] : []),
+    ...(canManageDonations ? [{ key: "donations", label: t(language, "adminNavDonations"), badge: pendingDonationCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("donations"); } }] : []),
     { key: "quality", label: t(language, "adminNavQuality"), onClick: () => { navigate({ page: "admin" }); setAdminSection("quality"); } },
     { key: "analytics", label: t(language, "adminNavAnalytics"), onClick: () => { navigate({ page: "admin" }); setAdminSection("analytics"); } },
     ...(canAddAnnouncement ? [{ key: "announcement", label: t(language, "postAnnouncementButton"), badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) }] : []),
@@ -3953,6 +4208,7 @@ export default function App() {
     { key: "gallery", label: t(language, "addGalleryPhotoButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } },
     { key: "suggestions", label: t(language, "adminNavSuggestions"), onClick: () => { navigate({ page: "admin" }); setAdminSection("suggestions"); } },
     { key: "profileUpdates", label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("profileUpdates"); } },
+    { key: "donations", label: t(language, "adminNavDonations"), badge: pendingDonationCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("donations"); } },
     { key: "logs", label: t(language, "adminNavLogs"), onClick: () => { navigate({ page: "admin" }); setAdminSection("logs"); } },
     { key: "quality", label: t(language, "adminNavQuality"), onClick: () => { navigate({ page: "admin" }); setAdminSection("quality"); } },
     { key: "backup", label: t(language, "backupCardTitle"), onClick: () => { navigate({ page: "admin" }); setAdminSection("backup"); } },
@@ -4079,6 +4335,7 @@ export default function App() {
             <NavLink active={route.page === "roots"} onClick={() => navigate({ page: "roots" })}>{NAV_LABELS[language].roots}</NavLink>
             <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
             <NavLink active={route.page === "calendar"} badge={notificationBadgeCount} language={language} onClick={() => navigate({ page: "calendar" })}>{t(language, "navNotificationsLabel")}</NavLink>
+            {state.donationSettings.activeCauses.length ? <NavLink active={route.page === "donations"} onClick={() => navigate({ page: "donations" })}>{t(language, "navDonationsLabel")}</NavLink> : null}
             <NavLink active={route.page === "live"} onClick={() => navigate({ page: "live" })}>{canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel")}</NavLink>
             <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
             <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
@@ -4572,6 +4829,70 @@ export default function App() {
               {duaBusy ? t(language, "sendingSuggestion") : t(language, "postDuaButton")}
             </button>
             <button className="btn-ghost" type="button" onClick={closeDuaEditor}>{t(language, "cancelButton")}</button>
+          </div>
+        </Modal>
+      ) : null}
+
+      {donationDraft ? (
+        <Modal title={t(language, "donateModalTitle")} subtitle={t(language, donationCauseLabelKey(donationDraft.cause))} onClose={closeDonationForm}>
+          <div className="form-grid">
+            <div className="span-12" style={{ position: "relative" }}>
+              <div className="muted" style={{ marginBottom: 8, fontWeight: 700 }}>{t(language, "donationNameLabel")}</div>
+              <input
+                className="field"
+                placeholder={t(language, "donationNamePlaceholder")}
+                value={donationDraft.memberSearch}
+                onChange={(e) => setDonationDraft((current) => current ? { ...current, memberSearch: e.target.value, memberId: "" } : current)}
+              />
+              {donationDraft.memberSearch.trim() && !donationDraft.memberId ? (
+                <div className="autocomplete-list">
+                  {state.members
+                    .filter((member) => fullLabel(member, language).toLowerCase().includes(donationDraft.memberSearch.trim().toLowerCase()))
+                    .slice(0, 8)
+                    .map((member) => (
+                      <button
+                        key={member.id}
+                        type="button"
+                        className="autocomplete-item"
+                        onMouseDown={(e) => { e.preventDefault(); setDonationDraft((current) => current ? { ...current, memberId: String(member.id), memberSearch: fullLabel(member, language) } : current); }}
+                      >
+                        {fullLabel(member, language)}
+                        {member.uniqueId ? <span className="autocomplete-id">{member.uniqueId}</span> : null}
+                      </button>
+                    ))}
+                </div>
+              ) : null}
+            </div>
+            <label className="span-12">
+              <div className="muted" style={{ marginBottom: 8, fontWeight: 700 }}>{t(language, "donationCauseLabel")}</div>
+              <select className="select" value={donationDraft.cause} onChange={(e) => setDonationDraft((current) => current ? { ...current, cause: e.target.value as DonationCauseKey } : current)}>
+                {state.donationSettings.activeCauses.map((cause) => <option key={cause} value={cause}>{t(language, donationCauseLabelKey(cause))}</option>)}
+              </select>
+            </label>
+            <label className="span-12">
+              <div className="muted" style={{ marginBottom: 8, fontWeight: 700 }}>{t(language, "donationAmountLabel")}</div>
+              <input
+                className="field"
+                type="number"
+                min="1"
+                placeholder={t(language, "donationAmountPlaceholder")}
+                value={donationDraft.amount}
+                onChange={(e) => setDonationDraft((current) => current ? { ...current, amount: e.target.value } : current)}
+              />
+            </label>
+            {state.donationSettings.qrCodeImage || state.donationSettings.upiId ? (
+              <div className="span-12 donation-qr-box">
+                {state.donationSettings.qrCodeImage ? <img src={state.donationSettings.qrCodeImage} alt={t(language, "donationQrAlt")} /> : null}
+                {state.donationSettings.upiId ? <p className="hint">{t(language, "donationUpiIdLabel")}: <strong>{state.donationSettings.upiId}</strong></p> : null}
+                <p className="hint">{t(language, "donationPayThenSubmitHint")}</p>
+              </div>
+            ) : null}
+          </div>
+          <div className="actions-row" style={{ marginTop: 18 }}>
+            <button className="btn" type="button" disabled={!donationDraft.memberId || !donationDraft.amount || Number(donationDraft.amount) <= 0 || donationBusy} onClick={() => void submitDonationForm()}>
+              {donationBusy ? t(language, "sendingSuggestion") : t(language, "donationSubmitButton")}
+            </button>
+            <button className="btn-ghost" type="button" onClick={closeDonationForm}>{t(language, "cancelButton")}</button>
           </div>
         </Modal>
       ) : null}

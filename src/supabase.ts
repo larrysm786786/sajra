@@ -146,6 +146,12 @@ export async function submitPublicSajraAction(action: "suggestion" | "feedback" 
   return result.item as Record<string, unknown>;
 }
 
+export async function submitDonation(payload: { donorMemberId: number; cause: AppState["donationSettings"]["activeCauses"][number]; amount: number }): Promise<AppState["donationEntries"][number]> {
+  const result = await invokeProfileUpdates({ action: "donation", ...payload });
+  if (!result.item || typeof result.item !== "object") throw new Error("Could not save your donation.");
+  return result.item as AppState["donationEntries"][number];
+}
+
 export async function signInWithPassword(email: string, password: string): Promise<void> {
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error("Supabase is not configured.");

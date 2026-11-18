@@ -39,7 +39,9 @@ export function createEmptyState(): AppState {
     liveStream: { url: null, title: null, updatedAt: null },
     profileComments: [],
     duaRequests: [],
-    memberUpdateRequests: []
+    memberUpdateRequests: [],
+    donationSettings: { activeCauses: [], qrCodeImage: null, upiId: null },
+    donationEntries: []
   };
 }
 
@@ -54,7 +56,11 @@ function finalizeState(state: AppState): AppState {
     liveStream: state.liveStream && typeof state.liveStream === "object" ? state.liveStream : { url: null, title: null, updatedAt: null },
     profileComments: Array.isArray(state.profileComments) ? state.profileComments : [],
     duaRequests: Array.isArray(state.duaRequests) ? state.duaRequests : [],
-    memberUpdateRequests: Array.isArray(state.memberUpdateRequests) ? state.memberUpdateRequests : []
+    memberUpdateRequests: Array.isArray(state.memberUpdateRequests) ? state.memberUpdateRequests : [],
+    donationSettings: state.donationSettings && typeof state.donationSettings === "object"
+      ? { activeCauses: Array.isArray(state.donationSettings.activeCauses) ? state.donationSettings.activeCauses : [], qrCodeImage: state.donationSettings.qrCodeImage ?? null, upiId: state.donationSettings.upiId ?? null }
+      : { activeCauses: [], qrCodeImage: null, upiId: null },
+    donationEntries: Array.isArray(state.donationEntries) ? state.donationEntries : []
   };
 }
 

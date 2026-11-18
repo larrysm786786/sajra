@@ -2321,6 +2321,14 @@ html[lang="ur"] .select {
 .family-book-entry-body { min-width: 0; flex: 1; }
 .family-book-bio { margin: 8px 0 0; line-height: 1.6; text-align: justify; }
 
+.donation-cause-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.donation-cause-card { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 18px; }
+.donation-entry-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; }
+.donation-cause-toggle-list { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
+.donation-cause-toggle { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 999px; cursor: pointer; }
+.donation-qr-box { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; text-align: center; }
+.donation-qr-box img { width: 180px; height: 180px; border-radius: 10px; }
+
 /* Sajra AI chat */
 .sajra-chat-widget { position: fixed; right: 24px; bottom: 24px; z-index: 50; font-family: Inter, system-ui, sans-serif; }
 .sajra-chat-launcher { display: flex; align-items: center; gap: 9px; border: 0; border-radius: 999px; padding: 14px 20px; color: #fff; background: linear-gradient(135deg, #2e5185, #1c3560); box-shadow: 0 8px 28px rgba(25, 50, 88, .32); font-weight: 650; font-size: 14px; transition: transform .2s, box-shadow .2s; }
