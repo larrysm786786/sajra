@@ -4416,12 +4416,8 @@ export default function App() {
             <button type="button" className="icon-btn" onClick={() => setState((current) => ({ ...current, theme: current.theme === "dark" ? "light" : "dark" }))}>
               {state.theme === "dark" ? "☾" : "☀"}
             </button>
+            {isLoggedIn ? <button type="button" className="toggle" onClick={logout}>{t(language, "logoutButton")}</button> : null}
           </div>
-          {isLoggedIn ? (
-            <div className="topnav-logout-row">
-              <button type="button" className="toggle" onClick={logout}>{t(language, "logoutButton")}</button>
-            </div>
-          ) : null}
         </nav>
         <div className="header-actions">
           <span className="visitor-counter" title={t(language, "totalVisitorsLabel")} aria-label={`${t(language, "totalVisitorsLabel")}: ${state.visitorCount ?? 0}`}>
@@ -4449,7 +4445,12 @@ export default function App() {
       {mobileNavOpen ? <div className="nav-backdrop" onClick={() => setMobileNavOpen(false)} /> : null}
 
       {content}
-      <SajraChat appName={state.appName} language={language} members={state.members} onOpenMember={(id) => navigate({ page: "member", memberId: id })} onFeedback={submitChatFeedback} />
+      {/* Hidden (not unmounted) while the hamburger panel is open, so an in-progress chat isn't
+          lost - the panel's own z-index sits below this widget's, which would otherwise let the
+          floating launcher button cover whatever sits at the bottom of the open panel. */}
+      <div style={mobileNavOpen ? { display: "none" } : undefined}>
+        <SajraChat appName={state.appName} language={language} members={state.members} onOpenMember={(id) => navigate({ page: "member", memberId: id })} onFeedback={submitChatFeedback} />
+      </div>
 
       {supabaseConfigured && (syncStatus === "error" || syncStatus === "conflict") ? (
         <p className="footer-note">

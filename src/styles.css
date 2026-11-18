@@ -352,13 +352,6 @@ button {
   border-top: 1px solid rgba(255, 255, 255, 0.14);
 }
 
-/* Logout as its own full-width row, separate from the language/theme icon row above it -
-   not sharing a row with those icon toggles. */
-.topnav-logout-row {
-  flex: 0 0 auto;
-  margin-top: 10px;
-}
-
 .hamburger-btn {
   display: flex;
   flex-direction: column;
