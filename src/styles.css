@@ -344,7 +344,10 @@ button {
   align-items: center;
   gap: 8px;
   flex: 0 0 auto;
-  margin-top: 16px;
+  /* auto pushes this to the bottom of the panel when the link list above is short, instead of
+     leaving it floating right under a handful of links; max-height + overflow on the list above
+     still keeps this reachable when the list is long enough to need scrolling. */
+  margin-top: auto;
   padding-top: 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.14);
 }
@@ -1864,8 +1867,7 @@ input[type="file"]:not([hidden]):focus-visible {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 1 auto;
   max-height: min(60vh, 506px);
   overflow-y: auto;
 }
@@ -1901,8 +1903,7 @@ input[type="file"]:not([hidden]):focus-visible {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 1 auto;
   max-height: min(60vh, 506px);
   overflow-y: auto;
 }
