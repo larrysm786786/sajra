@@ -4416,8 +4416,12 @@ export default function App() {
             <button type="button" className="icon-btn" onClick={() => setState((current) => ({ ...current, theme: current.theme === "dark" ? "light" : "dark" }))}>
               {state.theme === "dark" ? "☾" : "☀"}
             </button>
-            {isLoggedIn ? <button type="button" className="toggle" onClick={logout}>{t(language, "logoutButton")}</button> : null}
           </div>
+          {isLoggedIn ? (
+            <div className="topnav-logout-row">
+              <button type="button" className="toggle" onClick={logout}>{t(language, "logoutButton")}</button>
+            </div>
+          ) : null}
         </nav>
         <div className="header-actions">
           <span className="visitor-counter" title={t(language, "totalVisitorsLabel")} aria-label={`${t(language, "totalVisitorsLabel")}: ${state.visitorCount ?? 0}`}>
