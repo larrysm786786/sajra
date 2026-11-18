@@ -4403,6 +4403,7 @@ export default function App() {
             <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
             <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
             {isLoggedIn || isNativeApp ? <NavLink active={route.page === "settings"} badge={isNativeApp && appUpdateAvailable ? 1 : 0} language={language} onClick={() => navigate({ page: "settings" })}>{t(language, "navSettingsLabel")}</NavLink> : null}
+            {!isLoggedIn ? <NavLink active={route.page === "admin"} onClick={() => navigate({ page: "admin" })}>{t(language, "navLoginLabel")}</NavLink> : null}
           </div>
           <div className="topnav-actions-mobile">
             <button
@@ -4415,11 +4416,7 @@ export default function App() {
             <button type="button" className="icon-btn" onClick={() => setState((current) => ({ ...current, theme: current.theme === "dark" ? "light" : "dark" }))}>
               {state.theme === "dark" ? "☾" : "☀"}
             </button>
-            {isLoggedIn ? (
-              <button type="button" className="toggle" onClick={logout}>{t(language, "logoutButton")}</button>
-            ) : (
-              <button type="button" className="toggle" onClick={() => navigate({ page: "admin" })}>{t(language, "navLoginLabel")}</button>
-            )}
+            {isLoggedIn ? <button type="button" className="toggle" onClick={logout}>{t(language, "logoutButton")}</button> : null}
           </div>
         </nav>
         <div className="header-actions">
