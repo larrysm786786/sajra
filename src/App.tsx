@@ -754,15 +754,18 @@ export default function App() {
   const [suggestionDraft, setSuggestionDraft] = useState<SuggestionDraft | null>(null);
   const [suggestionBusy, setSuggestionBusy] = useState(false);
   const [suggestionSent, setSuggestionSent] = useState(false);
+  const [suggestionError, setSuggestionError] = useState("");
   const [announcementDraft, setAnnouncementDraft] = useState<AnnouncementDraft | null>(null);
   const [announcementBusy, setAnnouncementBusy] = useState(false);
   const [announcementNotice, setAnnouncementNotice] = useState("");
   const [duaDraft, setDuaDraft] = useState<DuaDraft | null>(null);
   const [duaBusy, setDuaBusy] = useState(false);
   const [duaSent, setDuaSent] = useState(false);
+  const [duaError, setDuaError] = useState("");
   const [donationDraft, setDonationDraft] = useState<DonationDraft | null>(null);
   const [donationBusy, setDonationBusy] = useState(false);
   const [donationSent, setDonationSent] = useState(false);
+  const [donationError, setDonationError] = useState("");
   const [donationQrInput, setDonationQrInput] = useState("");
   const [donationUpiInput, setDonationUpiInput] = useState("");
   const [updateRequestDraft, setUpdateRequestDraft] = useState<{ memberId: number; photo: string; bio: string; contact: string; profession: string; publications: BookPublication[] } | null>(null);
@@ -776,6 +779,8 @@ export default function App() {
   const [liveNotice, setLiveNotice] = useState("");
   const [guestbookMessage, setGuestbookMessage] = useState("");
   const [guestbookAuthorName, setGuestbookAuthorName] = useState("");
+  const [guestbookBusy, setGuestbookBusy] = useState(false);
+  const [guestbookError, setGuestbookError] = useState("");
   const [qrCodeMember, setQrCodeMember] = useState<Member | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState("");
   const [biometricUnlocked, setBiometricUnlocked] = useState(false);
@@ -1626,6 +1631,7 @@ export default function App() {
   // Open to anyone, logged in or not, that's the point of a suggestion box.
   function openSuggestionEditor(member?: Member) {
     setSuggestionSent(false);
+    setSuggestionError("");
     setSuggestionDraft({
       memberId: member ? String(member.id) : "",
       memberSearch: member ? fullLabel(member, language) : "",
@@ -1642,6 +1648,7 @@ export default function App() {
     if (!suggestionDraft || !suggestionDraft.message.trim() || suggestionBusy) return;
     const memberId = suggestionDraft.memberId ? Number(suggestionDraft.memberId) : null;
     setSuggestionBusy(true);
+    setSuggestionError("");
     try {
       let suggestion: Suggestion;
       if (supabaseConfigured) {
@@ -1655,6 +1662,8 @@ export default function App() {
       if (supabaseConfigured) void sendAdminAlertNotification("suggestion", suggestionDraft.message.trim(), suggestionDraft.submitterName.trim() || null);
       setSuggestionSent(true);
       setSuggestionDraft(null);
+    } catch (error) {
+      setSuggestionError(error instanceof Error ? error.message : t(language, "submitActionFailed"));
     } finally {
       setSuggestionBusy(false);
     }
@@ -1687,6 +1696,7 @@ export default function App() {
   // someone is ill or in difficulty, not gated behind the editor permissions Announcements use.
   function openDuaEditor() {
     setDuaSent(false);
+    setDuaError("");
     setDuaDraft({ message: "", requesterName: "" });
   }
 
@@ -1697,6 +1707,7 @@ export default function App() {
   async function submitDuaRequest() {
     if (!duaDraft || !duaDraft.message.trim() || duaBusy) return;
     setDuaBusy(true);
+    setDuaError("");
     try {
       if (supabaseConfigured) {
         const duaRequest = await submitPublicSajraAction("dua", { message: duaDraft.message.trim(), requesterName: duaDraft.requesterName.trim() || null }) as unknown as DuaRequest;
@@ -1708,6 +1719,8 @@ export default function App() {
       if (supabaseConfigured) void sendAdminAlertNotification("dua", duaDraft.message.trim(), duaDraft.requesterName.trim() || null);
       setDuaSent(true);
       setDuaDraft(null);
+    } catch (error) {
+      setDuaError(error instanceof Error ? error.message : t(language, "submitActionFailed"));
     } finally {
       setDuaBusy(false);
     }
@@ -1730,6 +1743,7 @@ export default function App() {
   // family member (by name) is giving, same as the rest of the public submission forms.
   function openDonationForm(cause: DonationCauseKey, member?: Member) {
     setDonationSent(false);
+    setDonationError("");
     setDonationDraft({
       memberId: member ? String(member.id) : "",
       memberSearch: member ? fullLabel(member, language) : "",
@@ -1748,6 +1762,7 @@ export default function App() {
     const amount = Number(donationDraft.amount);
     if (!memberId || !Number.isFinite(amount) || amount <= 0) return;
     setDonationBusy(true);
+    setDonationError("");
     try {
       if (supabaseConfigured) {
         const entry = await submitDonation({ donorMemberId: memberId, cause: donationDraft.cause, amount }) as AppState["donationEntries"][number];
@@ -1760,6 +1775,8 @@ export default function App() {
       }
       setDonationSent(true);
       setDonationDraft(null);
+    } catch (error) {
+      setDonationError(error instanceof Error ? error.message : t(language, "submitActionFailed"));
     } finally {
       setDonationBusy(false);
     }
@@ -2027,17 +2044,25 @@ export default function App() {
   // an admin can remove one.
   async function submitGuestbookComment(memberId: number) {
     const message = guestbookMessage.trim();
-    if (!message) return;
+    if (!message || guestbookBusy) return;
     const authorName = guestbookAuthorName.trim() || null;
-    if (supabaseConfigured) {
-      const comment = await submitPublicSajraAction("guestbook", { memberId, message, authorName });
-      setState((current) => ({ ...current, profileComments: [comment as unknown as AppState["profileComments"][number], ...current.profileComments].slice(0, 2000) }));
-    } else {
-      updateState((current) => ({ ...current, profileComments: [{ id: nextId(current.profileComments), memberId, message, authorName, createdAt: new Date().toISOString() }, ...current.profileComments].slice(0, 2000) }));
+    setGuestbookBusy(true);
+    setGuestbookError("");
+    try {
+      if (supabaseConfigured) {
+        const comment = await submitPublicSajraAction("guestbook", { memberId, message, authorName });
+        setState((current) => ({ ...current, profileComments: [comment as unknown as AppState["profileComments"][number], ...current.profileComments].slice(0, 2000) }));
+      } else {
+        updateState((current) => ({ ...current, profileComments: [{ id: nextId(current.profileComments), memberId, message, authorName, createdAt: new Date().toISOString() }, ...current.profileComments].slice(0, 2000) }));
+      }
+      if (supabaseConfigured) void sendAdminAlertNotification("guestbook", message, authorName);
+      setGuestbookMessage("");
+      setGuestbookAuthorName("");
+    } catch (error) {
+      setGuestbookError(error instanceof Error ? error.message : t(language, "submitActionFailed"));
+    } finally {
+      setGuestbookBusy(false);
     }
-    if (supabaseConfigured) void sendAdminAlertNotification("guestbook", message, authorName);
-    setGuestbookMessage("");
-    setGuestbookAuthorName("");
   }
 
   function deleteGuestbookComment(id: number) {
@@ -2987,10 +3012,11 @@ export default function App() {
                   </label>
                 </div>
                 <div className="actions-row" style={{ marginTop: 12 }}>
-                  <button className="btn" type="button" disabled={!guestbookMessage.trim()} onClick={() => submitGuestbookComment(member.id)}>
-                    {t(language, "guestbookPostButton")}
+                  <button className="btn" type="button" disabled={!guestbookMessage.trim() || guestbookBusy} onClick={() => void submitGuestbookComment(member.id)}>
+                    {guestbookBusy ? t(language, "sendingSuggestion") : t(language, "guestbookPostButton")}
                   </button>
                 </div>
+                {guestbookError ? <p className="hint error-hint">{guestbookError}</p> : null}
 
                 {state.profileComments.filter((comment) => comment.memberId === member.id).length ? (
                   <div className="list" style={{ marginTop: 18 }}>
@@ -4828,6 +4854,7 @@ export default function App() {
               />
             </label>
           </div>
+          {suggestionError ? <p className="hint error-hint">{suggestionError}</p> : null}
           <div className="actions-row" style={{ marginTop: 18 }}>
             <button className="btn" type="button" disabled={!suggestionDraft.message.trim() || suggestionBusy} onClick={() => void submitSuggestion()}>
               {suggestionBusy ? t(language, "sendingSuggestion") : t(language, "sendSuggestionButton")}
@@ -4859,6 +4886,7 @@ export default function App() {
               />
             </label>
           </div>
+          {duaError ? <p className="hint error-hint">{duaError}</p> : null}
           <div className="actions-row" style={{ marginTop: 18 }}>
             <button className="btn" type="button" disabled={!duaDraft.message.trim() || duaBusy} onClick={() => void submitDuaRequest()}>
               {duaBusy ? t(language, "sendingSuggestion") : t(language, "postDuaButton")}
@@ -4917,6 +4945,7 @@ export default function App() {
               </div>
             ) : null}
           </div>
+          {donationError ? <p className="hint error-hint">{donationError}</p> : null}
           <div className="actions-row" style={{ marginTop: 18 }}>
             <button className="btn" type="button" disabled={!donationDraft.memberId || !donationDraft.amount || Number(donationDraft.amount) <= 0 || donationBusy} onClick={() => void submitDonationForm()}>
               {donationBusy ? t(language, "sendingSuggestion") : t(language, "donationSubmitButton")}

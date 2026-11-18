@@ -1381,6 +1381,15 @@ input[type="file"]:not([hidden]):focus-visible {
   color: #ff8a80;
 }
 
+.error-hint {
+  color: #b3261e;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .error-hint {
+  color: #ff8a80;
+}
+
 /* ===== Professions (home) ===== */
 .profession-grid {
   display: grid;

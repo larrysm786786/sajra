@@ -108,6 +108,7 @@ const STRINGS = {
     suggestionNameLabel: "Your name (optional)",
     suggestionNamePlaceholder: "Your name (optional)",
     sendingSuggestion: "Sending...",
+    submitActionFailed: "Could not send this. Please check your connection and try again.",
     sendSuggestionButton: "Send suggestion",
     suggestEditButton: "Suggest an edit",
 
@@ -734,6 +735,7 @@ const STRINGS = {
     suggestionNameLabel: "آپ کا نام (اختیاری)",
     suggestionNamePlaceholder: "آپ کا نام (اختیاری)",
     sendingSuggestion: "بھیجا جا رہا ہے...",
+    submitActionFailed: "یہ بھیجا نہیں جا سکا۔ براہ کرم اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
     sendSuggestionButton: "تجویز بھیجیں",
     suggestEditButton: "تجویز بھیجیں",
     suggestCorrectionButton: "تصحیح تجویز کریں",
