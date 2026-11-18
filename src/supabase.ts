@@ -337,11 +337,12 @@ export async function uploadLiveVideo(file: File): Promise<string> {
 
 /**
  * Best-effort notification to admins through the `send-admin-alert` Edge Function when a visitor
- * (not signed in) submits a Suggestion or a Guestbook message - things that previously only
- * surfaced if an admin happened to open that section. Callers should not block the actual
- * submission on this; it's a convenience, not something the submission depends on succeeding.
+ * (not signed in) submits a Suggestion, Guestbook message, Dua request, Donation, or profile
+ * update request - things that previously only surfaced if an admin happened to open that
+ * section. Callers should not block the actual submission on this; it's a convenience, not
+ * something the submission depends on succeeding.
  */
-export async function sendAdminAlertNotification(kind: "suggestion" | "guestbook" | "dua", message: string, authorName: string | null): Promise<void> {
+export async function sendAdminAlertNotification(kind: "suggestion" | "guestbook" | "dua" | "donation" | "profile_update", message: string, authorName: string | null): Promise<void> {
   const supabase = getSupabaseClient();
   if (!supabase) return;
   try {

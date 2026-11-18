@@ -134,7 +134,7 @@ export default function AppUpdaterCard({ language, isAdmin, canUseBiometric }: {
     "sajra_admin_alerts",
     "sajra_admin_alerts",
     "Apna Sajra admin alerts",
-    "New suggestions and guestbook messages from visitors",
+    "New suggestions, guestbook messages, dua requests, donations, and profile update requests from visitors",
     "sajra-admin-alert-notifications"
   );
   if (!Capacitor.isNativePlatform()) return null;

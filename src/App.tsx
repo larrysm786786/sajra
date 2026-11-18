@@ -1767,6 +1767,7 @@ export default function App() {
       if (supabaseConfigured) {
         const entry = await submitDonation({ donorMemberId: memberId, cause: donationDraft.cause, amount }) as AppState["donationEntries"][number];
         setState((current) => ({ ...current, donationEntries: [entry, ...current.donationEntries].slice(0, 500) }));
+        void sendAdminAlertNotification("donation", `${entry.donorName} - ₹${amount} for ${t(language, donationCauseLabelKey(donationDraft.cause))}`, entry.donorName);
       } else {
         const member = state.members.find((candidate) => candidate.id === memberId);
         if (!member) return;
@@ -1870,6 +1871,7 @@ export default function App() {
         publications: updateRequestDraft.publications.filter((item) => item.title.trim()).map((item) => ({ ...item, title: item.title.trim().slice(0, 180), publisher: item.publisher?.trim().slice(0, 120) || null, year: item.year?.trim().slice(0, 12) || null, url: item.url?.trim().slice(0, 500) || null }))
       });
       setState((current) => ({ ...current, memberUpdateRequests: [request, ...current.memberUpdateRequests.filter((item) => item.id !== request.id)].slice(0, 200) }));
+      if (supabaseConfigured) void sendAdminAlertNotification("profile_update", `${member.name} submitted a profile update for review`, member.name);
       setUpdateLinkValid(false);
       setUpdateRequestSent(true);
     } catch (error) {
