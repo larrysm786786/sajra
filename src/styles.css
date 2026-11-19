@@ -212,6 +212,64 @@ button {
   text-align: left;
 }
 
+/* The logged-in admin/editor's name + avatar at the top of the hamburger panel, above the
+   scrollable section list. */
+.nav-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  text-align: left;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.nav-profile-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.nav-profile-avatar {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  object-fit: cover;
+  background: color-mix(in oklab, var(--accent) 60%, transparent);
+}
+
+.nav-profile-initials {
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
+}
+
+.nav-profile-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nav-profile-name {
+  font-weight: 700;
+  color: #fff;
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-profile-role {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
 .btn,
 .btn-ghost {
   border: 1px solid var(--border);

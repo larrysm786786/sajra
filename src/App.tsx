@@ -201,6 +201,12 @@ function fullLabel(member: Member, language: Language): string {
   return profession ? `${professionShortLabel(language, profession)} ${name}` : name;
 }
 
+/** First letters of the first two words, for a fallback avatar when no profile photo is set. */
+function initialsOf(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  return words.slice(0, 2).map((word) => word[0]?.toUpperCase() ?? "").join("") || "?";
+}
+
 const DONATION_CAUSE_LABEL_KEYS: Record<DonationCauseKey, StringKey> = {
   sickMember: "donationCauseSickMember",
   masjid: "donationCauseMasjid",
@@ -865,6 +871,12 @@ export default function App() {
   // Dashboard behind the device's own fingerprint/face/PIN prompt, on top of the normal login.
   const biometricLockRequired = Capacitor.isNativePlatform() && canUseBiometric && localStorage.getItem(BIOMETRIC_LOCK_STORAGE_KEY) === "1";
   const language = state.language;
+  // Shown at the top of the hamburger nav for a logged-in admin/editor. The account itself has
+  // no photo field - only a linked family-member profile (set via "My Family" in Settings) does,
+  // so a photo only shows once that link exists; otherwise it falls back to an initials avatar.
+  const myProfileMember = myMemberId ? state.members.find((member) => member.id === myMemberId) : undefined;
+  const myProfileName = myUser?.name?.trim() || (myProfileMember ? displayName(myProfileMember, language) : "") || supabaseSession?.user.email || "";
+  const myProfilePhoto = myProfileMember?.photo ?? null;
   const members = useMemo(() => [...state.members].sort(sortMembers), [state.members]);
   const memberMap = useMemo(() => new Map(state.members.map((member) => [member.id, member])), [state.members]);
   const roots = useMemo(() => state.members.filter(isRoot).sort(sortMembers), [state.members]);
@@ -4328,6 +4340,19 @@ export default function App() {
           <span />
         </button>
         <nav className={`topnav${mobileNavOpen ? " open" : ""}${isLoggedIn ? " topnav-authed" : ""}`}>
+          {isLoggedIn ? (
+            <button type="button" className="nav-profile-card" onClick={() => { goToMyFamily(); setMobileNavOpen(false); }}>
+              {myProfilePhoto ? (
+                <img className="nav-profile-avatar" src={photoSrc(myProfilePhoto)} alt="" />
+              ) : (
+                <span className="nav-profile-avatar nav-profile-initials">{initialsOf(myProfileName || t(language, isAdmin ? "adminOption" : "editorOption"))}</span>
+              )}
+              <span className="nav-profile-text">
+                <span className="nav-profile-name">{myProfileName || t(language, isAdmin ? "adminOption" : "editorOption")}</span>
+                <span className="nav-profile-role">{t(language, isAdmin ? "adminOption" : "editorOption")}</span>
+              </span>
+            </button>
+          ) : null}
           {isLoggedIn && !isDesktopStaffUser ? (
             <details className="topnav-admin-dropdown">
               <summary className="navlink">{t(language, "adminNavMenuLabel")} <span aria-hidden="true">⌄</span></summary>
