@@ -4284,7 +4284,7 @@ export default function App() {
     ? [
         ...adminNavMenuItems.map((item) => ({
           key: `admin-${item.key}`,
-          label: isNativeApp ? nativeAdminLabels[item.key] ?? item.label : item.label,
+          label: nativeAdminLabels[item.key] ?? item.label,
           badge: item.badge,
           onClick: () => { navigate({ page: "admin" }); setAdminSection(item.key); setPasswordChangeError(""); setPasswordChangeSuccess(false); }
         })),
