@@ -346,8 +346,10 @@ button {
   flex: 0 0 auto;
   /* auto pushes this to the bottom of the panel when the link list above is short, instead of
      leaving it floating right under a handful of links; max-height + overflow on the list above
-     still keeps this reachable when the list is long enough to need scrolling. */
+     still keeps this reachable when the list is long enough to need scrolling. margin-bottom
+     then lifts it a bit off the panel's bottom edge instead of sitting flush against it. */
   margin-top: auto;
+  margin-bottom: 28px;
   padding-top: 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.14);
 }
