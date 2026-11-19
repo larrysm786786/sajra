@@ -349,7 +349,7 @@ button {
      still keeps this reachable when the list is long enough to need scrolling. margin-bottom
      then lifts it a bit off the panel's bottom edge instead of sitting flush against it. */
   margin-top: auto;
-  margin-bottom: 28px;
+  margin-bottom: 52px;
   padding-top: 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.14);
 }
