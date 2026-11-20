@@ -44,6 +44,7 @@ import {
   readFileAsCompressedDataUrl,
   saveState,
   sortMembers,
+  STORAGE_KEY,
   treeDepth
 } from "./lib";
 import type { RelationType } from "./lib";
@@ -96,6 +97,7 @@ import {
 } from "./professions";
 import { t, tGender } from "./i18n";
 import SajraChat from "./SajraChat";
+import OnboardingVideo from "./OnboardingVideo";
 import AppUpdaterCard, { appBiometric, appNotifications, appPrint, BIOMETRIC_LOCK_STORAGE_KEY, checkForAppUpdate } from "./AppUpdater";
 import { BranchPage } from "./FamilyTools";
 import type { StringKey } from "./i18n";
@@ -131,6 +133,7 @@ const MY_MEMBER_ID_KEY = "sajra-my-member-id";
 // When this device last downloaded a backup, local only, since "did I back up" is per-device.
 const LAST_BACKUP_KEY = "sajra-last-backup-at";
 const BACKUP_REMINDER_DAYS = 30;
+const ONBOARDING_SEEN_KEY = "sajra-onboarding-seen-v1";
 
 type MemberDraft = {
   id?: number;
@@ -696,6 +699,14 @@ function ProfessionPhotoSlider({ members, language, onOpen }: { members: Member[
 }
 export default function App() {
   const initialStateRef = useRef<AppState | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (!Capacitor.isNativePlatform()) return false;
+    try {
+      // Existing installs already have the archive cache; don't surprise them with a first-run
+      // intro when they install an update that first contains this feature.
+      return localStorage.getItem(ONBOARDING_SEEN_KEY) !== "1" && !localStorage.getItem(STORAGE_KEY);
+    } catch { return false; }
+  });
   const [state, setState] = useState<AppState>(() => {
     const initial = loadState();
     initialStateRef.current = initial;
@@ -839,6 +850,11 @@ export default function App() {
   const pullReadyRef = useRef(false);
   const [pullStatus, setPullStatus] = useState<"idle" | "refreshing" | "done" | "error">("idle");
   const [pullDistance, setPullDistance] = useState(0);
+
+  function finishOnboarding() {
+    try { localStorage.setItem(ONBOARDING_SEEN_KEY, "1"); } catch { /* Keep the app usable if storage is unavailable. */ }
+    setShowOnboarding(false);
+  }
 
   // mfaPending keeps the admin area locked while a 2-step verification code is still owed,
   // even though signInWithPassword already issued a session (just one not yet at aal2).
@@ -5083,6 +5099,8 @@ export default function App() {
           ) : null}
         </div>
       ) : null}
+
+      {showOnboarding ? <OnboardingVideo language={language} onFinish={finishOnboarding} /> : null}
     </div>
   );
 }
