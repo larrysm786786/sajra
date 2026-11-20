@@ -774,7 +774,7 @@ export default function App() {
   const [donationError, setDonationError] = useState("");
   const [donationQrInput, setDonationQrInput] = useState("");
   const [donationUpiInput, setDonationUpiInput] = useState("");
-  const [updateRequestDraft, setUpdateRequestDraft] = useState<{ memberId: number; photo: string; bio: string; contact: string; profession: string; publications: BookPublication[] } | null>(null);
+  const [updateRequestDraft, setUpdateRequestDraft] = useState<{ memberId: number; photo: string; bio: string; contact: string; professionChoice: string; professionOther: string; publications: BookPublication[] } | null>(null);
   const [updateRequestBusy, setUpdateRequestBusy] = useState(false);
   const [updateRequestSent, setUpdateRequestSent] = useState(false);
   const [updateLinkValid, setUpdateLinkValid] = useState(false);
@@ -966,7 +966,7 @@ export default function App() {
     const member = state.members.find((candidate) => candidate.id === route.memberId);
     if (!member) return;
     setUpdateRequestDraft((current) =>
-      current && current.memberId === member.id ? current : { memberId: member.id, photo: member.photo ?? "", bio: member.bio ?? "", contact: member.contact ?? "", profession: member.profession ?? "", publications: member.publications ?? [] }
+      current && current.memberId === member.id ? current : { memberId: member.id, photo: member.photo ?? "", bio: member.bio ?? "", contact: member.contact ?? "", ...professionDraftFields(member.profession), publications: member.publications ?? [] }
     );
   }, [route.page, route.memberId, route.updateToken, updateLinkValid, state.members]);
 
@@ -1879,7 +1879,7 @@ export default function App() {
         photo: updateRequestDraft.photo.trim(),
         bio: updateRequestDraft.bio.trim(),
         contact: updateRequestDraft.contact.trim(),
-        profession: normalizeProfession(updateRequestDraft.profession) ?? "",
+        profession: normalizeProfession(updateRequestDraft.professionChoice === PROFESSION_OTHER ? updateRequestDraft.professionOther : updateRequestDraft.professionChoice) ?? "",
         publications: updateRequestDraft.publications.filter((item) => item.title.trim()).map((item) => ({ ...item, title: item.title.trim().slice(0, 180), publisher: item.publisher?.trim().slice(0, 120) || null, year: item.year?.trim().slice(0, 12) || null, url: item.url?.trim().slice(0, 500) || null }))
       });
       setState((current) => ({ ...current, memberUpdateRequests: [request, ...current.memberUpdateRequests.filter((item) => item.id !== request.id)].slice(0, 200) }));
@@ -3878,7 +3878,7 @@ export default function App() {
               </div>
               <label className="profile-update-label">
                 <span>{t(language, "professionLabel")}</span>
-                <select className="select" value={professionDraftFields(updateRequestDraft.profession).professionChoice} onChange={(e) => setUpdateRequestDraft((current) => current ? { ...current, profession: e.target.value === PROFESSION_OTHER ? (professionDraftFields(current.profession).professionChoice === PROFESSION_OTHER ? current.profession : "") : e.target.value } : current)}>
+                <select className="select" value={updateRequestDraft.professionChoice} onChange={(e) => setUpdateRequestDraft((current) => current ? { ...current, professionChoice: e.target.value } : current)}>
                   <option value="">{t(language, "professionLabel")}, {t(language, "professionNone")}</option>
                   {PROFESSION_KEYS.map((key) => {
                     const short = professionShortLabel(language, key);
@@ -3887,7 +3887,7 @@ export default function App() {
                   })}
                   <option value={PROFESSION_OTHER}>{t(language, "professionOther")}</option>
                 </select>
-                {professionDraftFields(updateRequestDraft.profession).professionChoice === PROFESSION_OTHER ? <input className="field" maxLength={80} placeholder={t(language, "professionOtherPlaceholder")} value={professionDraftFields(updateRequestDraft.profession).professionOther} onChange={(e) => setUpdateRequestDraft((current) => current ? { ...current, profession: e.target.value } : current)} /> : null}
+                {updateRequestDraft.professionChoice === PROFESSION_OTHER ? <input className="field" maxLength={80} placeholder={t(language, "professionOtherPlaceholder")} value={updateRequestDraft.professionOther} onChange={(e) => setUpdateRequestDraft((current) => current ? { ...current, professionOther: e.target.value } : current)} /> : null}
               </label>
 
               <label className="profile-update-label profile-update-bio">
