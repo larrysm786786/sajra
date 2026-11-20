@@ -44,7 +44,6 @@ import {
   readFileAsCompressedDataUrl,
   saveState,
   sortMembers,
-  STORAGE_KEY,
   treeDepth
 } from "./lib";
 import type { RelationType } from "./lib";
@@ -58,6 +57,7 @@ import {
   isSupabaseConfigured,
   listMfaFactors,
   loadSupabaseState,
+  loadSupabaseStateUpdatedAt,
   logVisit,
   manageAuthUser,
   mfaStepUpRequired,
@@ -97,7 +97,6 @@ import {
 } from "./professions";
 import { t, tGender } from "./i18n";
 import SajraChat from "./SajraChat";
-import OnboardingVideo from "./OnboardingVideo";
 import AppUpdaterCard, { appBiometric, appNotifications, appPrint, BIOMETRIC_LOCK_STORAGE_KEY, checkForAppUpdate } from "./AppUpdater";
 import { BranchPage } from "./FamilyTools";
 import type { StringKey } from "./i18n";
@@ -133,7 +132,6 @@ const MY_MEMBER_ID_KEY = "sajra-my-member-id";
 // When this device last downloaded a backup, local only, since "did I back up" is per-device.
 const LAST_BACKUP_KEY = "sajra-last-backup-at";
 const BACKUP_REMINDER_DAYS = 30;
-const ONBOARDING_SEEN_KEY = "sajra-onboarding-seen-v1";
 
 type MemberDraft = {
   id?: number;
@@ -699,19 +697,13 @@ function ProfessionPhotoSlider({ members, language, onOpen }: { members: Member[
 }
 export default function App() {
   const initialStateRef = useRef<AppState | null>(null);
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    if (!Capacitor.isNativePlatform()) return false;
-    try {
-      // Existing installs already have the archive cache; don't surprise them with a first-run
-      // intro when they install an update that first contains this feature.
-      return localStorage.getItem(ONBOARDING_SEEN_KEY) !== "1" && !localStorage.getItem(STORAGE_KEY);
-    } catch { return false; }
-  });
   const [state, setState] = useState<AppState>(() => {
     const initial = loadState();
     initialStateRef.current = initial;
     return initial;
   });
+  const stateRef = useRef(state);
+  stateRef.current = state;
   const [supabaseSession, setSupabaseSession] = useState<Session | null>(null);
   const [route, setRoute] = useState<RouteState>(() => parseRoute());
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -848,13 +840,9 @@ export default function App() {
   } | null>(null);
   const pullStartYRef = useRef<number | null>(null);
   const pullReadyRef = useRef(false);
+  const refreshInFlightRef = useRef(false);
   const [pullStatus, setPullStatus] = useState<"idle" | "refreshing" | "done" | "error">("idle");
   const [pullDistance, setPullDistance] = useState(0);
-
-  function finishOnboarding() {
-    try { localStorage.setItem(ONBOARDING_SEEN_KEY, "1"); } catch { /* Keep the app usable if storage is unavailable. */ }
-    setShowOnboarding(false);
-  }
 
   // mfaPending keeps the admin area locked while a 2-step verification code is still owed,
   // even though signInWithPassword already issued a session (just one not yet at aal2).
@@ -1228,24 +1216,63 @@ export default function App() {
   }
 
   /** Pull-to-refresh: re-fetches the shared archive and merges it the same way a save conflict does, so anything typed locally but not yet saved isn't lost. */
-  async function refreshFromSupabase() {
-    if (!supabaseConfigured || pullStatus === "refreshing") return;
-    setPullStatus("refreshing");
+  async function refreshFromSupabase(showIndicator = true, onlyIfChanged = false) {
+    if (!supabaseConfigured || !hydrationDoneRef.current || refreshInFlightRef.current) return;
+    refreshInFlightRef.current = true;
+    if (showIndicator) setPullStatus("refreshing");
     try {
+      if (onlyIfChanged) {
+        const latestUpdatedAt = await loadSupabaseStateUpdatedAt();
+        if (latestUpdatedAt === remoteUpdatedAtRef.current) {
+          setSyncStatus("ready");
+          return;
+        }
+      }
       const remote = await loadSupabaseState();
       if (remote) {
-        const merged = mergeStates(syncedRef.current?.state ?? remote.state, state, remote.state);
-        remoteUpdatedAtRef.current = remote.updatedAt;
-        syncedRef.current = { json: JSON.stringify(remote.state), state: remote.state };
-        setState(merged);
+        const remoteJson = JSON.stringify(remote.state);
+        const unchanged = remote.updatedAt === remoteUpdatedAtRef.current && remoteJson === syncedRef.current?.json;
+        if (!unchanged) {
+          const merged = mergeStates(syncedRef.current?.state ?? remote.state, stateRef.current, remote.state);
+          remoteUpdatedAtRef.current = remote.updatedAt;
+          syncedRef.current = { json: remoteJson, state: remote.state };
+          setState(merged);
+          setSyncStatus("ready");
+          setSyncMessageKey("loadedShared");
+        }
       }
-      setPullStatus("done");
+      setSyncStatus("ready");
+      if (showIndicator) setPullStatus("done");
     } catch {
-      setPullStatus("error");
+      setSyncStatus("error");
+      setSyncMessageKey("cloudUnavailable");
+      if (showIndicator) setPullStatus("error");
     } finally {
-      window.setTimeout(() => setPullStatus("idle"), 1400);
+      refreshInFlightRef.current = false;
+      if (showIndicator) window.setTimeout(() => setPullStatus("idle"), 1400);
     }
   }
+
+  // Keep already-open browsers and APKs current too. Polling is deliberately retained as a
+  // fallback so this works even when Supabase Realtime is not enabled for sajra_state.
+  useEffect(() => {
+    if (!supabaseConfigured) return;
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible" && hydrationDoneRef.current) {
+        void refreshFromSupabase(false, true);
+      }
+    };
+    const interval = window.setInterval(refreshWhenVisible, 30_000);
+    window.addEventListener("focus", refreshWhenVisible);
+    window.addEventListener("online", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshWhenVisible);
+      window.removeEventListener("online", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [supabaseConfigured]);
 
   function handlePullTouchStart(e: ReactTouchEvent) {
     const scrollTop = lenisRef.current?.actualScroll ?? window.scrollY;
@@ -1257,7 +1284,7 @@ export default function App() {
     const dy = e.touches[0].clientY - pullStartYRef.current;
     if (dy <= 0) { setPullDistance(0); pullReadyRef.current = false; return; }
     setPullDistance(Math.min(70, dy * 0.54));
-    pullReadyRef.current = dy >= 130;
+    pullReadyRef.current = dy >= 210;
   }
 
   function handlePullTouchEnd() {
@@ -1811,6 +1838,20 @@ export default function App() {
     } finally {
       setDonationBusy(false);
     }
+  }
+
+  function openDonationUpiApp() {
+    if (!donationDraft || !state.donationSettings.upiId) return;
+    const amount = Number(donationDraft.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    const params = new URLSearchParams({
+      pa: state.donationSettings.upiId.trim(),
+      pn: "Apna Sajra",
+      am: amount.toFixed(2),
+      cu: "INR",
+      tn: `Donation - ${t(language, donationCauseLabelKey(donationDraft.cause))}`
+    });
+    window.location.href = `upi://pay?${params.toString()}`;
   }
 
   function confirmDonation(id: number) {
@@ -4984,6 +5025,13 @@ export default function App() {
                 onChange={(e) => setDonationDraft((current) => current ? { ...current, amount: e.target.value } : current)}
               />
             </label>
+            {state.donationSettings.upiId && donationDraft.memberId && Number(donationDraft.amount) > 0 ? (
+              <div className="span-12">
+                <button className="btn" type="button" onClick={openDonationUpiApp}>
+                  {t(language, "donationPayWithUpiButton")}
+                </button>
+              </div>
+            ) : null}
             {state.donationSettings.qrCodeImage || state.donationSettings.upiId ? (
               <div className="span-12 donation-qr-box">
                 {state.donationSettings.qrCodeImage ? <img src={state.donationSettings.qrCodeImage} alt={t(language, "donationQrAlt")} /> : null}
@@ -5100,7 +5148,6 @@ export default function App() {
         </div>
       ) : null}
 
-      {showOnboarding ? <OnboardingVideo language={language} onFinish={finishOnboarding} /> : null}
     </div>
   );
 }

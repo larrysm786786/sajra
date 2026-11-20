@@ -58,6 +58,19 @@ export async function loadSupabaseState(): Promise<RemoteState | null> {
   return { state: stateFromRaw(data.state), updatedAt: data.updated_at as string };
 }
 
+/** Lightweight version check used by open clients; only fetch the large archive when it changed. */
+export async function loadSupabaseStateUpdatedAt(): Promise<string | null> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select("updated_at")
+    .eq("id", ROW_ID)
+    .maybeSingle();
+  if (error) throw new Error(`Supabase version check failed: ${error.message}`);
+  return (data?.updated_at as string | null) ?? null;
+}
+
 /**
  * Saves state only if nobody else has saved since `expectedUpdatedAt` was
  * read (optimistic concurrency). Throws a StaleWriteError if someone else's

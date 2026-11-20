@@ -29,7 +29,6 @@ Yeh inventory current workspace ke source code aur recent Git history ko dekh ka
 - English and Urdu UI, RTL layout, Urdu digits, and Urdu translations for the live visitor map and major app flows.
 - Light and dark themes.
 - Responsive web/mobile layout; Capacitor Android app support; Lenis page scrolling.
-- First-launch Android onboarding video with Skip/Next, sound toggle, a short feature summary, and a saved completion marker so it does not replay after app updates.
 
 ## Admin and editor console
 

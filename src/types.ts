@@ -181,9 +181,9 @@ export interface LiveStream {
 export type DonationCauseKey = "sickMember" | "masjid" | "madarsa" | "iftari" | "sehri";
 
 /**
- * Admin-set payment details (a UPI QR code to scan) and which causes are currently open.
- * The app never processes the payment itself - a visitor scans this and pays through their own
- * UPI app, then records what they paid, which an admin/editor confirms against their own account.
+ * Admin-set payment details (UPI QR and/or UPI ID) and which causes are currently open.
+ * The app never processes the payment itself: donors pay in their UPI app, then report it here for
+ * an admin/editor to confirm against the receiving account.
  */
 export interface DonationSettings {
   activeCauses: DonationCauseKey[];
