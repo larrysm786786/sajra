@@ -117,7 +117,8 @@ const EDITOR_PERMISSION_OPTIONS: { key: keyof NonNullable<User["permissions"]>; 
   { key: "addToSlider", labelKey: "permAddToSliderLabel" },
   { key: "addAnnouncement", labelKey: "permAddAnnouncementLabel" },
   { key: "addLiveStreaming", labelKey: "permAddLiveStreamingLabel" },
-  { key: "manageDonations", labelKey: "permManageDonationsLabel" }
+  { key: "manageDonations", labelKey: "permManageDonationsLabel" },
+  { key: "manageAnalytics", labelKey: "permManageAnalyticsLabel" }
 ];
 
 // Supabase reports an expired / already-used reset link through the URL hash.
@@ -862,6 +863,7 @@ export default function App() {
   const canEditMembers = editorPermission("editMember", isAdmin);
   const canReviewProfileUpdates = editorPermission("reviewProfileUpdates", isAdmin);
   const canManageDonations = editorPermission("manageDonations", isAdmin);
+  const canManageAnalytics = editorPermission("manageAnalytics", isAdmin);
   const canAddToSlider = editorPermission("addToSlider", isAdmin);
   const canAddAnnouncement = editorPermission("addAnnouncement", true);
   const canAddLiveStreaming = editorPermission("addLiveStreaming", isAdmin);
@@ -2698,7 +2700,7 @@ export default function App() {
     ...(isAdmin ? [{ key: "logs" as const, label: t(language, "adminNavLogs") }] : []),
     { key: "quality", label: t(language, "adminNavQuality") },
     ...(isAdmin ? [{ key: "backup" as const, label: t(language, "backupCardTitle") }] : []),
-    { key: "analytics", label: t(language, "adminNavAnalytics") }
+    ...(canManageAnalytics ? [{ key: "analytics" as const, label: t(language, "adminNavAnalytics") }] : [])
   ] : [];
 
   useEffect(() => {
@@ -4271,7 +4273,7 @@ export default function App() {
     ...(canReviewProfileUpdates ? [{ key: "profileUpdates", label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("profileUpdates"); } }] : []),
     ...(canManageDonations ? [{ key: "donations", label: t(language, "adminNavDonations"), badge: pendingDonationCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("donations"); } }] : []),
     { key: "quality", label: t(language, "adminNavQuality"), onClick: () => { navigate({ page: "admin" }); setAdminSection("quality"); } },
-    { key: "analytics", label: t(language, "adminNavAnalytics"), onClick: () => { navigate({ page: "admin" }); setAdminSection("analytics"); } },
+    ...(canManageAnalytics ? [{ key: "analytics", label: t(language, "adminNavAnalytics"), onClick: () => { navigate({ page: "admin" }); setAdminSection("analytics"); } }] : []),
     ...(canAddAnnouncement ? [{ key: "announcement", label: t(language, "postAnnouncementButton"), badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) }] : []),
     { key: "live", label: t(language, "navLiveLabel"), onClick: () => navigate({ page: "live" }) },
     { key: "settings", label: t(language, "navSettingsLabel"), badge: isNativeApp && appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }

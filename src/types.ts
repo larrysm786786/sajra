@@ -67,6 +67,7 @@ export interface UserPermissions {
   editMember?: boolean;
   reviewProfileUpdates?: boolean;
   manageDonations?: boolean;
+  manageAnalytics?: boolean;
 }
 
 /**

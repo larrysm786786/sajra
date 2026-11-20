@@ -625,7 +625,8 @@ const STRINGS = {
     confirmDonationButton: "Confirm",
     noPendingDonations: "No donations waiting for confirmation.",
     navDonationsLabel: "Donations",
-    permManageDonationsLabel: "Manage donations"
+    permManageDonationsLabel: "Manage donations",
+    permManageAnalyticsLabel: "Manage analytics"
   },
   ur: {
     signInEyebrow: "ایڈمن رسائی",
@@ -1252,7 +1253,8 @@ const STRINGS = {
     confirmDonationButton: "تصدیق کریں",
     noPendingDonations: "کوئی عطیہ تصدیق کا منتظر نہیں ہے۔",
     navDonationsLabel: "عطیات",
-    permManageDonationsLabel: "عطیات کا انتظام"
+    permManageDonationsLabel: "عطیات کا انتظام",
+    permManageAnalyticsLabel: "تجزیات کا انتظام"
   }
 } as const;
 
