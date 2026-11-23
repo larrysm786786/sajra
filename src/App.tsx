@@ -107,6 +107,13 @@ const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string
 };
 
 type RouteState = { page: ViewKey; memberId?: number; updateToken?: string };
+type BellNotification = {
+  id: string;
+  title: string;
+  message: string;
+  createdAt?: string;
+  onClick: () => void;
+};
 
 type AdminSection = "overview" | "members" | "users" | "gallery" | "suggestions" | "profileUpdates" | "donations" | "logs" | "backup" | "quality" | "analytics";
 
@@ -821,6 +828,7 @@ export default function App() {
     try { return JSON.parse(localStorage.getItem("sajra-seen-donation-causes") || "[]") as DonationCauseKey[]; } catch { return []; }
   });
   const [seenLiveStreamUpdatedAt, setSeenLiveStreamUpdatedAt] = useState(() => localStorage.getItem("sajra-seen-live-updated-at") || "");
+  const [notificationListOpen, setNotificationListOpen] = useState(false);
   const [appUpdateAvailable, setAppUpdateAvailable] = useState(false);
   const [biometricUnlockError, setBiometricUnlockError] = useState("");
   const [shareNotice, setShareNotice] = useState("");
@@ -2783,7 +2791,7 @@ export default function App() {
   ).length;
   const notificationBadgeCount = unseenAnnouncementCount + pendingProfileUpdateCount + pendingDonationCount;
   const notificationBellBadgeCount = isLoggedIn
-    ? unseenAdminSuggestionCount + unseenGuestbookCommentCount + openDuaRequests.length + pendingDonationCount + pendingProfileUpdateCount
+    ? unseenAdminSuggestionCount + unseenChatbotFeedbackCount + unseenGuestbookCommentCount + openDuaRequests.length + pendingDonationCount + pendingProfileUpdateCount
     : unseenAnnouncementCount + unseenLiveStreamCount + unseenFamilyEvents.length + unseenDonationCauseCount + (Capacitor.isNativePlatform() && appUpdateAvailable ? 1 : 0);
   const adminNavMenuItems: { key: AdminSection; label: string; badge?: number }[] = isLoggedIn ? [
     { key: "overview", label: t(language, "adminNavOverview") },
@@ -4456,38 +4464,62 @@ export default function App() {
       ]
     : [];
 
+  const bellNotifications: BellNotification[] = isLoggedIn
+    ? [
+        ...(canReviewProfileUpdates ? state.memberUpdateRequests.filter((request) => request.status === "pending").map((request) => ({
+          id: `profile-update-${request.id}`, title: t(language, "adminNavProfileUpdates"), message: request.memberName,
+          createdAt: request.createdAt, onClick: () => { navigate({ page: "admin" }); setAdminSection("profileUpdates"); }
+        })) : []),
+        ...(canManageDonations ? pendingDonations.map((entry) => ({
+          id: `donation-${entry.id}`, title: t(language, "donationsTitle"), message: `${entry.donorName} · ${t(language, donationCauseLabelKey(entry.cause))}`,
+          createdAt: entry.createdAt, onClick: () => { navigate({ page: "admin" }); setAdminSection("donations"); }
+        })) : []),
+        ...state.suggestions.filter((suggestion) => suggestion.status === "pending" && (
+          seenAdminSuggestionIds.includes(suggestion.id)
+            ? suggestion.message.startsWith("Chatbot feedback (") && !seenChatbotFeedbackIds.includes(suggestion.id)
+            : true
+        )).map((suggestion) => ({
+          id: `suggestion-${suggestion.id}`, title: t(language, "adminNavSuggestions"),
+          message: `${suggestion.submitterName || suggestion.memberName || ""} - ${suggestion.message}`,
+          createdAt: suggestion.createdAt, onClick: () => { navigate({ page: "admin" }); setAdminSection("suggestions"); }
+        })),
+        ...openDuaRequests.map((request) => ({
+          id: `dua-${request.id}`, title: t(language, "duaBoardTitle"), message: `${request.requesterName || ""}${request.requesterName ? " · " : ""}${request.message}`,
+          createdAt: request.createdAt, onClick: () => navigate({ page: "dua" })
+        })),
+        ...state.profileComments.filter((comment) => !seenGuestbookCommentIds.includes(comment.id)).map((comment) => ({
+          id: `guestbook-${comment.id}`, title: t(language, "guestbookTitle"),
+          message: `${comment.authorName || ""}${comment.authorName ? " · " : ""}${comment.message}`,
+          createdAt: comment.createdAt, onClick: () => navigate({ page: "member", memberId: comment.memberId })
+        }))
+      ]
+    : [
+        ...activeAnnouncements.map((announcement) => ({
+          id: `announcement-${announcement.id}`, title: t(language, "navNotificationsLabel"), message: announcement.message,
+          createdAt: announcement.createdAt, onClick: () => navigate({ page: "calendar" })
+        })),
+        ...unseenFamilyEvents.map((event) => ({
+          id: `event-${event.id}-${event.date.getFullYear()}`,
+          title: event.kind === "birthday" ? t(language, "calendarBirthdayLabel") : t(language, "calendarRemembranceLabel"),
+          message: displayName(event.member, language), createdAt: event.date.toISOString(), onClick: () => navigate({ page: "calendar" })
+        })),
+        ...(unseenLiveStreamCount ? [{ id: `live-${state.liveStream?.updatedAt}`, title: t(language, "liveTitle"), message: state.liveStream?.title || state.liveStream?.url || "", createdAt: state.liveStream?.updatedAt || undefined, onClick: () => navigate({ page: "live" }) }] : []),
+        ...state.donationSettings.activeCauses.filter((cause) => !seenDonationCauseKeys.includes(cause)).map((cause) => ({
+          id: `cause-${cause}`, title: t(language, "donationsTitle"), message: t(language, donationCauseLabelKey(cause)), createdAt: undefined, onClick: () => navigate({ page: "donations" })
+        })),
+        ...(Capacitor.isNativePlatform() && appUpdateAvailable ? [{ id: "app-update", title: t(language, "navSettingsLabel"), message: "Check for updates", createdAt: undefined, onClick: () => navigate({ page: "settings" }) }] : [])
+      ]
+      .sort((a, b) => (Date.parse(b.createdAt || "") || 0) - (Date.parse(a.createdAt || "") || 0))
+      .slice(0, 30);
+
   function openBellNotifications() {
     setMobileNavOpen(false);
-    if (isLoggedIn) {
-      if (canReviewProfileUpdates && pendingProfileUpdateCount > 0) {
-        navigate({ page: "admin" });
-        setAdminSection("profileUpdates");
-      } else if (canManageDonations && pendingDonationCount > 0) {
-        navigate({ page: "admin" });
-        setAdminSection("donations");
-      } else if (unseenAdminSuggestionCount > 0) {
-        navigate({ page: "admin" });
-        setAdminSection("suggestions");
-      } else if (openDuaRequests.length > 0) {
-        navigate({ page: "dua" });
-      } else if (unseenGuestbookCommentCount > 0) {
-        const newestComment = [...state.profileComments]
-          .filter((comment) => !seenGuestbookCommentIds.includes(comment.id))
-          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-        const guestbookMember = newestComment ? memberMap.get(newestComment.memberId) : undefined;
-        if (guestbookMember) navigate({ page: "member", memberId: guestbookMember.id });
-        else navigate({ page: "admin" });
-      } else {
-        navigate({ page: "admin" });
-        setAdminSection("overview");
-      }
-      return;
-    }
-    if (unseenAnnouncementCount > 0 || unseenFamilyEvents.length > 0) navigate({ page: "calendar" });
-    else if (unseenLiveStreamCount > 0) navigate({ page: "live" });
-    else if (unseenDonationCauseCount > 0) navigate({ page: "donations" });
-    else if (Capacitor.isNativePlatform() && appUpdateAvailable) navigate({ page: "settings" });
-    else navigate({ page: "calendar" });
+    setNotificationListOpen((open) => !open);
+  }
+
+  function openBellNotification(notification: BellNotification) {
+    setNotificationListOpen(false);
+    notification.onClick();
   }
 
   return (
@@ -4512,16 +4544,37 @@ export default function App() {
           <EyeIcon />
           {formatNumber(state.visitorCount ?? 0, language)}
         </span>
-        <button
-          type="button"
-          className="notification-bell-btn"
-          aria-label={t(language, "navNotificationsLabel")}
-          title={t(language, "navNotificationsLabel")}
-          onClick={openBellNotifications}
-        >
-          <BellIcon />
-          {notificationBellBadgeCount > 0 ? <span className="notification-bell-badge">{notificationBellBadgeCount > 99 ? "99+" : formatNumber(notificationBellBadgeCount, language)}</span> : null}
-        </button>
+        <div className="notification-bell-wrap">
+          <button
+            type="button"
+            className="notification-bell-btn"
+            aria-label={t(language, "navNotificationsLabel")}
+            title={t(language, "navNotificationsLabel")}
+            aria-expanded={notificationListOpen}
+            onClick={openBellNotifications}
+          >
+            <BellIcon />
+            {notificationBellBadgeCount > 0 ? <span className="notification-bell-badge">{notificationBellBadgeCount > 99 ? "99+" : formatNumber(notificationBellBadgeCount, language)}</span> : null}
+          </button>
+          {notificationListOpen ? <>
+            <button className="notification-list-dismiss" type="button" aria-label={language === "ur" ? "اطلاعات بند کریں" : "Close notifications"} onClick={() => setNotificationListOpen(false)} />
+            <section className="notification-list-panel" aria-label={t(language, "navNotificationsLabel")}>
+              <div className="notification-list-heading">
+                <strong>{t(language, "navNotificationsLabel")}</strong>
+                <button type="button" onClick={() => setNotificationListOpen(false)} aria-label={language === "ur" ? "بند کریں" : "Close"}>×</button>
+              </div>
+              <div className="notification-list-items">
+                {bellNotifications.length ? bellNotifications.map((notification) => (
+                  <button className="notification-list-item" key={notification.id} type="button" onClick={() => openBellNotification(notification)}>
+                    <strong>{notification.title}</strong>
+                    <span>{notification.message}</span>
+                    {notification.createdAt ? <small>{formatDate(notification.createdAt, language)}</small> : null}
+                  </button>
+                )) : <p className="notification-list-empty">{language === "ur" ? "ابھی کوئی نئی اطلاع نہیں ہے۔" : "No notifications right now."}</p>}
+              </div>
+            </section>
+          </> : null}
+        </div>
         <button
           type="button"
           className={`hamburger-btn${mobileNavOpen ? " open" : ""}`}
