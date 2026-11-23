@@ -4407,29 +4407,6 @@ export default function App() {
             </div>
           </section>
         ) : null}
-        {openDuaRequests.length ? (
-          <section className="section dua-preview">
-            <div className="section-head">
-              <div>
-                <span className="eyebrow">{t(language, "eyebrowDua")}</span>
-                <h2 className="section-title">{t(language, "duaBoardTitle")}</h2>
-              </div>
-              <button className="btn-ghost" onClick={() => navigate({ page: "dua" })}>{t(language, "viewAllButton")}</button>
-            </div>
-            <div className="list">
-              {openDuaRequests.slice(0, 3).map((request) => (
-                <div key={request.id} className="card announcement-card">
-                  <div className="announcement-card-body">
-                    <p className="announcement-message">{request.message}</p>
-                    <div className="tree-sub">
-                      {formatDate(request.createdAt, language)} | {request.requesterName || t(language, "anonymousSubmitter")}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
         <section className="hero-tools section">
           <div className="hero-actions">
             <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openFamilyTreeButton")}</button>
