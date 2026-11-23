@@ -797,6 +797,7 @@ export default function App() {
   const [seenAnnouncementIds, setSeenAnnouncementIds] = useState<number[]>(() => {
     try { return JSON.parse(localStorage.getItem("sajra-seen-announcements") || "[]") as number[]; } catch { return []; }
   });
+  const [seenLiveStreamUpdatedAt, setSeenLiveStreamUpdatedAt] = useState(() => localStorage.getItem("sajra-seen-live-updated-at") || "");
   const [appUpdateAvailable, setAppUpdateAvailable] = useState(false);
   const [biometricUnlockError, setBiometricUnlockError] = useState("");
   const [shareNotice, setShareNotice] = useState("");
@@ -2745,6 +2746,7 @@ export default function App() {
   const pendingProfileUpdateCount = canReviewProfileUpdates ? state.memberUpdateRequests.filter((request) => request.status === "pending").length : 0;
   const pendingDonationCount = canManageDonations ? pendingDonations.length : 0;
   const unseenAnnouncementCount = activeAnnouncements.filter((announcement) => !seenAnnouncementIds.includes(announcement.id)).length;
+  const unseenLiveStreamCount = state.liveStream?.updatedAt && state.liveStream.updatedAt !== seenLiveStreamUpdatedAt ? 1 : 0;
   const notificationBadgeCount = unseenAnnouncementCount + pendingProfileUpdateCount + pendingDonationCount;
   const adminNavMenuItems: { key: AdminSection; label: string; badge?: number }[] = isLoggedIn ? [
     { key: "overview", label: t(language, "adminNavOverview") },
@@ -2786,6 +2788,13 @@ export default function App() {
       return next;
     });
   }, [route.page, activeAnnouncements]);
+
+  useEffect(() => {
+    if (route.page !== "live" || !state.liveStream?.updatedAt) return;
+    const updatedAt = state.liveStream.updatedAt;
+    localStorage.setItem("sajra-seen-live-updated-at", updatedAt);
+    setSeenLiveStreamUpdatedAt(updatedAt);
+  }, [route.page, state.liveStream?.updatedAt]);
 
   const content = (() => {
     // A recovery link signs the user in with a temporary session, so this must not depend on !isLoggedIn.
@@ -4332,7 +4341,7 @@ export default function App() {
     { key: "quality", label: t(language, "adminNavQuality"), onClick: () => { navigate({ page: "admin" }); setAdminSection("quality"); } },
     ...(canManageAnalytics ? [{ key: "analytics", label: t(language, "adminNavAnalytics"), onClick: () => { navigate({ page: "admin" }); setAdminSection("analytics"); } }] : []),
     ...(canAddAnnouncement ? [{ key: "announcement", label: t(language, "postAnnouncementButton"), badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) }] : []),
-    { key: "live", label: t(language, "navLiveLabel"), onClick: () => navigate({ page: "live" }) },
+    { key: "live", label: t(language, "navLiveLabel"), badge: unseenLiveStreamCount, onClick: () => navigate({ page: "live" }) },
     { key: "settings", label: t(language, "navSettingsLabel"), badge: isNativeApp && appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }
   ] : [];
   const desktopAdminMenuLinks: { key: string; label: string; badge?: number; onClick: () => void }[] = isDesktopAdminUser ? [
@@ -4348,7 +4357,7 @@ export default function App() {
     { key: "backup", label: t(language, "backupCardTitle"), onClick: () => { navigate({ page: "admin" }); setAdminSection("backup"); } },
     { key: "analytics", label: t(language, "adminNavAnalytics"), onClick: () => { navigate({ page: "admin" }); setAdminSection("analytics"); } },
     { key: "announcement", label: t(language, "postAnnouncementButton"), badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) },
-    { key: "live", label: t(language, "addLiveStreamingLabel"), onClick: () => navigate({ page: "live" }) },
+    { key: "live", label: t(language, "addLiveStreamingLabel"), badge: unseenLiveStreamCount, onClick: () => navigate({ page: "live" }) },
     { key: "settings", label: t(language, "navSettingsLabel"), badge: isNativeApp && appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }
   ] : [];
   const mobileAdminLinks: { key: string; label: string; onClick: () => void; badge?: number }[] = isLoggedIn
@@ -4360,7 +4369,7 @@ export default function App() {
           onClick: () => { navigate({ page: "admin" }); setAdminSection(item.key); setPasswordChangeError(""); setPasswordChangeSuccess(false); }
         })),
         { key: "notifications", label: t(language, "postAnnouncementButton"), badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) },
-        { key: "live", label: canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel"), onClick: () => navigate({ page: "live" }) },
+        { key: "live", label: canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel"), badge: unseenLiveStreamCount, onClick: () => navigate({ page: "live" }) },
         { key: "settings", label: t(language, "navSettingsLabel"), badge: isNativeApp && appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }
       ]
     : [];
@@ -4480,7 +4489,7 @@ export default function App() {
             <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
             <NavLink active={route.page === "calendar"} badge={notificationBadgeCount} language={language} onClick={() => navigate({ page: "calendar" })}>{t(language, "navNotificationsLabel")}</NavLink>
             {state.donationSettings.activeCauses.length ? <NavLink active={route.page === "donations"} onClick={() => navigate({ page: "donations" })}>{t(language, "navDonationsLabel")}</NavLink> : null}
-            <NavLink active={route.page === "live"} onClick={() => navigate({ page: "live" })}>{canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel")}</NavLink>
+            <NavLink active={route.page === "live"} badge={unseenLiveStreamCount} language={language} onClick={() => navigate({ page: "live" })}>{canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel")}</NavLink>
             <NavLink active={route.page === "guide"} onClick={() => navigate({ page: "guide" })}>{NAV_LABELS[language].guide}</NavLink>
             <NavLink active={route.page === "about"} onClick={() => navigate({ page: "about" })}>{NAV_LABELS[language].about}</NavLink>
             {isLoggedIn || isNativeApp ? <NavLink active={route.page === "settings"} badge={isNativeApp && appUpdateAvailable ? 1 : 0} language={language} onClick={() => navigate({ page: "settings" })}>{t(language, "navSettingsLabel")}</NavLink> : null}
