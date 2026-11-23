@@ -323,6 +323,38 @@ export async function uploadPublicationAsset(file: File, kind: "book" | "cover")
   return supabase.storage.from(VIDEO_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
+/** Stores a signed-in staff member's compressed avatar in the public media bucket. */
+export async function uploadAccountAvatar(file: File): Promise<string> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("Sajra storage is not configured.");
+  if (!file.type.startsWith("image/") || file.type === "image/svg+xml" || file.type === "image/gif") throw new Error("Choose a JPG, PNG, or WebP profile photo.");
+  if (file.size > 2 * 1024 * 1024) throw new Error("The profile photo must be 2 MB or smaller after compression.");
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) throw new Error("Please sign in again before changing your profile photo.");
+  const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const path = `profile-avatars/${user.id}/${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage.from(VIDEO_BUCKET).upload(path, file, {
+    cacheControl: "31536000", contentType: file.type, upsert: false
+  });
+  if (error) throw new Error(error.message);
+  return supabase.storage.from(VIDEO_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
+/** Stores a donation QR image outside the shared archive row; only its URL is saved in the archive. */
+export async function uploadDonationQr(file: File): Promise<string> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("Sajra storage is not configured.");
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw new Error("Choose a JPG, PNG, or WebP QR image.");
+  if (file.size > 2 * 1024 * 1024) throw new Error("The QR image must be 2 MB or smaller after compression.");
+  const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const path = `donations/qr/${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage.from(VIDEO_BUCKET).upload(path, file, {
+    cacheControl: "31536000", contentType: file.type, upsert: false
+  });
+  if (error) throw new Error(error.message);
+  return supabase.storage.from(VIDEO_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
 /**
  * Uploads a video file (e.g. an important family moment that wasn't livestreamed) to Supabase
  * Storage and returns its public URL. Unlike gallery photos, video files are kept out of the
@@ -379,6 +411,14 @@ export async function updatePassword(newPassword: string): Promise<void> {
   const supabase = getSupabaseClient();
   if (!supabase) throw new Error("Supabase is not configured.");
   const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw new Error(error.message);
+}
+
+/** Updates the currently signed-in user's own public name and avatar metadata. */
+export async function updateAccountProfile(name: string, avatarUrl: string | null): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.auth.updateUser({ data: { display_name: name, full_name: name, avatar_url: avatarUrl } });
   if (error) throw new Error(error.message);
 }
 

@@ -564,6 +564,57 @@ button {
   color: var(--muted);
 }
 
+.account-profile-editor {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+}
+
+.account-profile-photo-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+}
+
+.account-profile-photo-box > img,
+.account-profile-photo-box > span {
+  display: grid;
+  width: 76px;
+  height: 76px;
+  place-items: center;
+  object-fit: cover;
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--accent-soft);
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.account-photo-picker {
+  position: relative;
+  overflow: hidden;
+  padding: 7px 11px;
+  font-size: 0.85rem;
+}
+
+.account-photo-picker input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.account-profile-name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
 .hamburger-btn span {
   display: block;
   width: 20px;
@@ -1324,7 +1375,12 @@ input[type="file"]:not([hidden]):focus-visible {
   accent-color: var(--accent-strong);
 }
 @media (max-width: 600px) { .admin-user-permissions-options { grid-template-columns: minmax(0, 1fr); } }
-
+@media (max-width: 600px) {
+  .account-profile-editor { grid-template-columns: minmax(0, 1fr); justify-items: stretch; gap: 14px; }
+  .account-profile-photo-box { flex-direction: row; justify-content: flex-start; }
+  .account-profile-photo-box > img,
+  .account-profile-photo-box > span { width: 64px; height: 64px; }
+}
 .avatar-in-memory {
   filter: sepia(0.55) saturate(0.75) contrast(0.96);
 }

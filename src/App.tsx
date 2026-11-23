@@ -80,6 +80,9 @@ import {
   uploadPublicationAsset,
   unenrollMfa,
   updatePassword,
+  updateAccountProfile,
+  uploadAccountAvatar,
+  uploadDonationQr,
   validateProfileUpdateLink,
   verifyMfaChallenge
 } from "./supabase";
@@ -768,6 +771,13 @@ export default function App() {
   const [passwordChangeBusy, setPasswordChangeBusy] = useState(false);
   const [passwordChangeError, setPasswordChangeError] = useState("");
   const [passwordChangeSuccess, setPasswordChangeSuccess] = useState(false);
+  const [accountNameDraft, setAccountNameDraft] = useState("");
+  const [accountPhotoDraft, setAccountPhotoDraft] = useState("");
+  const [accountPhotoFile, setAccountPhotoFile] = useState<File | null>(null);
+  const [accountProfileBusy, setAccountProfileBusy] = useState(false);
+  const [accountProfileError, setAccountProfileError] = useState("");
+  const [accountProfileSuccess, setAccountProfileSuccess] = useState(false);
+  const accountPhotoInputRef = useRef<HTMLInputElement>(null);
   const [syncStatus, setSyncStatus] = useState<"loading" | "ready" | "error" | "conflict">("loading");
   const [syncMessageKey, setSyncMessageKey] = useState<StringKey>("checkingLocalData");
   const [memberDraft, setMemberDraft] = useState<MemberDraft | null>(null);
@@ -793,6 +803,9 @@ export default function App() {
   const [donationError, setDonationError] = useState("");
   const [donationQrInput, setDonationQrInput] = useState("");
   const [donationUpiInput, setDonationUpiInput] = useState("");
+  const [donationDetailsBusy, setDonationDetailsBusy] = useState(false);
+  const [donationDetailsMessage, setDonationDetailsMessage] = useState("");
+  const [donationDetailsError, setDonationDetailsError] = useState(false);
   const [updateRequestDraft, setUpdateRequestDraft] = useState<{ memberId: number; photo: string; bio: string; contact: string; professionChoice: string; professionOther: string; publications: BookPublication[] } | null>(null);
   const [updateRequestBusy, setUpdateRequestBusy] = useState(false);
   const [updateRequestSent, setUpdateRequestSent] = useState(false);
@@ -913,8 +926,11 @@ export default function App() {
   // no photo field - only a linked family-member profile (set via "My Family" in Settings) does,
   // so a photo only shows once that link exists; otherwise it falls back to an initials avatar.
   const myProfileMember = myMemberId ? state.members.find((member) => member.id === myMemberId) : undefined;
-  const myProfileName = myUser?.name?.trim() || (myProfileMember ? displayName(myProfileMember, language) : "") || supabaseSession?.user.email || "";
-  const myProfilePhoto = myProfileMember?.photo ?? null;
+  const authProfile = supabaseSession?.user.user_metadata ?? {};
+  const authProfileName = typeof authProfile.display_name === "string" ? authProfile.display_name : typeof authProfile.full_name === "string" ? authProfile.full_name : "";
+  const authProfilePhoto = typeof authProfile.avatar_url === "string" ? authProfile.avatar_url : "";
+  const myProfileName = authProfileName.trim() || myUser?.name?.trim() || (myProfileMember ? displayName(myProfileMember, language) : "") || supabaseSession?.user.email || "";
+  const myProfilePhoto = authProfilePhoto || myProfileMember?.photo || null;
   const members = useMemo(() => [...state.members].sort(sortMembers), [state.members]);
   const memberMap = useMemo(() => new Map(state.members.map((member) => [member.id, member])), [state.members]);
   const roots = useMemo(() => state.members.filter(isRoot).sort(sortMembers), [state.members]);
@@ -1198,13 +1214,13 @@ export default function App() {
    * Writes `next` to Supabase. If someone else saved first, their version is loaded and our
    * changes are merged on top of it (see merge.ts) instead of being thrown away.
    */
-  async function persistToSupabase(next: AppState, serializedNext?: string) {
+  async function persistToSupabase(next: AppState, serializedNext?: string): Promise<boolean> {
     let attempt = next;
     let attemptJson = serializedNext ?? JSON.stringify(attempt);
 
     for (let tries = 0; tries < 3; tries += 1) {
       const json = attemptJson;
-      if (json === syncedRef.current?.json) return;
+      if (json === syncedRef.current?.json) return true;
 
       showSaveToast("ok", "savingChanges");
       try {
@@ -1217,13 +1233,13 @@ export default function App() {
         setSyncStatus("ready");
         setSyncMessageKey(tries > 0 ? "conflictMerged" : "changesSaved");
         showSaveToast("ok", tries > 0 ? "conflictMerged" : "changesSaved", tries > 0 ? 6000 : 2500);
-        return;
+        return true;
       } catch (error) {
         if (!(error instanceof StaleWriteError)) {
           setSyncStatus("error");
           setSyncMessageKey("saveFailed");
           showSaveToast("error", "saveFailed");
-          return;
+          return false;
         }
       }
 
@@ -1247,13 +1263,14 @@ export default function App() {
         setSyncStatus("error");
         setSyncMessageKey("saveFailed");
         showSaveToast("error", "saveFailed");
-        return;
+        return false;
       }
     }
 
     setSyncStatus("error");
     setSyncMessageKey("saveFailed");
     showSaveToast("error", "saveFailed");
+    return false;
   }
 
   /** Pull-to-refresh: re-fetches the shared archive and merges it the same way a save conflict does, so anything typed locally but not yet saved isn't lost. */
@@ -1340,11 +1357,11 @@ export default function App() {
     const handle = window.setTimeout(() => {
       // Serialize once after edits settle, then save only the newest state. Previously we walked
       // the full photo-heavy archive on every state update just to decide whether to save.
-      saveChainRef.current = saveChainRef.current.then(() => {
+      saveChainRef.current = saveChainRef.current.then(async () => {
         const latest = stateRef.current;
         const serialized = JSON.stringify(latest);
         if (serialized === syncedRef.current?.json) return;
-        return persistToSupabase(latest, serialized);
+        await persistToSupabase(latest, serialized);
       });
     }, 300);
 
@@ -1457,6 +1474,19 @@ export default function App() {
     if (!isAdmin || route.page !== "settings") return;
     void listMfaFactors().then(setMfaFactors).catch(() => {});
   }, [isAdmin, route.page]);
+
+  useEffect(() => {
+    if (!isLoggedIn || route.page !== "settings") return;
+    setAccountNameDraft(myProfileName);
+    setAccountPhotoDraft(myProfilePhoto || "");
+    setAccountPhotoFile(null);
+    setAccountProfileError("");
+    setAccountProfileSuccess(false);
+  }, [isLoggedIn, route.page, supabaseSession?.user.id]);
+
+  useEffect(() => () => {
+    if (accountPhotoDraft.startsWith("blob:")) URL.revokeObjectURL(accountPhotoDraft);
+  }, [accountPhotoDraft]);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform() || route.page !== "calendar") return;
@@ -1573,6 +1603,56 @@ export default function App() {
     }
   }
 
+  async function handleAccountProfileSubmit(event: FormEvent) {
+    event.preventDefault();
+    const name = accountNameDraft.trim();
+    if (!name) {
+      setAccountProfileError(t(language, "accountNameRequired"));
+      return;
+    }
+    setAccountProfileBusy(true);
+    setAccountProfileError("");
+    setAccountProfileSuccess(false);
+    try {
+      let avatarUrl = authProfilePhoto || null;
+      if (accountPhotoFile) {
+        const compressedDataUrl = await readFileAsCompressedDataUrl(accountPhotoFile, 600, 0.8);
+        const compressedBlob = await fetch(compressedDataUrl).then((response) => response.blob());
+        const compressedFile = new File([compressedBlob], "profile-photo.jpg", { type: compressedBlob.type || "image/jpeg" });
+        avatarUrl = await uploadAccountAvatar(compressedFile);
+      }
+      await updateAccountProfile(name, avatarUrl);
+      const email = supabaseSession?.user.email?.trim().toLowerCase();
+      if (email) updateState((current) => ({
+        ...current,
+        users: current.users.map((user) => user.email?.trim().toLowerCase() === email ? { ...user, name } : user)
+      }));
+      setAccountPhotoDraft(avatarUrl || myProfileMember?.photo || "");
+      setAccountPhotoFile(null);
+      setAccountProfileSuccess(true);
+    } catch (error) {
+      setAccountProfileError(error instanceof Error ? error.message : t(language, "accountProfileSaveFailed"));
+    } finally {
+      setAccountProfileBusy(false);
+    }
+  }
+
+  function handleAccountPhotoSelect(file?: File) {
+    setAccountProfileError("");
+    setAccountProfileSuccess(false);
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setAccountProfileError(t(language, "accountPhotoTypeError"));
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setAccountProfileError(t(language, "accountPhotoSizeError"));
+      return;
+    }
+    setAccountPhotoFile(file);
+    setAccountPhotoDraft(URL.createObjectURL(file));
+  }
+
   function updateState(next: (current: AppState) => AppState) {
     setState((current) => next(current));
   }
@@ -1625,6 +1705,35 @@ export default function App() {
   function renderAccountSecuritySettings(): ReactNode {
     return (
       <div className="card" style={{ marginTop: 24, padding: 20 }}>
+        <h3 style={{ marginTop: 0 }}>{t(language, "accountProfileTitle")}</h3>
+        <form className="form-stack" onSubmit={handleAccountProfileSubmit}>
+          <div className="account-profile-editor">
+            <div className="account-profile-photo-box">
+              {accountPhotoDraft ? <img src={accountPhotoDraft} alt={t(language, "accountPhotoLabel")} /> : <span>{initialsOf(accountNameDraft || myProfileName)}</span>}
+              <label className="btn-ghost account-photo-picker">
+                {t(language, "chooseAccountPhoto")}
+                <input
+                  ref={accountPhotoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(event) => { handleAccountPhotoSelect(event.target.files?.[0]); event.currentTarget.value = ""; }}
+                />
+              </label>
+            </div>
+            <label className="account-profile-name-field">
+              {t(language, "accountNameLabel")}
+              <input className="field" value={accountNameDraft} maxLength={80} onChange={(event) => { setAccountNameDraft(event.target.value); setAccountProfileSuccess(false); }} autoComplete="name" />
+            </label>
+          </div>
+          <small className="hint">{t(language, "accountPhotoHint")}</small>
+          {accountProfileError ? <div className="notice danger">{accountProfileError}</div> : null}
+          {accountProfileSuccess ? <div className="notice">{t(language, "accountProfileSaved")}</div> : null}
+          <button className="btn" type="submit" disabled={accountProfileBusy}>
+            {accountProfileBusy ? t(language, "savingChanges") : t(language, "saveAccountProfile")}
+          </button>
+        </form>
+
+        <div style={{ borderTop: "1px solid var(--border)", marginTop: 24, paddingTop: 20 }}>
         <h3 style={{ marginTop: 0 }}>{t(language, "adminNavSecurity")}</h3>
         <p className="hint">{t(language, "changePasswordSubtitle")}</p>
         <div className="admin-form-narrow">
@@ -1694,6 +1803,7 @@ export default function App() {
               </div>
             )}
           </div> : null}
+        </div>
         </div>
       </div>
     );
@@ -1929,26 +2039,92 @@ export default function App() {
     }
   }
 
-  function saveDonationPaymentDetails() {
-    if (!canManageDonations) return;
-    updateState((current) => ({
-      ...current,
-      donationSettings: { ...current.donationSettings, qrCodeImage: donationQrInput.trim() || current.donationSettings.qrCodeImage, upiId: donationUpiInput.trim() || null }
-    }));
+  async function persistDonationPaymentSettings(qrCodeImage: string | null, upiId: string | null) {
+    const next = {
+      ...stateRef.current,
+      donationSettings: { ...stateRef.current.donationSettings, qrCodeImage, upiId }
+    };
+    updateState(() => next);
+    if (supabaseConfigured && !(await persistToSupabase(next))) throw new Error(t(language, "donationPaymentSaveFailed"));
+    setDonationDetailsMessage(t(language, "donationPaymentSaved"));
+    setDonationDetailsError(false);
   }
 
-  function clearDonationPaymentDetails() {
-    if (!canManageDonations) return;
+  async function saveDonationPaymentDetails() {
+    if (!canManageDonations || donationDetailsBusy) return;
+    setDonationDetailsBusy(true);
+    setDonationDetailsMessage("");
+    try {
+      let qrCodeImage = donationQrInput.trim() || stateRef.current.donationSettings.qrCodeImage || null;
+      if (qrCodeImage?.startsWith("data:image/")) {
+        const blob = await fetch(qrCodeImage).then((response) => response.blob());
+        const file = new File([blob], "donation-qr.jpg", { type: blob.type || "image/jpeg" });
+        qrCodeImage = await uploadDonationQr(file);
+        setDonationQrInput(qrCodeImage);
+      }
+      await persistDonationPaymentSettings(qrCodeImage, donationUpiInput.trim() || null);
+    } catch (error) {
+      setDonationDetailsMessage(error instanceof Error ? error.message : t(language, "donationPaymentSaveFailed"));
+      setDonationDetailsError(true);
+    } finally {
+      setDonationDetailsBusy(false);
+    }
+  }
+
+  async function clearDonationPaymentDetails() {
+    if (!canManageDonations || donationDetailsBusy) return;
     if (!window.confirm(t(language, "confirmClearDonationDetails"))) return;
-    setDonationQrInput("");
-    setDonationUpiInput("");
-    updateState((current) => ({ ...current, donationSettings: { ...current.donationSettings, qrCodeImage: null, upiId: null } }));
+    setDonationDetailsBusy(true);
+    setDonationDetailsMessage("");
+    try {
+      await persistDonationPaymentSettings(null, null);
+      setDonationQrInput("");
+      setDonationUpiInput("");
+    } catch (error) {
+      setDonationDetailsMessage(error instanceof Error ? error.message : t(language, "donationPaymentSaveFailed"));
+      setDonationDetailsError(true);
+    } finally {
+      setDonationDetailsBusy(false);
+    }
+  }
+
+  async function clearDonationQrCode() {
+    if (!canManageDonations || donationDetailsBusy || !stateRef.current.donationSettings.qrCodeImage) return;
+    if (!window.confirm(t(language, "confirmRemoveDonationQr"))) return;
+    setDonationDetailsBusy(true);
+    setDonationDetailsMessage("");
+    try {
+      await persistDonationPaymentSettings(null, stateRef.current.donationSettings.upiId ?? null);
+      setDonationQrInput("");
+    } catch (error) {
+      setDonationDetailsMessage(error instanceof Error ? error.message : t(language, "donationPaymentSaveFailed"));
+      setDonationDetailsError(true);
+    } finally {
+      setDonationDetailsBusy(false);
+    }
   }
 
   async function handleDonationQrPhoto(file?: File) {
     if (!file) return;
-    const src = await readFileAsCompressedDataUrl(file, 1000, 0.9);
-    setDonationQrInput(src);
+    setDonationDetailsMessage("");
+    setDonationDetailsError(false);
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setDonationDetailsMessage(t(language, "donationQrTypeError"));
+      setDonationDetailsError(true);
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setDonationDetailsMessage(t(language, "donationQrSizeError"));
+      setDonationDetailsError(true);
+      return;
+    }
+    try {
+      const src = await readFileAsCompressedDataUrl(file, 1000, 0.82);
+      setDonationQrInput(src);
+    } catch {
+      setDonationDetailsMessage(t(language, "donationQrTypeError"));
+      setDonationDetailsError(true);
+    }
   }
 
   // The link an admin/editor sends a member so they can confirm/update their own photo, bio and
@@ -3586,7 +3762,7 @@ export default function App() {
                 </label>
                 <label className="span-12">
                   <span className="sr-only">{t(language, "donationQrUploadLabel")}</span>
-                  <input className="field" type="file" accept="image/*" aria-label={t(language, "donationQrUploadLabel")} onChange={(e) => void handleDonationQrPhoto(e.target.files?.[0])} />
+                  <input className="field" type="file" accept="image/jpeg,image/png,image/webp" aria-label={t(language, "donationQrUploadLabel")} onChange={(e) => { void handleDonationQrPhoto(e.target.files?.[0]); e.currentTarget.value = ""; }} />
                 </label>
                 {donationQrInput ? (
                   <div className="span-12 donation-qr-box" style={{ marginTop: 4 }}>
@@ -3595,9 +3771,11 @@ export default function App() {
                 ) : null}
               </div>
               <div className="actions-row" style={{ marginTop: 14 }}>
-                <button className="btn" type="button" onClick={saveDonationPaymentDetails}>{t(language, "saveButton")}</button>
-                <button className="btn-ghost danger" type="button" onClick={clearDonationPaymentDetails}>{t(language, "clearButton")}</button>
+                <button className="btn" type="button" disabled={donationDetailsBusy} onClick={() => void saveDonationPaymentDetails()}>{donationDetailsBusy ? t(language, "savingChanges") : t(language, "saveButton")}</button>
+                {state.donationSettings.qrCodeImage ? <button className="btn-ghost danger" type="button" disabled={donationDetailsBusy} onClick={() => void clearDonationQrCode()}>{t(language, "removeDonationQrButton")}</button> : null}
+                <button className="btn-ghost danger" type="button" disabled={donationDetailsBusy} onClick={() => void clearDonationPaymentDetails()}>{t(language, "clearButton")}</button>
               </div>
+              {donationDetailsMessage ? <div className={`notice${donationDetailsError ? " danger" : ""}`} style={{ marginTop: 12 }}>{donationDetailsMessage}</div> : null}
             </div>
 
             <h3 className="section-title" style={{ fontSize: "1.05rem" }}>{t(language, "pendingDonationsTitle")}</h3>
@@ -4256,7 +4434,6 @@ export default function App() {
           <div className="hero-actions">
             <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openFamilyTreeButton")}</button>
             <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor()}>{t(language, "suggestEditButton")}</button>
-            <button className="btn-ghost" type="button" onClick={openDuaEditor}>{t(language, "postDuaButton")}</button>
           </div>
           {suggestionSent ? <p className="hint">{t(language, "suggestionSentMessage")}</p> : null}
           {duaSent ? <p className="hint">{t(language, "duaSentMessage")}</p> : null}
@@ -4674,6 +4851,7 @@ export default function App() {
           ) : null}
           <div className={`topnav-public-links${isDesktopStaffUser ? " topnav-staff-public-links" : ""}`}>
             <NavLink active={route.page === "home"} onClick={() => navigate({ page: "home" })}>{NAV_LABELS[language].home}</NavLink>
+            {!isLoggedIn ? <NavLink active={route.page === "dua"} onClick={() => { navigate({ page: "dua" }); setMobileNavOpen(false); }}>{t(language, "postDuaButton")}</NavLink> : null}
             <NavLink active={route.page === "tree"} onClick={() => navigate({ page: "tree" })}>{NAV_LABELS[language].tree}</NavLink>
             <NavLink active={route.page === "member" && route.memberId === myMemberId} onClick={() => { goToMyFamily(); setMobileNavOpen(false); }}>{t(language, "myFamilyNavLabel")}</NavLink>
             <NavLink active={route.page === "roots"} onClick={() => navigate({ page: "roots" })}>{NAV_LABELS[language].roots}</NavLink>
