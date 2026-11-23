@@ -2571,6 +2571,23 @@ html[lang="ur"] .select {
 .donation-qr-box img { width: min(220px, 100%); height: 220px; max-width: 100%; object-fit: contain; border-radius: 8px; background: #fff; padding: 6px; }
 .donation-qr-box .hint { color: #33415c; }
 
+@media (max-width: 720px) {
+  /* Anchor the bell popover to the viewport on phones. Anchoring it to the small bell
+     wrapper pushed most of its width off the left edge on narrow screens and in the APK. */
+  .notification-list-panel {
+    position: fixed;
+    top: calc(68px + env(safe-area-inset-top, 0px));
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: calc(100dvh - 80px - env(safe-area-inset-top, 0px));
+  }
+
+  .notification-list-items {
+    max-height: calc(100dvh - 138px - env(safe-area-inset-top, 0px));
+  }
+}
+
 /* Sajra AI chat */
 .sajra-chat-widget { position: fixed; right: 24px; bottom: 24px; z-index: 50; font-family: Inter, system-ui, sans-serif; }
 .sajra-chat-launcher { display: flex; align-items: center; gap: 9px; border: 0; border-radius: 999px; padding: 14px 20px; color: #fff; background: linear-gradient(135deg, #2e5185, #1c3560); box-shadow: 0 8px 28px rgba(25, 50, 88, .32); font-weight: 650; font-size: 14px; transition: transform .2s, box-shadow .2s; }
