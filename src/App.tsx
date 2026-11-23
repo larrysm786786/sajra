@@ -1083,7 +1083,14 @@ export default function App() {
   }, [mobileNavOpen]);
 
   useEffect(() => {
-    saveState(state);
+    // Keep localStorage writes out of the immediate render/update path. The archive can include
+    // hundreds of compressed photos, so serializing and writing it synchronously for every state
+    // change can briefly freeze both the browser and the Android WebView.
+    const cacheTimer = window.setTimeout(() => saveState(state), 250);
+    return () => window.clearTimeout(cacheTimer);
+  }, [state]);
+
+  useEffect(() => {
     document.documentElement.dataset.theme = state.theme;
     document.documentElement.lang = language;
     // Deliberately always "ltr" here: flipping the whole page to dir="rtl" for Urdu used to mirror
@@ -1092,7 +1099,7 @@ export default function App() {
     // inside LTR containers via the CSS below (html[lang="ur"] rules) and the browser's own
     // Unicode bidi handling, without flipping anything else.
     document.documentElement.dir = "ltr";
-  }, [state, language]);
+  }, [state.theme, language]);
 
   useEffect(() => {
     void getSupabaseSession().then(setSupabaseSession);
@@ -1191,11 +1198,12 @@ export default function App() {
    * Writes `next` to Supabase. If someone else saved first, their version is loaded and our
    * changes are merged on top of it (see merge.ts) instead of being thrown away.
    */
-  async function persistToSupabase(next: AppState) {
+  async function persistToSupabase(next: AppState, serializedNext?: string) {
     let attempt = next;
+    let attemptJson = serializedNext ?? JSON.stringify(attempt);
 
     for (let tries = 0; tries < 3; tries += 1) {
-      const json = JSON.stringify(attempt);
+      const json = attemptJson;
       if (json === syncedRef.current?.json) return;
 
       showSaveToast("ok", "savingChanges");
@@ -1234,6 +1242,7 @@ export default function App() {
         // Show the merged archive here too, keeping anything typed while this save was running.
         setState((current) => mergeStates(previous, current, merged));
         attempt = merged;
+        attemptJson = JSON.stringify(attempt);
       } catch {
         setSyncStatus("error");
         setSyncMessageKey("saveFailed");
@@ -1328,13 +1337,16 @@ export default function App() {
 
   useEffect(() => {
     if (!hydrationDoneRef.current || !supabaseConfigured || !isLoggedIn) return;
-    // Only write when the archive really changed since it was last synced (logging in must not touch the shared row).
-    if (JSON.stringify(state) === syncedRef.current?.json) return;
-
     const handle = window.setTimeout(() => {
-      // One save at a time, so a slow save is never overtaken by the next one.
-      saveChainRef.current = saveChainRef.current.then(() => persistToSupabase(state));
-    }, 600);
+      // Serialize once after edits settle, then save only the newest state. Previously we walked
+      // the full photo-heavy archive on every state update just to decide whether to save.
+      saveChainRef.current = saveChainRef.current.then(() => {
+        const latest = stateRef.current;
+        const serialized = JSON.stringify(latest);
+        if (serialized === syncedRef.current?.json) return;
+        return persistToSupabase(latest, serialized);
+      });
+    }, 300);
 
     return () => window.clearTimeout(handle);
   }, [state, supabaseConfigured, isLoggedIn]);
