@@ -96,7 +96,7 @@ function useTopicNotifications(topic: string, channelId: string, channelName: st
   return { enabled, busy, message, toggle };
 }
 
-export default function AppUpdaterCard({ language, isAdmin, canUseBiometric }: { language: Language; isAdmin?: boolean; canUseBiometric?: boolean }) {
+export default function AppUpdaterCard({ language, isAdmin, canUseBiometric, canReceiveAdminAlerts }: { language: Language; isAdmin?: boolean; canUseBiometric?: boolean; canReceiveAdminAlerts?: boolean }) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -137,6 +137,7 @@ export default function AppUpdaterCard({ language, isAdmin, canUseBiometric }: {
     "New suggestions, guestbook messages, dua requests, donations, and profile update requests from visitors",
     "sajra-admin-alert-notifications"
   );
+  const showAdminAlertToggle = Boolean(isAdmin || canUseBiometric || canReceiveAdminAlerts);
   if (!Capacitor.isNativePlatform()) return null;
   async function check() {
     setBusy(true); setApkUrl("");
@@ -285,7 +286,7 @@ export default function AppUpdaterCard({ language, isAdmin, canUseBiometric }: {
       </button>
       {eventNotifications.message ? <small style={{ display: "block", marginTop: 8 }}>{eventNotifications.message}</small> : null}
     </div>
-    {isAdmin ? (
+    {showAdminAlertToggle ? (
       <div style={{ borderTop: "1px solid var(--border, #ddd)", marginTop: 16, paddingTop: 14 }}>
         <strong style={{ display: "block", marginBottom: 2 }}>{ur ? "ایڈمن اطلاعات" : "Admin alerts"}</strong>
         <button

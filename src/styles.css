@@ -428,6 +428,44 @@ button {
   z-index: 41;
 }
 
+.notification-bell-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  flex: 0 0 auto;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.notification-bell-btn:hover,
+.notification-bell-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.notification-bell-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: inline-flex;
+  min-width: 19px;
+  height: 19px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  color: #fff;
+  border: 2px solid #2e5185;
+  border-radius: 999px;
+  background: #d92d45;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .hamburger-btn span {
   display: block;
   width: 20px;

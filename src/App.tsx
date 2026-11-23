@@ -477,6 +477,14 @@ function EyeIcon() {
   );
 }
 
+function BellIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+    </svg>
+  );
+}
+
 function AdminIcon({ section }: { section: AdminSection }) {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -796,6 +804,21 @@ export default function App() {
   const [biometricUnlocked, setBiometricUnlocked] = useState(false);
   const [seenAnnouncementIds, setSeenAnnouncementIds] = useState<number[]>(() => {
     try { return JSON.parse(localStorage.getItem("sajra-seen-announcements") || "[]") as number[]; } catch { return []; }
+  });
+  const [seenChatbotFeedbackIds, setSeenChatbotFeedbackIds] = useState<number[]>(() => {
+    try { return JSON.parse(localStorage.getItem("sajra-seen-chatbot-feedback") || "[]") as number[]; } catch { return []; }
+  });
+  const [seenAdminSuggestionIds, setSeenAdminSuggestionIds] = useState<number[]>(() => {
+    try { return JSON.parse(localStorage.getItem("sajra-seen-admin-suggestions") || "[]") as number[]; } catch { return []; }
+  });
+  const [seenGuestbookCommentIds, setSeenGuestbookCommentIds] = useState<number[]>(() => {
+    try { return JSON.parse(localStorage.getItem("sajra-seen-guestbook-comments") || "[]") as number[]; } catch { return []; }
+  });
+  const [seenFamilyEventIds, setSeenFamilyEventIds] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("sajra-seen-family-events") || "[]") as string[]; } catch { return []; }
+  });
+  const [seenDonationCauseKeys, setSeenDonationCauseKeys] = useState<DonationCauseKey[]>(() => {
+    try { return JSON.parse(localStorage.getItem("sajra-seen-donation-causes") || "[]") as DonationCauseKey[]; } catch { return []; }
   });
   const [seenLiveStreamUpdatedAt, setSeenLiveStreamUpdatedAt] = useState(() => localStorage.getItem("sajra-seen-live-updated-at") || "");
   const [appUpdateAvailable, setAppUpdateAvailable] = useState(false);
@@ -1736,6 +1759,7 @@ export default function App() {
       const suggestion: Suggestion = { id: nextId(state.suggestions), memberId: null, memberName: null, message, submitterName: "Anis Ai visitor feedback", status: "pending", createdAt: new Date().toISOString() };
       updateState((current) => ({ ...current, suggestions: [suggestion, ...current.suggestions].slice(0, 200) }));
     }
+    if (supabaseConfigured) void sendAdminAlertNotification("suggestion", message, "Anis Ai visitor feedback");
   }
   function resolveSuggestion(id: number) {
     if (!isAdmin) return;
@@ -2747,13 +2771,26 @@ export default function App() {
   const pendingDonationCount = canManageDonations ? pendingDonations.length : 0;
   const unseenAnnouncementCount = activeAnnouncements.filter((announcement) => !seenAnnouncementIds.includes(announcement.id)).length;
   const unseenLiveStreamCount = state.liveStream?.updatedAt && state.liveStream.updatedAt !== seenLiveStreamUpdatedAt ? 1 : 0;
+  const unseenGuestbookCommentCount = state.profileComments.filter((comment) => !seenGuestbookCommentIds.includes(comment.id)).length;
+  const unseenFamilyEvents = familyCalendarEvents.filter((event) =>
+    event.date.toDateString() === new Date().toDateString() && !seenFamilyEventIds.includes(`${event.id}-${event.date.getFullYear()}`)
+  );
+  const unseenDonationCauseCount = state.donationSettings.activeCauses.filter((cause) => !seenDonationCauseKeys.includes(cause)).length;
+  const unseenAdminSuggestionCount = state.suggestions.filter((suggestion) => suggestion.status === "pending" && !seenAdminSuggestionIds.includes(suggestion.id)).length;
+  const unseenChatbotFeedbackCount = state.suggestions.filter((suggestion) =>
+    (suggestion.message.startsWith("Chatbot feedback (helpful): ") || suggestion.message.startsWith("Chatbot feedback (not helpful): ")) &&
+    !seenChatbotFeedbackIds.includes(suggestion.id)
+  ).length;
   const notificationBadgeCount = unseenAnnouncementCount + pendingProfileUpdateCount + pendingDonationCount;
+  const notificationBellBadgeCount = isLoggedIn
+    ? unseenAdminSuggestionCount + unseenGuestbookCommentCount + openDuaRequests.length + pendingDonationCount + pendingProfileUpdateCount
+    : unseenAnnouncementCount + unseenLiveStreamCount + unseenFamilyEvents.length + unseenDonationCauseCount + (Capacitor.isNativePlatform() && appUpdateAvailable ? 1 : 0);
   const adminNavMenuItems: { key: AdminSection; label: string; badge?: number }[] = isLoggedIn ? [
     { key: "overview", label: t(language, "adminNavOverview") },
     { key: "members", label: t(language, "membersLabel") },
     ...(isAdmin ? [{ key: "users" as const, label: t(language, "usersLabel") }] : []),
     { key: "gallery", label: t(language, "adminNavGallery") },
-    { key: "suggestions", label: t(language, "adminNavSuggestions") },
+    { key: "suggestions", label: t(language, "adminNavSuggestions"), badge: unseenChatbotFeedbackCount },
     ...(canReviewProfileUpdates ? [{ key: "profileUpdates" as const, label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount }] : []),
     ...(canManageDonations ? [{ key: "donations" as const, label: t(language, "adminNavDonations"), badge: pendingDonationCount }] : []),
     ...(isAdmin ? [{ key: "logs" as const, label: t(language, "adminNavLogs") }] : []),
@@ -2787,7 +2824,15 @@ export default function App() {
       localStorage.setItem("sajra-seen-announcements", JSON.stringify(next));
       return next;
     });
-  }, [route.page, activeAnnouncements]);
+    const todayEventIds = familyCalendarEvents
+      .filter((event) => event.date.toDateString() === new Date().toDateString())
+      .map((event) => `${event.id}-${event.date.getFullYear()}`);
+    setSeenFamilyEventIds((previous) => {
+      const next = [...new Set([...previous, ...todayEventIds])].slice(-500);
+      localStorage.setItem("sajra-seen-family-events", JSON.stringify(next));
+      return next;
+    });
+  }, [route.page, activeAnnouncements, familyCalendarEvents]);
 
   useEffect(() => {
     if (route.page !== "live" || !state.liveStream?.updatedAt) return;
@@ -2795,6 +2840,43 @@ export default function App() {
     localStorage.setItem("sajra-seen-live-updated-at", updatedAt);
     setSeenLiveStreamUpdatedAt(updatedAt);
   }, [route.page, state.liveStream?.updatedAt]);
+
+  useEffect(() => {
+    if (route.page !== "admin" || adminSection !== "suggestions") return;
+    const ids = state.suggestions
+      .filter((suggestion) => suggestion.message.startsWith("Chatbot feedback (helpful): ") || suggestion.message.startsWith("Chatbot feedback (not helpful): "))
+      .map((suggestion) => suggestion.id);
+    setSeenChatbotFeedbackIds((previous) => {
+      const next = [...new Set([...previous, ...ids])].slice(-500);
+      localStorage.setItem("sajra-seen-chatbot-feedback", JSON.stringify(next));
+      return next;
+    });
+    const allIds = state.suggestions.map((suggestion) => suggestion.id);
+    setSeenAdminSuggestionIds((previous) => {
+      const next = [...new Set([...previous, ...allIds])].slice(-1000);
+      localStorage.setItem("sajra-seen-admin-suggestions", JSON.stringify(next));
+      return next;
+    });
+  }, [route.page, adminSection, state.suggestions]);
+
+  useEffect(() => {
+    if (route.page !== "member" || !selectedMember) return;
+    const ids = state.profileComments.filter((comment) => comment.memberId === selectedMember.id).map((comment) => comment.id);
+    setSeenGuestbookCommentIds((previous) => {
+      const next = [...new Set([...previous, ...ids])].slice(-1000);
+      localStorage.setItem("sajra-seen-guestbook-comments", JSON.stringify(next));
+      return next;
+    });
+  }, [route.page, selectedMember?.id, state.profileComments]);
+
+  useEffect(() => {
+    if (route.page !== "donations") return;
+    setSeenDonationCauseKeys((previous) => {
+      const next = [...new Set([...previous, ...state.donationSettings.activeCauses])];
+      localStorage.setItem("sajra-seen-donation-causes", JSON.stringify(next));
+      return next;
+    });
+  }, [route.page, state.donationSettings.activeCauses]);
 
   const content = (() => {
     // A recovery link signs the user in with a temporary session, so this must not depend on !isLoggedIn.
@@ -3679,7 +3761,7 @@ export default function App() {
           <span className="eyebrow">{t(language, "eyebrowSettings")}</span>
           <h2 className="section-title" style={{ marginTop: 12 }}>{t(language, "settingsTitle")}</h2>
           <p className="section-subtitle" style={{ marginTop: 12 }}>{Capacitor.isNativePlatform() ? t(language, "settingsSubtitle") : t(language, "changePasswordSubtitle")}</p>
-          {Capacitor.isNativePlatform() ? <AppUpdaterCard language={language} isAdmin={isAdmin} canUseBiometric={isLoggedIn && (isAdmin || userRole === "editor")} /> : null}
+          {Capacitor.isNativePlatform() ? <AppUpdaterCard language={language} isAdmin={isAdmin} canUseBiometric={isLoggedIn && (isAdmin || userRole === "editor")} canReceiveAdminAlerts={isLoggedIn && (isAdmin || userRole === "editor" || userRole === "contributor")} /> : null}
           {isLoggedIn ? renderAccountSecuritySettings() : null}
         </section>
       );
@@ -4335,7 +4417,7 @@ export default function App() {
     { key: "overview", label: t(language, "adminNavOverview"), onClick: () => { navigate({ page: "admin" }); setAdminSection("overview"); } },
     ...(canAddMember || canEditMembers ? [{ key: "members", label: t(language, "addMemberButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); } }] : []),
     ...(canAddGalleryPhoto ? [{ key: "gallery", label: t(language, "addGalleryPhotoButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } }] : []),
-    { key: "suggestions", label: t(language, "adminNavSuggestions"), onClick: () => { navigate({ page: "admin" }); setAdminSection("suggestions"); } },
+    { key: "suggestions", label: t(language, "adminNavSuggestions"), badge: unseenChatbotFeedbackCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("suggestions"); } },
     ...(canReviewProfileUpdates ? [{ key: "profileUpdates", label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("profileUpdates"); } }] : []),
     ...(canManageDonations ? [{ key: "donations", label: t(language, "adminNavDonations"), badge: pendingDonationCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("donations"); } }] : []),
     { key: "quality", label: t(language, "adminNavQuality"), onClick: () => { navigate({ page: "admin" }); setAdminSection("quality"); } },
@@ -4349,7 +4431,7 @@ export default function App() {
     { key: "members", label: t(language, "addMemberButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); } },
     { key: "users", label: t(language, "addUserButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("users"); } },
     { key: "gallery", label: t(language, "addGalleryPhotoButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } },
-    { key: "suggestions", label: t(language, "adminNavSuggestions"), onClick: () => { navigate({ page: "admin" }); setAdminSection("suggestions"); } },
+    { key: "suggestions", label: t(language, "adminNavSuggestions"), badge: unseenChatbotFeedbackCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("suggestions"); } },
     { key: "profileUpdates", label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("profileUpdates"); } },
     { key: "donations", label: t(language, "adminNavDonations"), badge: pendingDonationCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("donations"); } },
     { key: "logs", label: t(language, "adminNavLogs"), onClick: () => { navigate({ page: "admin" }); setAdminSection("logs"); } },
@@ -4374,6 +4456,40 @@ export default function App() {
       ]
     : [];
 
+  function openBellNotifications() {
+    setMobileNavOpen(false);
+    if (isLoggedIn) {
+      if (canReviewProfileUpdates && pendingProfileUpdateCount > 0) {
+        navigate({ page: "admin" });
+        setAdminSection("profileUpdates");
+      } else if (canManageDonations && pendingDonationCount > 0) {
+        navigate({ page: "admin" });
+        setAdminSection("donations");
+      } else if (unseenAdminSuggestionCount > 0) {
+        navigate({ page: "admin" });
+        setAdminSection("suggestions");
+      } else if (openDuaRequests.length > 0) {
+        navigate({ page: "dua" });
+      } else if (unseenGuestbookCommentCount > 0) {
+        const newestComment = [...state.profileComments]
+          .filter((comment) => !seenGuestbookCommentIds.includes(comment.id))
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+        const guestbookMember = newestComment ? memberMap.get(newestComment.memberId) : undefined;
+        if (guestbookMember) navigate({ page: "member", memberId: guestbookMember.id });
+        else navigate({ page: "admin" });
+      } else {
+        navigate({ page: "admin" });
+        setAdminSection("overview");
+      }
+      return;
+    }
+    if (unseenAnnouncementCount > 0 || unseenFamilyEvents.length > 0) navigate({ page: "calendar" });
+    else if (unseenLiveStreamCount > 0) navigate({ page: "live" });
+    else if (unseenDonationCauseCount > 0) navigate({ page: "donations" });
+    else if (Capacitor.isNativePlatform() && appUpdateAvailable) navigate({ page: "settings" });
+    else navigate({ page: "calendar" });
+  }
+
   return (
     <div className="app-shell" onTouchStart={handlePullTouchStart} onTouchMove={handlePullTouchMove} onTouchEnd={handlePullTouchEnd}>
       {pullStatus !== "idle" || pullDistance > 0 ? (
@@ -4396,6 +4512,16 @@ export default function App() {
           <EyeIcon />
           {formatNumber(state.visitorCount ?? 0, language)}
         </span>
+        <button
+          type="button"
+          className="notification-bell-btn"
+          aria-label={t(language, "navNotificationsLabel")}
+          title={t(language, "navNotificationsLabel")}
+          onClick={openBellNotifications}
+        >
+          <BellIcon />
+          {notificationBellBadgeCount > 0 ? <span className="notification-bell-badge">{notificationBellBadgeCount > 99 ? "99+" : formatNumber(notificationBellBadgeCount, language)}</span> : null}
+        </button>
         <button
           type="button"
           className={`hamburger-btn${mobileNavOpen ? " open" : ""}`}
