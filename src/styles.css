@@ -492,7 +492,7 @@ button {
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: var(--bg-soft);
+  background: color-mix(in oklab, var(--accent) 20%, var(--surface-strong));
   box-shadow: 0 14px 38px rgba(0, 0, 0, 0.22);
 }
 

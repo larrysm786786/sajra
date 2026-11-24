@@ -4413,7 +4413,6 @@ export default function App() {
             <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor()}>{t(language, "suggestEditButton")}</button>
           </div>
           {suggestionSent ? <p className="hint">{t(language, "suggestionSentMessage")}</p> : null}
-          {duaSent ? <p className="hint">{t(language, "duaSentMessage")}</p> : null}
           {myFamilyHint ? <p className="hint">{myFamilyHint}</p> : null}
           <div className="hero-search" style={{ position: "relative" }}>
             <input className="field" placeholder={t(language, "searchMembersPlaceholder")} value={homeSearchQuery} onChange={(e) => setHomeSearchQuery(e.target.value)} onFocus={() => setHomeSearchOpen(true)} onBlur={() => setHomeSearchOpen(false)} />
