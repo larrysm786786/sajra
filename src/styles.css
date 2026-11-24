@@ -735,6 +735,12 @@ button {
   font-size: clamp(1.4rem, 2.4vw, 1.9rem);
 }
 
+/* Keep a clear gap when a section heading is immediately followed by its list. */
+.section-title + .list,
+.section-title + .empty {
+  margin-top: 12px;
+}
+
 .section-subtitle {
   color: var(--muted);
   font-size: 0.95rem;
