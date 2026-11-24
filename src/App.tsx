@@ -3195,7 +3195,7 @@ export default function App() {
               <span className="eyebrow">{t(language, "eyebrowAnnouncements")}</span>
               <h1 className="section-title">{t(language, "announcementsTitle")}</h1>
             </div>
-            {canAddAnnouncement ? <button className="btn-ghost" type="button" onClick={openAnnouncementEditor}>{t(language, "postAnnouncementButton")}</button> : null}
+            {canAddAnnouncement ? <button className="btn announcement-post-button" type="button" onClick={openAnnouncementEditor}>{t(language, "postAnnouncementButton")}</button> : null}
           </div>
           {announcementNotice ? <p className="hint">{announcementNotice}</p> : null}
           {activeAnnouncements.length || familyCalendarEvents.length ? (

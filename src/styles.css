@@ -2722,6 +2722,7 @@ html[lang="ur"] .profession-photo-bio { text-align: justify; }
 }
 .announcements-section { margin-top: 18px; }
 .announcement-card { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 16px; }
+.announcement-post-button { color: #ffffff; }
 .announcement-card-body { min-width: 0; flex: 1; }
 .announcement-admin-badge { display: inline-flex; margin-bottom: 6px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
 .announcement-message { margin: 0 0 6px; color: var(--text); line-height: 1.65; overflow-wrap: anywhere; white-space: pre-wrap; }
