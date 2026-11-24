@@ -595,9 +595,16 @@ button {
 
 .account-photo-picker {
   position: relative;
+  display: inline-flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
-  padding: 7px 11px;
-  font-size: 0.85rem;
+  padding: 9px 14px;
+  font-size: 0.9rem;
+  line-height: 1.25;
+  text-align: center;
 }
 
 .account-photo-picker input {
@@ -1386,6 +1393,7 @@ input[type="file"]:not([hidden]):focus-visible {
   .account-profile-photo-box { flex-direction: row; justify-content: flex-start; }
   .account-profile-photo-box > img,
   .account-profile-photo-box > span { width: 64px; height: 64px; }
+  .account-photo-picker { flex: 1; min-width: 0; }
 }
 .avatar-in-memory {
   filter: sepia(0.55) saturate(0.75) contrast(0.96);
