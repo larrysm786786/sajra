@@ -5017,7 +5017,7 @@ export default function App() {
       ) : null}
 
       {hijriCalendarOpen ? (
-        <Modal className="hijri-calendar-modal" title="English · Hijri Calendar" subtitle={`Gregorian dates · Today: ${formatHijriUrdu(new Date())}`} onClose={() => setHijriCalendarOpen(false)}>
+        <Modal className="hijri-calendar-modal" title="English · Hijri Calendar" subtitle={`Today: ${formatHijriUrdu(new Date())}`} onClose={() => setHijriCalendarOpen(false)}>
           <div className="hijri-calendar">
             <div className="hijri-calendar-toolbar">
               <button type="button" className="icon-btn" aria-label="Previous month" onClick={() => {
