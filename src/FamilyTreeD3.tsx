@@ -5,6 +5,7 @@ import type { Language, Member } from "./types";
 import { buildTree, calculateAge, displayName, photoSrc } from "./lib";
 import { professionShortLabel } from "./professions";
 import { t } from "./i18n";
+import { IconActionButton } from "./IconActionButton";
 
 type ViewMode = "horizontal" | "vertical" | "boxes";
 
@@ -499,30 +500,10 @@ export default function FamilyTreeD3({ members, language, onOpenMember }: Props)
   return (
     <div>
       <div className="view-toggle">
-        <button
-          type="button"
-          className={`view-toggle-btn${viewMode === "horizontal" ? " active" : ""}`}
-          onClick={() => setViewMode("horizontal")}
-        >
-          {t(language, "viewLeftRight")}
-        </button>
-        <button
-          type="button"
-          className={`view-toggle-btn${viewMode === "vertical" ? " active" : ""}`}
-          onClick={() => setViewMode("vertical")}
-        >
-          {t(language, "viewTopDown")}
-        </button>
-        <button
-          type="button"
-          className={`view-toggle-btn${viewMode === "boxes" ? " active" : ""}`}
-          onClick={() => setViewMode("boxes")}
-        >
-          {t(language, "viewBoxes")}
-        </button>
-        <button type="button" className="view-toggle-btn" onClick={downloadTreeImage}>
-          {t(language, "downloadTreeImageButton")}
-        </button>
+        <IconActionButton icon="leftRight" className={`view-toggle-btn${viewMode === "horizontal" ? " active" : ""}`} label={t(language, "viewLeftRight")} onClick={() => setViewMode("horizontal")} pressed={viewMode === "horizontal"} />
+        <IconActionButton icon="topBottom" className={`view-toggle-btn${viewMode === "vertical" ? " active" : ""}`} label={t(language, "viewTopDown")} onClick={() => setViewMode("vertical")} pressed={viewMode === "vertical"} />
+        <IconActionButton icon="boxes" className={`view-toggle-btn${viewMode === "boxes" ? " active" : ""}`} label={t(language, "viewBoxes")} onClick={() => setViewMode("boxes")} pressed={viewMode === "boxes"} />
+        <IconActionButton icon="download" className="view-toggle-btn" label={t(language, "downloadTreeImageButton")} onClick={downloadTreeImage} />
       </div>
 
       <form onSubmit={handleSearch} className="tree-search">

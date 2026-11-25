@@ -9,6 +9,7 @@ import Lenis from "lenis";
 import "lenis/dist/lenis.css";
 import { trackNativeScreenView, trackWebPageView } from "./analytics";
 import LiveVisitorMap from "./LiveVisitorMap";
+import { IconActionButton } from "./IconActionButton";
 import type { FormEvent, ReactNode, TouchEvent as ReactTouchEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { Announcement, AppState, BookPublication, DonationCauseKey, DuaRequest, GalleryImage, Gender, Language, Member, MemberUpdateRequest, Role, Suggestion, User, ViewKey } from "./types";
@@ -3286,17 +3287,18 @@ export default function App() {
 
               <div className="profile-actions-bio">
                 <div className="profile-meta no-print">
-                  <button className="btn" type="button" onClick={() => navigate({ page: "tree" })}>{t(language, "openTreeButton")}</button>
-                  {canEditMembers ? <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editMemberButton")}</button> : null}
-                  <button className="btn-ghost" type="button" onClick={printPage}>{t(language, "printProfileButton")}</button>
-                  <button className="btn-ghost" type="button" onClick={() => openSuggestionEditor(member)}>{t(language, "suggestCorrectionButton")}</button><button className="btn-ghost" type="button" onClick={() => navigate({ page: "branch", memberId: member.id })}>{t(language, "shareFamilyBranchButton")}</button>
-                  <button className="btn-ghost" type="button" onClick={() => void shareMember(member)}>{t(language, "shareProfileButton")}</button>
-                  <button className="btn-ghost" type="button" onClick={() => void openQrCode(member)}>{t(language, "showQrCodeButton")}</button>
-                  {canEditMembers ? <button className="btn-ghost" type="button" onClick={() => void copyUpdateLink(member)}>{t(language, "copyUpdateLinkButton")}</button> : null}
+                  <IconActionButton icon="tree" className="btn" label={t(language, "openTreeButton")} onClick={() => navigate({ page: "tree" })} />
+                  {canEditMembers ? <IconActionButton icon="edit" label={t(language, "editMemberButton")} onClick={() => openMemberEditor(member)} /> : null}
+                  <IconActionButton icon="print" label={t(language, "printProfileButton")} onClick={printPage} />
+                  <IconActionButton icon="suggest" label={t(language, "suggestCorrectionButton")} onClick={() => openSuggestionEditor(member)} />
+                  <IconActionButton icon="branch" label={t(language, "shareFamilyBranchButton")} onClick={() => navigate({ page: "branch", memberId: member.id })} />
+                  <IconActionButton icon="share" label={t(language, "shareProfileButton")} onClick={() => void shareMember(member)} />
+                  <IconActionButton icon="qr" label={t(language, "showQrCodeButton")} onClick={() => void openQrCode(member)} />
+                  {canEditMembers ? <IconActionButton icon="copy" label={t(language, "copyUpdateLinkButton")} onClick={() => void copyUpdateLink(member)} /> : null}
                   {myMemberId === member.id ? (
-                    <button className="btn-ghost active" type="button" onClick={clearMyFamily}>{t(language, "thisIsMeLabel")}</button>
+                    <IconActionButton icon="family" className="btn-ghost active" label={t(language, "thisIsMeLabel")} onClick={clearMyFamily} pressed />
                   ) : (
-                    <button className="btn-ghost" type="button" onClick={() => setAsMyFamily(member.id)}>{t(language, "setAsMyFamilyButton")}</button>
+                    <IconActionButton icon="family" label={t(language, "setAsMyFamilyButton")} onClick={() => setAsMyFamily(member.id)} />
                   )}
                 </div>
                 {suggestionSent ? <p className="hint no-print">{t(language, "suggestionSentMessage")}</p> : null}
@@ -3592,10 +3594,10 @@ export default function App() {
                       </div>
                     </div>
                     <div className="actions-row">
-                      <button className="btn-ghost" type="button" onClick={() => navigate({ page: "member", memberId: member.id })}>{t(language, "openButton")}</button>
-                      {canEditMembers ? <button className="btn-ghost" type="button" onClick={() => openMemberEditor(member)}>{t(language, "editButton")}</button> : null}
-                      {canEditMembers ? <button className="btn-ghost" type="button" onClick={() => void copyUpdateLink(member)}>{t(language, "copyUpdateLinkButton")}</button> : null}
-                      {isAdmin ? <button className="btn-ghost danger" type="button" onClick={() => deleteMember(member.id)}>{t(language, "deleteButton")}</button> : null}
+                      <IconActionButton icon="open" label={t(language, "openButton")} onClick={() => navigate({ page: "member", memberId: member.id })} />
+                      {canEditMembers ? <IconActionButton icon="edit" label={t(language, "editButton")} onClick={() => openMemberEditor(member)} /> : null}
+                      {canEditMembers ? <IconActionButton icon="copy" label={t(language, "copyUpdateLinkButton")} onClick={() => void copyUpdateLink(member)} /> : null}
+                      {isAdmin ? <IconActionButton icon="delete" className="btn-ghost danger" label={t(language, "deleteButton")} onClick={() => deleteMember(member.id)} /> : null}
                     </div>
                   </div>
                 </div>
