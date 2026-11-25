@@ -6,6 +6,7 @@ import { Share } from "@capacitor/share";
 import { Badge } from "@capawesome/capacitor-badge";
 import QRCode from "qrcode";
 import Lenis from "lenis";
+import momentHijri from "moment-hijri";
 import "lenis/dist/lenis.css";
 import { trackNativeScreenView, trackWebPageView } from "./analytics";
 import LiveVisitorMap from "./LiveVisitorMap";
@@ -496,8 +497,22 @@ function BellIcon() {
   );
 }
 
-const HIJRI_URDU_DATE_FORMATTER = new Intl.DateTimeFormat("ur-PK-u-ca-islamic-umalqura-nu-arabext", { day: "numeric", month: "long", year: "numeric" });
-const HIJRI_NUMERIC_FORMATTER = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura-nu-latn", { day: "numeric", month: "numeric" });
+const HIJRI_URDU_MONTHS = ["محرم", "صفر", "ربیع الاول", "ربیع الثانی", "جمادی الاول", "جمادی الثانی", "رجب", "شعبان", "رمضان", "شوال", "ذوالقعدہ", "ذوالحجہ"];
+const URDU_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
+
+function toUrduDigits(value: number | string) {
+  return String(value).replace(/\d/g, (digit) => URDU_DIGITS[Number(digit)]);
+}
+
+function hijriParts(date: Date) {
+  const converted = momentHijri(date);
+  return { day: converted.iDate(), month: converted.iMonth(), year: converted.iYear() };
+}
+
+function formatHijriUrdu(date: Date) {
+  const parts = hijriParts(date);
+  return `${toUrduDigits(parts.day)} ${HIJRI_URDU_MONTHS[parts.month]} ${toUrduDigits(parts.year)} ہجری`;
+}
 
 type CalendarObservance = { date: string; label: string; kind: "hijri" | "holiday" };
 
@@ -541,9 +556,9 @@ function getCalendarObservances(year: number): CalendarObservance[] {
   const days = new Date(year, 1, 29).getMonth() === 1 ? 366 : 365;
   for (let index = 0; index < days; index += 1) {
     const date = new Date(year, 0, index + 1);
-    const parts = HIJRI_NUMERIC_FORMATTER.formatToParts(date);
-    const islamicMonth = Number(parts.find((part) => part.type === "month")?.value);
-    const islamicDay = Number(parts.find((part) => part.type === "day")?.value);
+    const { month, day } = hijriParts(date);
+    const islamicMonth = month + 1;
+    const islamicDay = day;
     const label = islamicLabels[`${islamicMonth}-${islamicDay}`];
     if (label) observances.push({ date: localDateKey(date), label, kind: "hijri" });
   }
@@ -4757,13 +4772,13 @@ export default function App() {
   const calendarMonthDays = new Date(calendarMonthStart.getFullYear(), calendarMonthStart.getMonth() + 1, 0).getDate();
   const calendarDays = Array.from({ length: calendarMonthDays }, (_, index) => new Date(calendarMonthStart.getFullYear(), calendarMonthStart.getMonth(), index + 1));
   const calendarHeading = calendarMonthStart.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
-  const firstHijriParts = HIJRI_URDU_DATE_FORMATTER.formatToParts(calendarDays[0]);
-  const lastHijriParts = HIJRI_URDU_DATE_FORMATTER.formatToParts(calendarDays[calendarDays.length - 1]);
-  const firstHijriMonth = firstHijriParts.find((part) => part.type === "month")?.value ?? "";
-  const lastHijriMonth = lastHijriParts.find((part) => part.type === "month")?.value ?? "";
-  const firstHijriYear = firstHijriParts.find((part) => part.type === "year")?.value ?? "";
-  const lastHijriYear = lastHijriParts.find((part) => part.type === "year")?.value ?? "";
-  const calendarHijriHeading = `${firstHijriMonth}${firstHijriMonth !== lastHijriMonth ? ` – ${lastHijriMonth}` : ""} ${firstHijriYear !== lastHijriYear ? `${firstHijriYear}–` : ""}${lastHijriYear} ہجری`;
+  const firstHijriParts = hijriParts(calendarDays[0]);
+  const lastHijriParts = hijriParts(calendarDays[calendarDays.length - 1]);
+  const firstHijriMonth = HIJRI_URDU_MONTHS[firstHijriParts.month];
+  const lastHijriMonth = HIJRI_URDU_MONTHS[lastHijriParts.month];
+  const firstHijriYear = firstHijriParts.year;
+  const lastHijriYear = lastHijriParts.year;
+  const calendarHijriHeading = `${firstHijriMonth}${firstHijriMonth !== lastHijriMonth ? ` – ${lastHijriMonth}` : ""} ${firstHijriYear !== lastHijriYear ? `${toUrduDigits(firstHijriYear)}–` : ""}${toUrduDigits(lastHijriYear)} ہجری`;
   const calendarObservances = useMemo(() => getCalendarObservances(calendarMonthStart.getFullYear()), [calendarMonthStart.getFullYear()]);
   const calendarObservancesByDate = useMemo(() => {
     const byDate = new Map<string, CalendarObservance[]>();
@@ -5002,7 +5017,7 @@ export default function App() {
       ) : null}
 
       {hijriCalendarOpen ? (
-        <Modal className="hijri-calendar-modal" title="English · Hijri Calendar" subtitle={`Gregorian dates · Today: ${HIJRI_URDU_DATE_FORMATTER.format(new Date())}`} onClose={() => setHijriCalendarOpen(false)}>
+        <Modal className="hijri-calendar-modal" title="English · Hijri Calendar" subtitle={`Gregorian dates · Today: ${formatHijriUrdu(new Date())}`} onClose={() => setHijriCalendarOpen(false)}>
           <div className="hijri-calendar">
             <div className="hijri-calendar-toolbar">
               <button type="button" className="icon-btn" aria-label="Previous month" onClick={() => {
@@ -5020,11 +5035,11 @@ export default function App() {
               {calendarWeekdays.map((weekday, index) => <span className="hijri-calendar-weekday" role="columnheader" key={`${weekday}-${index}`}>{weekday}</span>)}
               {Array.from({ length: calendarMonthStart.getDay() }, (_, index) => <span className="hijri-calendar-empty" key={`empty-${index}`} />)}
               {calendarDays.map((day) => {
-                const hijriDay = HIJRI_URDU_DATE_FORMATTER.formatToParts(day).find((part) => part.type === "day")?.value;
+                const hijriDay = toUrduDigits(hijriParts(day).day);
                 const today = day.toDateString() === new Date().toDateString();
                 const observances = calendarObservancesByDate.get(localDateKey(day)) ?? [];
                 return (
-                  <span className={`hijri-calendar-day${today ? " today" : ""}${observances.some((observance) => observance.kind === "hijri") ? " has-hijri" : ""}${observances.some((observance) => observance.kind === "holiday") ? " has-holiday" : ""}`} role="gridcell" aria-current={today ? "date" : undefined} key={day.toISOString()} title={`${HIJRI_URDU_DATE_FORMATTER.format(day)}${observances.length ? ` · ${observances.map((observance) => observance.label).join(" · ")}` : ""}`}>
+                  <span className={`hijri-calendar-day${today ? " today" : ""}${observances.some((observance) => observance.kind === "hijri") ? " has-hijri" : ""}${observances.some((observance) => observance.kind === "holiday") ? " has-holiday" : ""}`} role="gridcell" aria-current={today ? "date" : undefined} key={day.toISOString()} title={`${formatHijriUrdu(day)}${observances.length ? ` · ${observances.map((observance) => observance.label).join(" · ")}` : ""}`}>
                     <span>{day.getDate()}</span>
                     <small dir="rtl">{hijriDay}</small>
                     {observances.length ? <i aria-hidden="true" /> : null}
