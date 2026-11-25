@@ -496,6 +496,66 @@ function BellIcon() {
   );
 }
 
+const HIJRI_URDU_DATE_FORMATTER = new Intl.DateTimeFormat("ur-PK-u-ca-islamic-umalqura-nu-arabext", { day: "numeric", month: "long", year: "numeric" });
+const HIJRI_NUMERIC_FORMATTER = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura-nu-latn", { day: "numeric", month: "numeric" });
+
+type CalendarObservance = { date: string; label: string; kind: "hijri" | "holiday" };
+
+const CENTRAL_GOVERNMENT_HOLIDAYS: Record<number, Array<[string, string]>> = {
+  2026: [
+    ["2026-01-26", "Republic Day"], ["2026-03-04", "Holi"], ["2026-03-21", "Id-ul-Fitr · Central Govt holiday"],
+    ["2026-03-26", "Ram Navami"], ["2026-03-31", "Mahavir Jayanti"], ["2026-04-03", "Good Friday"],
+    ["2026-05-01", "Buddha Purnima"], ["2026-05-27", "Id-ul-Zuha (Bakrid) · Central Govt holiday"],
+    ["2026-06-26", "Muharram · Central Govt holiday"], ["2026-08-15", "Independence Day"],
+    ["2026-08-26", "Milad-un-Nabi / Id-e-Milad · Central Govt holiday"], ["2026-09-04", "Janmashtami"],
+    ["2026-10-02", "Mahatma Gandhi's Birthday"], ["2026-10-20", "Dussehra"], ["2026-11-08", "Diwali"],
+    ["2026-11-24", "Guru Nanak's Birthday"], ["2026-12-25", "Christmas Day"]
+  ],
+  2027: [
+    ["2027-01-26", "Republic Day"], ["2027-03-10", "Id-ul-Fitr · Central Govt holiday"], ["2027-03-23", "Holi"],
+    ["2027-03-26", "Good Friday"], ["2027-04-15", "Ram Navami"], ["2027-04-19", "Mahavir Jayanti"],
+    ["2027-05-17", "Id-ul-Zuha (Bakrid) · Central Govt holiday"], ["2027-05-20", "Buddha Purnima"],
+    ["2027-06-16", "Muharram · Central Govt holiday"], ["2027-08-15", "Independence Day / Id-e-Milad"],
+    ["2027-08-25", "Janmashtami"], ["2027-10-02", "Mahatma Gandhi's Birthday"], ["2027-10-09", "Dussehra"],
+    ["2027-10-29", "Diwali"], ["2027-11-14", "Guru Nanak's Birthday"], ["2027-12-25", "Christmas Day"]
+  ]
+};
+
+function localDateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function getCalendarObservances(year: number): CalendarObservance[] {
+  const holidays: Array<[string, string]> = CENTRAL_GOVERNMENT_HOLIDAYS[year] ?? [
+    [`${year}-01-26`, "Republic Day"], [`${year}-08-15`, "Independence Day"], [`${year}-10-02`, "Mahatma Gandhi's Birthday"]
+  ];
+  const observances: CalendarObservance[] = holidays.map(([date, label]) => ({ date, label, kind: "holiday" }));
+  const islamicLabels: Record<string, string> = {
+    "9-1": "Ramadan begins · estimated Hijri date",
+    "10-1": "Eid al-Fitr · estimated Hijri date",
+    "12-10": "Eid al-Adha · estimated Hijri date",
+    "3-12": "12 Rabi al-Awwal / Mawlid · estimated Hijri date",
+    "1-1": "Islamic New Year · 1 Muharram",
+    "1-10": "Ashura · 10 Muharram"
+  };
+  const days = new Date(year, 1, 29).getMonth() === 1 ? 366 : 365;
+  for (let index = 0; index < days; index += 1) {
+    const date = new Date(year, 0, index + 1);
+    const parts = HIJRI_NUMERIC_FORMATTER.formatToParts(date);
+    const islamicMonth = Number(parts.find((part) => part.type === "month")?.value);
+    const islamicDay = Number(parts.find((part) => part.type === "day")?.value);
+    const label = islamicLabels[`${islamicMonth}-${islamicDay}`];
+    if (label) observances.push({ date: localDateKey(date), label, kind: "hijri" });
+  }
+  return observances;
+}
+
+function CalendarIcon() {
+  return <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /><path d="M12 13.5a3 3 0 1 0 2.8 4 2.4 2.4 0 0 1-2.8-4Z" />
+  </svg>;
+}
+
 function AdminIcon({ section }: { section: AdminSection }) {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -531,16 +591,18 @@ function Modal({
   title,
   subtitle,
   children,
-  onClose
+  onClose,
+  className
 }: {
   title: string;
   subtitle?: string;
   children: ReactNode;
   onClose: () => void;
+  className?: string;
 }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+      <div className={`modal-card${className ? ` ${className}` : ""}`} onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <div>
             <h2 className="section-title">{title}</h2>
@@ -726,6 +788,8 @@ export default function App() {
   const [supabaseSession, setSupabaseSession] = useState<Session | null>(null);
   const [route, setRoute] = useState<RouteState>(() => parseRoute());
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [hijriCalendarOpen, setHijriCalendarOpen] = useState(false);
+  const [hijriCalendarDate, setHijriCalendarDate] = useState(() => new Date());
   const supabaseConfigured = useMemo(() => isSupabaseConfigured(), []);
   const [memberQuery, setMemberQuery] = useState("");
   const [homeSearchQuery, setHomeSearchQuery] = useState("");
@@ -4689,6 +4753,30 @@ export default function App() {
     notification.onClick();
   }
 
+  const calendarMonthStart = new Date(hijriCalendarDate.getFullYear(), hijriCalendarDate.getMonth(), 1);
+  const calendarMonthDays = new Date(calendarMonthStart.getFullYear(), calendarMonthStart.getMonth() + 1, 0).getDate();
+  const calendarDays = Array.from({ length: calendarMonthDays }, (_, index) => new Date(calendarMonthStart.getFullYear(), calendarMonthStart.getMonth(), index + 1));
+  const calendarHeading = calendarMonthStart.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  const firstHijriParts = HIJRI_URDU_DATE_FORMATTER.formatToParts(calendarDays[0]);
+  const lastHijriParts = HIJRI_URDU_DATE_FORMATTER.formatToParts(calendarDays[calendarDays.length - 1]);
+  const firstHijriMonth = firstHijriParts.find((part) => part.type === "month")?.value ?? "";
+  const lastHijriMonth = lastHijriParts.find((part) => part.type === "month")?.value ?? "";
+  const firstHijriYear = firstHijriParts.find((part) => part.type === "year")?.value ?? "";
+  const lastHijriYear = lastHijriParts.find((part) => part.type === "year")?.value ?? "";
+  const calendarHijriHeading = `${firstHijriMonth}${firstHijriMonth !== lastHijriMonth ? ` – ${lastHijriMonth}` : ""} ${firstHijriYear !== lastHijriYear ? `${firstHijriYear}–` : ""}${lastHijriYear} ہجری`;
+  const calendarObservances = useMemo(() => getCalendarObservances(calendarMonthStart.getFullYear()), [calendarMonthStart.getFullYear()]);
+  const calendarObservancesByDate = useMemo(() => {
+    const byDate = new Map<string, CalendarObservance[]>();
+    for (const observance of calendarObservances) byDate.set(observance.date, [...(byDate.get(observance.date) ?? []), observance]);
+    return byDate;
+  }, [calendarObservances]);
+  const calendarMonthObservances = calendarObservances.filter((observance) => observance.date.startsWith(`${calendarMonthStart.getFullYear()}-${String(calendarMonthStart.getMonth() + 1).padStart(2, "0")}-`));
+  const englishWeekdayFormatter = new Intl.DateTimeFormat("en", { weekday: "short" });
+  const calendarWeekdays = Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(2024, 0, 7 + index);
+    return englishWeekdayFormatter.format(day);
+  });
+
   return (
     <div className="app-shell" onTouchStart={handlePullTouchStart} onTouchMove={handlePullTouchMove} onTouchEnd={handlePullTouchEnd}>
       {pullStatus !== "idle" || pullDistance > 0 ? (
@@ -4852,6 +4940,15 @@ export default function App() {
             <button type="button" className="icon-btn" onClick={() => setState((current) => ({ ...current, theme: current.theme === "dark" ? "light" : "dark" }))}>
               {state.theme === "dark" ? "☾" : "☀"}
             </button>
+            <button
+              type="button"
+              className="icon-btn hijri-calendar-trigger"
+              aria-label={language === "ur" ? "ہجری کیلنڈر کھولیں" : "Open Hijri calendar"}
+              title={language === "ur" ? "ہجری کیلنڈر" : "Hijri calendar"}
+              onClick={() => { setMobileNavOpen(false); setHijriCalendarDate(new Date()); setHijriCalendarOpen(true); }}
+            >
+              <CalendarIcon />
+            </button>
             {isLoggedIn ? (
               <button type="button" className="toggle" onClick={logout}>{t(language, "logoutButton")}</button>
             ) : (
@@ -4902,6 +4999,53 @@ export default function App() {
 
       {isLoggedIn && saveToast ? (
         <div className={`sync-toast ${saveToast.tone}`} role="status" aria-live="polite">{t(language, saveToast.key)}</div>
+      ) : null}
+
+      {hijriCalendarOpen ? (
+        <Modal className="hijri-calendar-modal" title="English · Hijri Calendar" subtitle={`Gregorian dates · Today: ${HIJRI_URDU_DATE_FORMATTER.format(new Date())}`} onClose={() => setHijriCalendarOpen(false)}>
+          <div className="hijri-calendar">
+            <div className="hijri-calendar-toolbar">
+              <button type="button" className="icon-btn" aria-label="Previous month" onClick={() => {
+                setHijriCalendarDate(new Date(calendarMonthStart.getFullYear(), calendarMonthStart.getMonth() - 1, 1));
+              }}>‹</button>
+              <div className="hijri-calendar-month-label">
+                <strong>{calendarHeading}</strong>
+                <span dir="rtl">{calendarHijriHeading}</span>
+              </div>
+              <button type="button" className="icon-btn" aria-label="Next month" onClick={() => {
+                setHijriCalendarDate(new Date(calendarMonthStart.getFullYear(), calendarMonthStart.getMonth() + 1, 1));
+              }}>›</button>
+            </div>
+            <div className="hijri-calendar-grid" role="grid" aria-label={calendarHeading}>
+              {calendarWeekdays.map((weekday, index) => <span className="hijri-calendar-weekday" role="columnheader" key={`${weekday}-${index}`}>{weekday}</span>)}
+              {Array.from({ length: calendarMonthStart.getDay() }, (_, index) => <span className="hijri-calendar-empty" key={`empty-${index}`} />)}
+              {calendarDays.map((day) => {
+                const hijriDay = HIJRI_URDU_DATE_FORMATTER.formatToParts(day).find((part) => part.type === "day")?.value;
+                const today = day.toDateString() === new Date().toDateString();
+                const observances = calendarObservancesByDate.get(localDateKey(day)) ?? [];
+                return (
+                  <span className={`hijri-calendar-day${today ? " today" : ""}${observances.some((observance) => observance.kind === "hijri") ? " has-hijri" : ""}${observances.some((observance) => observance.kind === "holiday") ? " has-holiday" : ""}`} role="gridcell" aria-current={today ? "date" : undefined} key={day.toISOString()} title={`${HIJRI_URDU_DATE_FORMATTER.format(day)}${observances.length ? ` · ${observances.map((observance) => observance.label).join(" · ")}` : ""}`}>
+                    <span>{day.getDate()}</span>
+                    <small dir="rtl">{hijriDay}</small>
+                    {observances.length ? <i aria-hidden="true" /> : null}
+                  </span>
+                );
+              })}
+            </div>
+            <div className="hijri-calendar-legend"><span><i className="legend-hijri" /> Islamic observance</span><span><i className="legend-holiday" /> Central Govt holiday</span></div>
+            <section className="hijri-calendar-events" aria-label="Calendar observances and holidays">
+              <h3>Observances &amp; government holidays</h3>
+              {calendarMonthObservances.length ? calendarMonthObservances.map((observance) => {
+                const [year, month, day] = observance.date.split("-").map(Number);
+                const date = new Date(year, month - 1, day);
+                return <div className={`hijri-calendar-event ${observance.kind}`} key={`${observance.date}-${observance.label}`}>
+                  <time dateTime={observance.date}>{date.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</time>
+                  <span>{observance.label}</span>
+                </div>;
+              }) : <p className="hijri-calendar-no-events">No listed observances this month.</p>}
+            </section>
+          </div>
+        </Modal>
       ) : null}
 
       {memberDraft ? (
