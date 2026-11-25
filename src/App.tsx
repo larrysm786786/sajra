@@ -3211,7 +3211,7 @@ export default function App() {
                     </div>
                   </div>
                   {isAdmin ? (
-                    <button className="btn-ghost danger" type="button" onClick={() => deleteAnnouncement(announcement.id)}>{t(language, "deleteButton")}</button>
+                    <IconActionButton icon="delete" className="btn-ghost danger" label={t(language, "deleteButton")} onClick={() => deleteAnnouncement(announcement.id)} />
                   ) : null}
                 </div>
               ))}
@@ -3391,7 +3391,7 @@ export default function App() {
                           </div>
                         </div>
                         {isAdmin ? (
-                          <button className="btn-ghost danger" type="button" onClick={() => deleteGuestbookComment(comment.id)}>{t(language, "deleteButton")}</button>
+                          <IconActionButton icon="delete" className="btn-ghost danger" label={t(language, "deleteButton")} onClick={() => deleteGuestbookComment(comment.id)} />
                         ) : null}
                       </div>
                     ))}
@@ -3458,8 +3458,8 @@ export default function App() {
                   </div>
                   {isAdmin ? (
                     <div className="actions-row">
-                      <button className="btn-ghost" type="button" onClick={() => openGalleryEditor(image)}>{t(language, "editButton")}</button>
-                      <button className="btn-ghost danger" type="button" onClick={() => deleteGalleryItem(image.id)}>{t(language, "deleteButton")}</button>
+                      <IconActionButton icon="edit" label={t(language, "editButton")} onClick={() => openGalleryEditor(image)} />
+                      <IconActionButton icon="delete" className="btn-ghost danger" label={t(language, "deleteButton")} onClick={() => deleteGalleryItem(image.id)} />
                     </div>
                   ) : null}
                 </article>
@@ -3621,8 +3621,8 @@ export default function App() {
                     </div>
                   </div>
                   <div className="actions-row">
-                    <button className="btn-ghost" type="button" onClick={() => openUserEditor(user)}>{t(language, "editButton")}</button>
-                    <button className="btn-ghost danger" type="button" onClick={() => deleteUser(user.id)}>{t(language, "deleteButton")}</button>
+                    <IconActionButton icon="edit" label={t(language, "editButton")} onClick={() => openUserEditor(user)} />
+                    <IconActionButton icon="delete" className="btn-ghost danger" label={t(language, "deleteButton")} onClick={() => deleteUser(user.id)} />
                   </div>
                 </div>
                 {isAdmin && (user.role === "editor" || user.role === "contributor") ? (
@@ -3657,8 +3657,8 @@ export default function App() {
                   </div>
                   {isAdmin ? (
                     <div className="actions-row">
-                      <button className="btn-ghost" type="button" onClick={() => openGalleryEditor(image)}>{t(language, "editButton")}</button>
-                      <button className="btn-ghost danger" type="button" onClick={() => deleteGalleryItem(image.id)}>{t(language, "deleteButton")}</button>
+                      <IconActionButton icon="edit" label={t(language, "editButton")} onClick={() => openGalleryEditor(image)} />
+                      <IconActionButton icon="delete" className="btn-ghost danger" label={t(language, "deleteButton")} onClick={() => deleteGalleryItem(image.id)} />
                     </div>
                   ) : null}
                 </div>
@@ -3689,7 +3689,7 @@ export default function App() {
                     {suggestion.status === "pending" ? (
                       <button className="btn-ghost" type="button" onClick={() => resolveSuggestion(suggestion.id)}>{t(language, "markResolvedButton")}</button>
                     ) : null}
-                    <button className="btn-ghost danger" type="button" onClick={() => deleteSuggestion(suggestion.id)}>{t(language, "deleteButton")}</button>
+                    <IconActionButton icon="delete" className="btn-ghost danger" label={t(language, "deleteButton")} onClick={() => deleteSuggestion(suggestion.id)} />
                   </div>
               </div>
             ))}
@@ -3731,7 +3731,7 @@ export default function App() {
                       <button className="btn-ghost" type="button" onClick={() => rejectMemberUpdateRequest(request.id)}>{t(language, "rejectButton")}</button>
                     </>
                   ) : null}
-                  <button className="btn-ghost danger" type="button" onClick={() => deleteMemberUpdateRequest(request.id)}>{t(language, "deleteButton")}</button>
+                  <IconActionButton icon="delete" className="btn-ghost danger" label={t(language, "deleteButton")} onClick={() => deleteMemberUpdateRequest(request.id)} />
                 </div>
               </div>
             ))}
@@ -3791,7 +3791,7 @@ export default function App() {
                     </div>
                     <div className="actions-row admin-suggestion-actions">
                       <button className="btn-ghost" type="button" onClick={() => confirmDonation(entry.id)}>{t(language, "confirmDonationButton")}</button>
-                      <button className="btn-ghost danger" type="button" onClick={() => deleteDonation(entry.id)}>{t(language, "deleteButton")}</button>
+                      <IconActionButton icon="delete" className="btn-ghost danger" label={t(language, "deleteButton")} onClick={() => deleteDonation(entry.id)} />
                     </div>
                   </div>
                 ))}
@@ -3816,7 +3816,7 @@ export default function App() {
                         </div>
                         <div className="actions-row">
                           <strong>₹{formatNumber(entry.amount, language)}</strong>
-                          <button className="btn-ghost danger" type="button" onClick={() => deleteDonation(entry.id)}>{t(language, "deleteButton")}</button>
+                          <IconActionButton icon="delete" className="btn-ghost danger" label={t(language, "deleteButton")} onClick={() => deleteDonation(entry.id)} />
                         </div>
                       </div>
                     ))}
@@ -4166,7 +4166,7 @@ export default function App() {
                   {isAdmin ? (
                     <div className="actions-row">
                       <button className="btn-ghost" type="button" onClick={() => markDuaFulfilled(request.id)}>{t(language, "markDuaFulfilledButton")}</button>
-                      <button className="btn-ghost danger" type="button" onClick={() => deleteDuaRequest(request.id)}>{t(language, "deleteButton")}</button>
+                      <IconActionButton icon="delete" className="btn-ghost danger" label={t(language, "deleteButton")} onClick={() => deleteDuaRequest(request.id)} />
                     </div>
                   ) : null}
                 </div>
@@ -4187,7 +4187,7 @@ export default function App() {
                         {formatDate(request.createdAt, language)} | {request.requesterName || t(language, "anonymousSubmitter")}
                       </div>
                     </div>
-                    {isAdmin ? <button className="btn-ghost danger" type="button" onClick={() => deleteDuaRequest(request.id)}>{t(language, "deleteButton")}</button> : null}
+                    {isAdmin ? <IconActionButton icon="delete" className="btn-ghost danger" label={t(language, "deleteButton")} onClick={() => deleteDuaRequest(request.id)} /> : null}
                   </div>
                 ))}
               </div>
@@ -5172,7 +5172,7 @@ export default function App() {
           <div className="actions-row" style={{ marginTop: 18 }}>
             <button className="btn" type="button" disabled={!canSaveMember} onClick={saveMember}>{t(language, "saveMemberButton")}</button>
             <button className="btn-ghost" type="button" onClick={closeEditors}>{t(language, "cancelButton")}</button>
-            {memberDraft.id && isAdmin ? <button className="btn-ghost danger" type="button" onClick={() => { deleteMember(memberDraft.id!); closeEditors(); }}>{t(language, "deleteButton")}</button> : null}
+            {memberDraft.id && isAdmin ? <IconActionButton icon="delete" className="btn-ghost danger" label={t(language, "deleteButton")} onClick={() => { deleteMember(memberDraft.id!); closeEditors(); }} /> : null}
           </div>
         </Modal>
       ) : null}
@@ -5217,7 +5217,7 @@ export default function App() {
           <div className="actions-row" style={{ marginTop: 18 }}>
             <button className="btn" type="button" disabled={userBusy} onClick={() => void saveUser()}>{userBusy ? t(language, "savingUser") : t(language, "saveUserButton")}</button>
             <button className="btn-ghost" type="button" onClick={closeEditors}>{t(language, "cancelButton")}</button>
-            {userDraft.id ? <button className="btn-ghost danger" type="button" disabled={userBusy} onClick={() => { void deleteUser(userDraft.id!); closeEditors(); }}>{t(language, "deleteButton")}</button> : null}
+            {userDraft.id ? <IconActionButton icon="delete" className="btn-ghost danger" label={t(language, "deleteButton")} disabled={userBusy} onClick={() => { void deleteUser(userDraft.id!); closeEditors(); }} /> : null}
           </div>
         </Modal>
       ) : null}
