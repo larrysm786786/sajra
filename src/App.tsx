@@ -4735,6 +4735,11 @@ export default function App() {
           badge: item.badge,
           onClick: () => { navigate({ page: "admin" }); setAdminSection(item.key); setPasswordChangeError(""); setPasswordChangeSuccess(false); }
         })),
+        ...(canManageFamilyFeatures ? [
+          { key: "family-quiz", label: language === "ur" ? "انعامی کوئز" : "Prize Quiz", onClick: () => navigate({ page: "quiz" }) },
+          { key: "family-committee", label: language === "ur" ? "خاندانی کمیٹی" : "Family Committee", onClick: () => navigate({ page: "committees" }) },
+          { key: "family-capsule", label: language === "ur" ? "یادوں کے کیپسول" : "Memory Capsules", onClick: () => navigate({ page: "capsules" }) }
+        ] : []),
         { key: "notifications", label: t(language, "postAnnouncementButton"), badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) },
         { key: "live", label: canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel"), badge: unseenLiveStreamCount, onClick: () => navigate({ page: "live" }) },
         { key: "settings", label: t(language, "navSettingsLabel"), badge: isNativeApp && appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }
