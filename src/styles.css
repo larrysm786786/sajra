@@ -2929,3 +2929,22 @@ html[lang="ur"] .profession-photo-bio { text-align: justify; }
   html[lang="ur"] .sajra-chat-message,
   html[lang="ur"] .sajra-chat-profile-card { text-align: right; }
 }
+.family-feature-page { max-width: 1240px; margin-inline: auto; }
+.feature-form { display: grid; gap: 14px; margin-block: 18px; padding: 20px; }
+.feature-form label { display: grid; gap: 6px; color: var(--text, #26364d); font-weight: 600; }
+.feature-form input:not([type="file"]), .feature-form textarea, .feature-card select, .feature-form select { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--border, #cbd7e7); border-radius: 12px; background: var(--surface, #fff); color: var(--text, #1d2735); font: inherit; }
+.feature-form textarea { min-height: 100px; resize: vertical; }
+.feature-form input[type="file"] { width: 100%; padding: 10px; border: 1px dashed var(--accent, #69cbea); border-radius: 12px; }
+.feature-card { display: grid; gap: 12px; margin-block: 14px; padding: 18px; }
+.feature-photo { display: block; width: min(100%, 520px); max-height: 420px; object-fit: contain; border-radius: 14px; }
+.member-personal-gallery { margin-top: 24px; }
+.member-gallery-review { margin-bottom: 24px; }
+.member-gallery-review .card { padding: 16px; }
+.quiz-questions { display: grid; gap: 14px; margin-top: 16px; }
+.quiz-questions fieldset { display: grid; gap: 8px; border: 1px solid var(--border, #cbd7e7); border-radius: 12px; padding: 14px; }
+.quiz-questions label { display: flex; align-items: center; gap: 8px; }
+@media (max-width: 720px) {
+  .feature-form, .feature-card { padding: 14px; }
+  .feature-card .actions-row { align-items: stretch; flex-wrap: wrap; }
+  .feature-card select { min-width: 0; }
+}

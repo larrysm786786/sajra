@@ -27,7 +27,7 @@ const FCM_TOPIC = "sajra_admin_alerts";
 const MAX_BODY_LENGTH = 160;
 const MAX_NAME_LENGTH = 60;
 
-type AlertKind = "suggestion" | "guestbook" | "dua" | "donation" | "profile_update";
+type AlertKind = "suggestion" | "guestbook" | "dua" | "donation" | "profile_update" | "member_gallery" | "committee_join";
 
 interface RequestBody {
   kind?: string;
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
   } catch {
     return fail("Invalid request.");
   }
-  const validKinds: AlertKind[] = ["suggestion", "guestbook", "dua", "donation", "profile_update"];
+  const validKinds: AlertKind[] = ["suggestion", "guestbook", "dua", "donation", "profile_update", "member_gallery", "committee_join"];
   const kind = validKinds.includes(body.kind as AlertKind) ? (body.kind as AlertKind) : null;
   const message = (body.message ?? "").trim();
   const authorName = (body.authorName ?? "").trim().slice(0, MAX_NAME_LENGTH);
@@ -107,7 +107,9 @@ Deno.serve(async (req) => {
     guestbook: "New guestbook message",
     dua: "New dua request",
     donation: "New donation",
-    profile_update: "New profile update request"
+    profile_update: "New profile update request",
+    member_gallery: "New member photo for review",
+    committee_join: "New committee participation request"
   };
   const title = titles[kind];
   const truncated = message.length > MAX_BODY_LENGTH ? `${message.slice(0, MAX_BODY_LENGTH - 1)}…` : message;

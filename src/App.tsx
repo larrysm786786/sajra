@@ -104,6 +104,8 @@ import { t, tGender } from "./i18n";
 import SajraChat from "./SajraChat";
 import AppUpdaterCard, { appBiometric, appNotifications, appPrint, BIOMETRIC_LOCK_STORAGE_KEY, checkForAppUpdate } from "./AppUpdater";
 import { BranchPage } from "./FamilyTools";
+import { FamilyFeaturePages, MemberGallery, MemberGalleryReview } from "./FamilyFeaturePages";
+import { countPendingMemberPhotos } from "./familyFeatures";
 import type { StringKey } from "./i18n";
 
 const NAV_LABELS: Record<Language, { home: string; tree: string; gallery: string; about: string; guide: string; roots: string }> = {
@@ -131,7 +133,9 @@ const EDITOR_PERMISSION_OPTIONS: { key: keyof NonNullable<User["permissions"]>; 
   { key: "addAnnouncement", labelKey: "permAddAnnouncementLabel" },
   { key: "addLiveStreaming", labelKey: "permAddLiveStreamingLabel" },
   { key: "manageDonations", labelKey: "permManageDonationsLabel" },
-  { key: "manageAnalytics", labelKey: "permManageAnalyticsLabel" }
+  { key: "manageAnalytics", labelKey: "permManageAnalyticsLabel" },
+  { key: "manageFamilyFeatures", labelKey: "permManageFamilyFeaturesLabel" },
+  { key: "reviewMemberGallery", labelKey: "permReviewMemberGalleryLabel" }
 ];
 
 // Supabase reports an expired / already-used reset link through the URL hash.
@@ -253,7 +257,7 @@ function parseRoute(): RouteState {
   if (!raw || raw === "/") return { page: "home" };
   const [page, id] = raw.split("/").filter(Boolean);
   if ((page === "member" || page === "branch" || page === "update") && id) return { page, memberId: Number(id) || undefined, ...(page === "update" ? { updateToken: new URLSearchParams(query).get("token") ?? undefined } : {}) };
-  if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots" || page === "calendar" || page === "settings" || page === "live" || page === "memory" || page === "dua" || page === "familyBook" || page === "donations") {
+  if (page === "home" || page === "tree" || page === "gallery" || page === "admin" || page === "about" || page === "guide" || page === "roots" || page === "calendar" || page === "settings" || page === "live" || page === "memory" || page === "dua" || page === "familyBook" || page === "donations" || page === "capsules" || page === "quiz" || page === "committees") {
     return { page };
   }
   return { page: "home" };
@@ -839,6 +843,7 @@ export default function App() {
   );
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [adminSection, setAdminSection] = useState<AdminSection>("overview");
+  const [pendingMemberPhotoCount, setPendingMemberPhotoCount] = useState(0);
   const [logsPage, setLogsPage] = useState(0);
   const [visitStats, setVisitStats] = useState<VisitStats | null>(null);
   const [visitStatsLoading, setVisitStatsLoading] = useState(false);
@@ -998,6 +1003,20 @@ export default function App() {
   const canAddLiveStreaming = editorPermission("addLiveStreaming", isAdmin);
   const canAddGalleryPhoto = editorPermission("addGallery", true);
   const canAddMember = editorPermission("addMember", true);
+  const canManageFamilyFeatures = editorPermission("manageFamilyFeatures", isAdmin);
+  const canReviewMemberGallery = editorPermission("reviewMemberGallery", isAdmin);
+  function broadcastFamilyFeature(message: string) {
+    setState((current) => ({ ...current, announcements: [{ id: nextId(current.announcements), message, authorName: supabaseSession?.user.email ?? "Sajra team", fromAdmin: isAdmin, createdAt: new Date().toISOString() }, ...current.announcements] }));
+    void sendAnnouncementNotification(message);
+  }
+  useEffect(() => {
+    if (!canReviewMemberGallery) { setPendingMemberPhotoCount(0); return; }
+    let live = true;
+    const refresh = () => { void countPendingMemberPhotos().then((count) => { if (live) setPendingMemberPhotoCount(count); }).catch(() => undefined); };
+    refresh();
+    const timer = window.setInterval(refresh, 60_000);
+    return () => { live = false; window.clearInterval(timer); };
+  }, [canReviewMemberGallery, isLoggedIn]);
   // A locally-set preference (see Settings), not synced to other devices - gates the Admin
   // Dashboard behind the device's own fingerprint/face/PIN prompt, on top of the normal login.
   const biometricLockRequired = Capacitor.isNativePlatform() && canUseBiometric && localStorage.getItem(BIOMETRIC_LOCK_STORAGE_KEY) === "1";
@@ -3059,13 +3078,13 @@ export default function App() {
   ).length;
   const notificationBadgeCount = unseenAnnouncementCount + pendingProfileUpdateCount + pendingDonationCount;
   const notificationBellBadgeCount = isLoggedIn
-    ? unseenAdminSuggestionCount + unseenChatbotFeedbackCount + unseenGuestbookCommentCount + openDuaRequests.length + pendingDonationCount + pendingProfileUpdateCount
+    ? unseenAdminSuggestionCount + unseenChatbotFeedbackCount + unseenGuestbookCommentCount + openDuaRequests.length + pendingDonationCount + pendingProfileUpdateCount + pendingMemberPhotoCount
     : unseenAnnouncementCount + unseenLiveStreamCount + unseenFamilyEvents.length + unseenDonationCauseCount + (Capacitor.isNativePlatform() && appUpdateAvailable ? 1 : 0);
   const adminNavMenuItems: { key: AdminSection; label: string; badge?: number }[] = isLoggedIn ? [
     { key: "overview", label: t(language, "adminNavOverview") },
     { key: "members", label: t(language, "membersLabel") },
     ...(isAdmin ? [{ key: "users" as const, label: t(language, "usersLabel") }] : []),
-    { key: "gallery", label: t(language, "adminNavGallery") },
+    { key: "gallery", label: t(language, "adminNavGallery"), badge: canReviewMemberGallery ? pendingMemberPhotoCount : undefined },
     { key: "suggestions", label: t(language, "adminNavSuggestions"), badge: unseenChatbotFeedbackCount },
     ...(canReviewProfileUpdates ? [{ key: "profileUpdates" as const, label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount }] : []),
     ...(canManageDonations ? [{ key: "donations" as const, label: t(language, "adminNavDonations"), badge: pendingDonationCount }] : []),
@@ -3397,6 +3416,7 @@ export default function App() {
                   </article>)}</div>
                 </section> : null}
               </div>
+              <MemberGallery member={member} members={state.members} language={language} onSubmitted={() => void sendAdminAlertNotification("member_gallery", `A photo was submitted for ${displayName(member, language)} (Sajra ID ${member.uniqueId ?? member.id}).`, null)} />
 
               <div className="card-grid profile-relations-grid" style={{ marginTop: 20 }}>
                 <Card title={t(language, "parentsTitle")} subtitle={t(language, "parentsSubtitle")}>
@@ -3722,7 +3742,9 @@ export default function App() {
           </div>
         );
       } else if (activeSection.key === "gallery") {
-        sectionBody = state.gallery.length ? (
+        sectionBody = <>
+          {canReviewMemberGallery ? <div className="member-gallery-review"><h3>Member photo submissions</h3><MemberGalleryReview language={language} /></div> : null}
+          {state.gallery.length ? (
           <div className="list">
             {state.gallery.map((image) => (
               <div key={image.id} className="card" style={{ padding: 14 }}>
@@ -3744,9 +3766,10 @@ export default function App() {
               </div>
             ))}
           </div>
-        ) : (
+          ) : (
           <div className="empty">{t(language, "noPhotosYet")}</div>
-        );
+          )}
+        </>;
       } else if (activeSection.key === "suggestions") {
         sectionBody = state.suggestions.length ? (
           <div className="list">
@@ -4195,6 +4218,10 @@ export default function App() {
           )}
         </section>
       );
+    }
+
+    if (route.page === "capsules" || route.page === "quiz" || route.page === "committees") {
+      return <FamilyFeaturePages page={route.page} members={state.members} isStaff={canManageFamilyFeatures} canManage={canManageFamilyFeatures} canReviewGallery={canReviewMemberGallery} language={language} onBroadcast={broadcastFamilyFeature} onAdminAlert={(message) => void sendAdminAlertNotification("committee_join", message, null)} />;
     }
 
     if (route.page === "memory") {
@@ -4670,12 +4697,13 @@ export default function App() {
   const editorMenuLinks: { key: string; label: string; badge?: number; onClick: () => void }[] = isEditorUser ? [
     { key: "overview", label: t(language, "adminNavOverview"), onClick: () => { navigate({ page: "admin" }); setAdminSection("overview"); } },
     ...(canAddMember || canEditMembers ? [{ key: "members", label: t(language, "addMemberButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("members"); } }] : []),
-    ...(canAddGalleryPhoto ? [{ key: "gallery", label: t(language, "addGalleryPhotoButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } }] : []),
+    ...(canAddGalleryPhoto || canReviewMemberGallery ? [{ key: "gallery", label: t(language, "addGalleryPhotoButton"), onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } }] : []),
     { key: "suggestions", label: t(language, "adminNavSuggestions"), badge: unseenChatbotFeedbackCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("suggestions"); } },
     ...(canReviewProfileUpdates ? [{ key: "profileUpdates", label: t(language, "adminNavProfileUpdates"), badge: pendingProfileUpdateCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("profileUpdates"); } }] : []),
     ...(canManageDonations ? [{ key: "donations", label: t(language, "adminNavDonations"), badge: pendingDonationCount, onClick: () => { navigate({ page: "admin" }); setAdminSection("donations"); } }] : []),
     { key: "quality", label: t(language, "adminNavQuality"), onClick: () => { navigate({ page: "admin" }); setAdminSection("quality"); } },
     ...(canManageAnalytics ? [{ key: "analytics", label: t(language, "adminNavAnalytics"), onClick: () => { navigate({ page: "admin" }); setAdminSection("analytics"); } }] : []),
+    ...(canManageFamilyFeatures ? [{ key: "family-quiz", label: language === "ur" ? "انعامی کوئز" : "Prize quiz", onClick: () => navigate({ page: "quiz" }) }, { key: "family-committee", label: language === "ur" ? "خاندانی کمیٹی" : "Family committee", onClick: () => navigate({ page: "committees" }) }, { key: "family-capsule", label: language === "ur" ? "یادوں کے کیپسول" : "Memory capsules", onClick: () => navigate({ page: "capsules" }) }] : []),
     ...(canAddAnnouncement ? [{ key: "announcement", label: t(language, "postAnnouncementButton"), badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) }] : []),
     { key: "live", label: t(language, "navLiveLabel"), badge: unseenLiveStreamCount, onClick: () => navigate({ page: "live" }) },
     { key: "settings", label: t(language, "navSettingsLabel"), badge: isNativeApp && appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }
@@ -4692,6 +4720,9 @@ export default function App() {
     { key: "quality", label: t(language, "adminNavQuality"), onClick: () => { navigate({ page: "admin" }); setAdminSection("quality"); } },
     { key: "backup", label: t(language, "backupCardTitle"), onClick: () => { navigate({ page: "admin" }); setAdminSection("backup"); } },
     { key: "analytics", label: t(language, "adminNavAnalytics"), onClick: () => { navigate({ page: "admin" }); setAdminSection("analytics"); } },
+    { key: "family-quiz", label: language === "ur" ? "انعامی کوئز" : "Prize quiz", onClick: () => navigate({ page: "quiz" }) },
+    { key: "family-committee", label: language === "ur" ? "خاندانی کمیٹی" : "Family committee", onClick: () => navigate({ page: "committees" }) },
+    { key: "family-capsule", label: language === "ur" ? "یادوں کے کیپسول" : "Memory capsules", onClick: () => navigate({ page: "capsules" }) },
     { key: "announcement", label: t(language, "postAnnouncementButton"), badge: notificationBadgeCount, onClick: () => navigate({ page: "calendar" }) },
     { key: "live", label: t(language, "addLiveStreamingLabel"), badge: unseenLiveStreamCount, onClick: () => navigate({ page: "live" }) },
     { key: "settings", label: t(language, "navSettingsLabel"), badge: isNativeApp && appUpdateAvailable ? 1 : 0, onClick: () => navigate({ page: "settings" }) }
@@ -4716,6 +4747,7 @@ export default function App() {
           id: `profile-update-${request.id}`, title: t(language, "adminNavProfileUpdates"), message: request.memberName,
           createdAt: request.createdAt, onClick: () => { navigate({ page: "admin" }); setAdminSection("profileUpdates"); }
         })) : []),
+        ...(canReviewMemberGallery && pendingMemberPhotoCount ? [{ id: "member-gallery-review", title: t(language, "adminNavGallery"), message: `${pendingMemberPhotoCount} member photo${pendingMemberPhotoCount === 1 ? "" : "s"} waiting for review`, onClick: () => { navigate({ page: "admin" }); setAdminSection("gallery"); } }] : []),
         ...(canManageDonations ? pendingDonations.map((entry) => ({
           id: `donation-${entry.id}`, title: t(language, "donationsTitle"), message: `${entry.donorName} · ${t(language, donationCauseLabelKey(entry.cause))}`,
           createdAt: entry.createdAt, onClick: () => { navigate({ page: "admin" }); setAdminSection("donations"); }
@@ -4937,6 +4969,9 @@ export default function App() {
             <NavLink active={route.page === "member" && route.memberId === myMemberId} onClick={() => { goToMyFamily(); setMobileNavOpen(false); }}>{t(language, "myFamilyNavLabel")}</NavLink>
             <NavLink active={route.page === "roots"} onClick={() => navigate({ page: "roots" })}>{NAV_LABELS[language].roots}</NavLink>
             <NavLink active={route.page === "gallery"} onClick={() => navigate({ page: "gallery" })}>{NAV_LABELS[language].gallery}</NavLink>
+            <NavLink active={route.page === "capsules"} onClick={() => navigate({ page: "capsules" })}>{language === "ur" ? "Memory Capsules" : "Memory capsules"}</NavLink>
+            <NavLink active={route.page === "quiz"} onClick={() => navigate({ page: "quiz" })}>{language === "ur" ? "Prize Quiz" : "Prize quiz"}</NavLink>
+            <NavLink active={route.page === "committees"} onClick={() => navigate({ page: "committees" })}>{language === "ur" ? "Committee" : "Committee"}</NavLink>
             <NavLink active={route.page === "calendar"} badge={notificationBadgeCount} language={language} onClick={() => navigate({ page: "calendar" })}>{t(language, "navNotificationsLabel")}</NavLink>
             {state.donationSettings.activeCauses.length ? <NavLink active={route.page === "donations"} onClick={() => navigate({ page: "donations" })}>{t(language, "navDonationsLabel")}</NavLink> : null}
             <NavLink active={route.page === "live"} badge={unseenLiveStreamCount} language={language} onClick={() => navigate({ page: "live" })}>{canAddLiveStreaming ? t(language, "addLiveStreamingLabel") : t(language, "navLiveLabel")}</NavLink>

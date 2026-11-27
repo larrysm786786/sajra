@@ -3,3 +3,6 @@ verify_jwt = false
 
 [functions.ga4-realtime]
 verify_jwt = true
+
+[functions.sajra-family-features]
+verify_jwt = false

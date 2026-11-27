@@ -645,7 +645,9 @@ const STRINGS = {
     noPendingDonations: "No donations waiting for confirmation.",
     navDonationsLabel: "Donations",
     permManageDonationsLabel: "Manage donations",
-    permManageAnalyticsLabel: "Manage analytics"
+    permManageAnalyticsLabel: "Manage analytics",
+    permManageFamilyFeaturesLabel: "Manage memory capsules, quizzes and committees",
+    permReviewMemberGalleryLabel: "Review member gallery photos"
   },
   ur: {
     signInEyebrow: "ایڈمن رسائی",
@@ -1292,7 +1294,9 @@ const STRINGS = {
     noPendingDonations: "کوئی عطیہ تصدیق کا منتظر نہیں ہے۔",
     navDonationsLabel: "عطیات",
     permManageDonationsLabel: "عطیات کا انتظام",
-    permManageAnalyticsLabel: "تجزیات کا انتظام"
+    permManageAnalyticsLabel: "تجزیات کا انتظام",
+    permManageFamilyFeaturesLabel: "یادوں، کوئز اور کمیٹی کا انتظام",
+    permReviewMemberGalleryLabel: "اراکین کی گیلری تصاویر کا جائزہ"
   }
 } as const;
 
