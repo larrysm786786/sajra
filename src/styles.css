@@ -2943,8 +2943,45 @@ html[lang="ur"] .profession-photo-bio { text-align: justify; }
 .quiz-questions { display: grid; gap: 14px; margin-top: 16px; }
 .quiz-questions fieldset { display: grid; gap: 8px; border: 1px solid var(--border, #cbd7e7); border-radius: 12px; padding: 14px; }
 .quiz-questions label { display: flex; align-items: center; gap: 8px; }
+.feature-intro { max-width: 76ch; margin: -4px 0 18px; color: var(--muted); line-height: 1.7; }
+.feature-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.feature-card-heading h2 { margin: 0; }
+.feature-card-heading p { margin: 6px 0 0; color: var(--muted); }
+.quiz-delete-button { flex: 0 0 auto; color: #b42318; border-color: color-mix(in oklab, #b42318 28%, var(--border)); }
+.quiz-participant-picker { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: color-mix(in oklab, var(--accent-light) 10%, var(--surface-strong)); }
+.quiz-participant-picker label { display: grid; gap: 6px; font-weight: 600; }
+.quiz-participant-picker input { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); font: inherit; }
+.quiz-member-results { display: grid; gap: 6px; max-height: 220px; overflow: auto; padding: 6px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-strong); }
+.quiz-member-results .btn-ghost { justify-content: flex-start; text-align: start; }
+.quiz-member-results .btn-ghost.active { border-color: var(--accent); background: color-mix(in oklab, var(--accent-light) 22%, var(--surface-strong)); }
+.member-gallery-trigger { position: relative; flex: 0 0 42px; width: 42px; height: 42px; border-color: var(--border); background: var(--surface-strong); color: var(--accent); cursor: pointer; }
+.member-gallery-trigger:hover { color: var(--accent-strong); border-color: var(--accent); background: color-mix(in oklab, var(--accent-light) 18%, var(--surface-strong)); }
+.member-gallery-trigger svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.member-gallery-trigger span { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 4px; display: grid; place-items: center; border-radius: 999px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; }
+.member-gallery-backdrop { z-index: 80; }
+.member-gallery-modal { width: min(820px, 100%); max-height: min(88vh, 900px); }
+.member-gallery-modal .modal-head p { margin: 5px 0 0; color: var(--muted); }
+.member-gallery-upload { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; margin-block: 12px 18px; padding: 14px; background: var(--surface); }
+.member-gallery-upload .btn { min-height: 44px; }
+.member-gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.member-gallery-thumb { min-width: 0; padding: 6px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); cursor: zoom-in; text-align: start; }
+.member-gallery-thumb img { display: block; width: 100%; height: 150px; object-fit: cover; border-radius: 8px; }
+.member-gallery-thumb span { display: block; padding: 7px 3px 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.member-gallery-lightbox { z-index: 100; }
+.member-gallery-lightbox .lightbox-viewport img { max-width: min(88vw, 1200px); max-height: 82vh; user-select: none; will-change: transform; }
+.member-gallery-lightbox .lightbox-nav { z-index: 62; }
 @media (max-width: 720px) {
   .feature-form, .feature-card { padding: 14px; }
   .feature-card .actions-row { align-items: stretch; flex-wrap: wrap; }
   .feature-card select { min-width: 0; }
+  .feature-intro { font-size: 0.94rem; }
+  .member-gallery-backdrop { padding: 10px; }
+  .member-gallery-modal { max-height: 92dvh; padding: 16px; }
+  .member-gallery-upload { grid-template-columns: minmax(0, 1fr); padding: 12px; }
+  .member-gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .member-gallery-thumb img { height: 130px; }
+  .member-gallery-lightbox { padding: 52px 8px 36px; }
+  .member-gallery-lightbox .lightbox-toolbar { top: 8px; right: 8px; gap: 5px; }
+  .member-gallery-lightbox .lightbox-toolbar .icon-btn { min-width: 34px; height: 34px; padding-inline: 8px; }
+  .member-gallery-lightbox .lightbox-nav { width: 36px; height: 44px; }
 }

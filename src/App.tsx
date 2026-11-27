@@ -3398,6 +3398,7 @@ export default function App() {
                   ) : (
                     <IconActionButton icon="family" label={t(language, "setAsMyFamilyButton")} onClick={() => setAsMyFamily(member.id)} />
                   )}
+                  <MemberGallery member={member} language={language} onSubmitted={() => void sendAdminAlertNotification("member_gallery", `A photo was submitted for ${displayName(member, language)} (Sajra ID ${member.uniqueId ?? member.id}).`, null)} />
                 </div>
                 {suggestionSent ? <p className="hint no-print">{t(language, "suggestionSentMessage")}</p> : null}
                 {shareNotice ? <p className="hint no-print">{shareNotice}</p> : null}
@@ -3416,8 +3417,6 @@ export default function App() {
                   </article>)}</div>
                 </section> : null}
               </div>
-              <MemberGallery member={member} members={state.members} language={language} onSubmitted={() => void sendAdminAlertNotification("member_gallery", `A photo was submitted for ${displayName(member, language)} (Sajra ID ${member.uniqueId ?? member.id}).`, null)} />
-
               <div className="card-grid profile-relations-grid" style={{ marginTop: 20 }}>
                 <Card title={t(language, "parentsTitle")} subtitle={t(language, "parentsSubtitle")}>
                   {getParents(state.members, member).length ? (

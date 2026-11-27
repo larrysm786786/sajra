@@ -5,7 +5,7 @@ export type MemberPhotoSubmission = { id: string; memberId: number; caption: str
 export type Competition = { id: string; title: string; description: string | null; prize: string; startsAt: string; endsAt: string; durationSeconds: number; status: "draft" | "open" | "closed" | "completed" | "cancelled"; winnerEntryId?: string | null; entries?: number };
 export type QuizQuestion = { id?: string; prompt: string; choices: string[]; correctIndex: number };
 export type PublicQuizQuestion = { id: string; prompt: string; choices: string[] };
-export type QuizEntry = { id: string; memberId: number; memberName: string; score: number | null; submittedAt: string | null };
+export type QuizEntry = { id: string; memberId: number | null; memberName: string; score: number | null; submittedAt: string | null };
 export type SavingsCommittee = { id: string; title: string; description: string | null; installmentAmount: number; startsOn: string; status: "enrolling" | "active" | "completed" | "paused" | "cancelled"; participants: Array<{ memberId: number; memberName: string; status: string; drawNumber: number | null }>; cycle: Array<{ cycleNumber: number; memberId: number; memberName: string; amount: number; paid: boolean; payoutPaid: boolean; contributions: Array<{memberId:number;amount:number;received:boolean}> }> };
 
 async function invoke(action: string, payload: Record<string, unknown> = {}) {
@@ -54,14 +54,15 @@ export async function countPendingMemberPhotos() { return Number((await invoke("
 export async function reviewMemberPhoto(id: string, decision: "approved" | "rejected") { await invoke("review_member_photo", { id, decision }); }
 
 export async function listCompetitions() { return (await invoke("list_competitions")).competitions as Competition[]; }
+export async function deleteCompetition(competitionId: string) { await invoke("delete_competition", { competitionId }); }
 export async function createCompetition(input: { title: string; description: string; prize: string; startsAt: string; endsAt: string; durationSeconds: number; questions: QuizQuestion[] }) {
   return (await invoke("create_competition", input)).competition as Competition;
 }
 export async function setCompetitionStatus(id: string, status: "open" | "closed" | "completed" | "cancelled") { await invoke("set_competition_status", { id, status }); }
-export async function enterQuiz(input: { competitionId: string; memberId: number; memberName: string }) { return (await invoke("enter_quiz", input)).entry as QuizEntry; }
-export async function startQuiz(input: { competitionId: string; memberId: number }) { return (await invoke("start_quiz", input)) as { entryId: string; startedAt: string; questions: PublicQuizQuestion[]; durationSeconds: number };
+export async function enterQuiz(input: { competitionId: string; memberId?: number | null; participantName?: string }) { return (await invoke("enter_quiz", input)).entry as QuizEntry; }
+export async function startQuiz(input: { competitionId: string; entryId: string }) { return (await invoke("start_quiz", input)) as { entryId: string; startedAt: string; questions: PublicQuizQuestion[]; durationSeconds: number };
 }
-export async function submitQuiz(input: { competitionId: string; memberId: number; entryId: string; answers: Array<{ questionId: string; choiceIndex: number }> }) {
+export async function submitQuiz(input: { competitionId: string; entryId: string; answers: Array<{ questionId: string; choiceIndex: number }> }) {
   return (await invoke("submit_quiz", input)).entry as QuizEntry;
 }
 export async function listQuizEntries(competitionId: string) { return (await invoke("list_quiz_entries", { competitionId })).entries as QuizEntry[]; }

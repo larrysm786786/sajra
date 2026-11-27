@@ -37,11 +37,14 @@ Deno.serve(async (req) => {
     const { data: { user }, error } = await caller.auth.getUser();
     if (error || !user?.email) return fail("Sign in to manage this feature.", 401);
     const email = user.email.trim().toLowerCase();
-    const role = text(user.app_metadata?.role, 24);
+    const role = text(user.app_metadata?.role, 24).toLowerCase();
     const { data: archive } = await admin.from("sajra_state").select("state").eq("id", "main").maybeSingle();
     const directoryUser = (archive?.state?.users ?? []).find((entry: { email?: string }) => entry.email?.trim().toLowerCase() === email);
-    const isAdmin = role === "admin" || directoryUser?.role === "admin";
-    const isEditor = role === "editor" || role === "contributor" || directoryUser?.role === "editor" || directoryUser?.role === "contributor";
+    const directoryRole = text(directoryUser?.role, 24).toLowerCase();
+    const isEditor = role === "editor" || role === "contributor" || (!role && (directoryRole === "editor" || directoryRole === "contributor"));
+    // Match the app's login role rules: only explicit editor/contributor accounts need
+    // feature permissions; accounts without a role (legacy super admins) are admins.
+    const isAdmin = !isEditor;
     if (isAdmin) return { user, email };
     const permission = directoryUser?.permissions?.[required] === true;
     if (isEditor && permission) return { user, email };
@@ -183,6 +186,16 @@ Deno.serve(async (req) => {
     return respond({ competition: { id: data.id, title, description, prize, startsAt: data.starts_at, endsAt: data.ends_at, durationSeconds, status: data.status } });
   }
 
+  if (action === "delete_competition") {
+    const actor = await staff(); if (actor instanceof Response) return actor;
+    const id = body.competitionId;
+    if (!uuid(id)) return fail("Invalid competition.");
+    const { error } = await admin.from("quiz_competitions").delete().eq("id", id);
+    if (error) return fail("Could not delete the quiz competition.", 500);
+    await audit(actor, "quiz", String(id), "deleted");
+    return respond({ ok: true });
+  }
+
   if (action === "list_competitions") {
     const actor = await staff().catch(() => null); const isStaff = actor && !(actor instanceof Response);
     let query = admin.from("quiz_competitions").select("id,title,description,prize,starts_at,ends_at,duration_seconds,status,winner_entry_id").order("created_at", { ascending: false });
@@ -197,27 +210,35 @@ Deno.serve(async (req) => {
   }
 
   if (action === "enter_quiz") {
-    const competitionId = body.competitionId, memberId = Number(body.memberId);
-    if (!uuid(competitionId) || !Number.isSafeInteger(memberId) || memberId <= 0) return fail("Choose your Sajra member profile.");
-    const [competition, member] = await Promise.all([admin.from("quiz_competitions").select("id,status,starts_at,ends_at").eq("id", competitionId).maybeSingle(), getMember(memberId)]);
+    const competitionId = body.competitionId;
+    const requestedMemberId = body.memberId == null || body.memberId === "" ? null : Number(body.memberId);
+    if (!uuid(competitionId) || (requestedMemberId !== null && (!Number.isSafeInteger(requestedMemberId) || requestedMemberId <= 0))) return fail("Choose a Sajra member or enter another participant's name.");
+    const participantNameInput = text(body.participantName, 120);
+    const [competition, member] = await Promise.all([
+      admin.from("quiz_competitions").select("id,status,starts_at,ends_at").eq("id", competitionId).maybeSingle(),
+      requestedMemberId === null ? Promise.resolve(null) : getMember(requestedMemberId)
+    ]);
     if (!competition.data || competition.data.status !== "open" || Date.now() < Date.parse(competition.data.starts_at) || Date.now() > Date.parse(competition.data.ends_at)) return fail("This quiz is not open for entries.");
-    if (!member) return fail("Member profile not found.");
-    const { data, error } = await admin.from("quiz_entries").insert({ competition_id: competitionId, member_id: memberId, member_name: member.name }).select("id,member_id,member_name,score,submitted_at").single();
+    if (requestedMemberId !== null && !member) return fail("Sajra member profile not found.");
+    const participantName = member?.name ?? participantNameInput;
+    if (!participantName) return fail("Enter the participant's name.");
+    const participantKey = member ? `member:${requestedMemberId}` : `other:${participantName.normalize("NFKC").replace(/\s+/g, " ").trim().toLocaleLowerCase()}`;
+    const { data, error } = await admin.from("quiz_entries").insert({ competition_id: competitionId, member_id: requestedMemberId, participant_key: participantKey, member_name: participantName }).select("id,member_id,member_name,score,submitted_at").single();
     if (error?.code === "23505") {
-      const { data: existing } = await admin.from("quiz_entries").select("id,member_id,member_name,score,submitted_at").eq("competition_id", competitionId).eq("member_id", memberId).maybeSingle();
+      const { data: existing } = await admin.from("quiz_entries").select("id,member_id,member_name,score,submitted_at").eq("competition_id", competitionId).eq("participant_key", participantKey).maybeSingle();
       if (existing && !existing.submitted_at) return respond({ entry: { id: existing.id, memberId: existing.member_id, memberName: existing.member_name, score: existing.score, submittedAt: existing.submitted_at } });
-      return fail("This member has already submitted an attempt.", 409);
+      return fail("This participant has already submitted an attempt.", 409);
     }
     if (error) return fail("Could not register your entry.", 500);
     return respond({ entry: { id: data.id, memberId: data.member_id, memberName: data.member_name, score: data.score, submittedAt: data.submitted_at } });
   }
 
   if (action === "start_quiz") {
-    const competitionId = body.competitionId, memberId = Number(body.memberId);
-    if (!uuid(competitionId) || !Number.isSafeInteger(memberId)) return fail("Invalid quiz entry.");
+    const competitionId = body.competitionId, entryId = body.entryId;
+    if (!uuid(competitionId) || !uuid(entryId)) return fail("Invalid quiz entry.");
     const { data: competition } = await admin.from("quiz_competitions").select("status,starts_at,ends_at,duration_seconds").eq("id", competitionId).maybeSingle();
     if (!competition || competition.status !== "open" || Date.now() < Date.parse(competition.starts_at) || Date.now() > Date.parse(competition.ends_at)) return fail("This competition is not open right now.");
-    const { data: entry } = await admin.from("quiz_entries").select("id,started_at,submitted_at,presented_questions").eq("competition_id", competitionId).eq("member_id", memberId).maybeSingle();
+    const { data: entry } = await admin.from("quiz_entries").select("id,started_at,submitted_at,presented_questions").eq("competition_id", competitionId).eq("id", entryId).maybeSingle();
     if (!entry || entry.submitted_at) return fail("No unused entry is available for this member.", 409);
     if (entry.started_at && Array.isArray(entry.presented_questions)) {
       const saved = entry.presented_questions as Array<{ id: string; prompt: string; choices: string[]; optionOrder: number[] }>;
@@ -236,9 +257,9 @@ Deno.serve(async (req) => {
   }
 
   if (action === "submit_quiz") {
-    const competitionId = body.competitionId, entryId = body.entryId, memberId = Number(body.memberId);
-    if (!uuid(competitionId) || !uuid(entryId) || !Number.isSafeInteger(memberId) || !Array.isArray(body.answers)) return fail("Invalid quiz response.");
-    const { data: entry } = await admin.from("quiz_entries").select("id,started_at,submitted_at,presented_questions").eq("id", entryId).eq("competition_id", competitionId).eq("member_id", memberId).maybeSingle();
+    const competitionId = body.competitionId, entryId = body.entryId;
+    if (!uuid(competitionId) || !uuid(entryId) || !Array.isArray(body.answers)) return fail("Invalid quiz response.");
+    const { data: entry } = await admin.from("quiz_entries").select("id,started_at,submitted_at,presented_questions").eq("id", entryId).eq("competition_id", competitionId).maybeSingle();
     const { data: competition } = await admin.from("quiz_competitions").select("status,ends_at,duration_seconds").eq("id", competitionId).maybeSingle();
     if (!entry || !entry.started_at || entry.submitted_at || !competition || competition.status !== "open" || Date.now() > Date.parse(competition.ends_at)) return fail("This quiz attempt is no longer available.", 409);
     if (Date.now() > Date.parse(entry.started_at) + competition.duration_seconds * 1000 + 15000) return fail("The quiz time has ended.", 409);
